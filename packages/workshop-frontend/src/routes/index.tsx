@@ -40,7 +40,7 @@ function HomePage() {
 }
 
 export function HomePageContent({ prompt }: HomeSearch) {
-  useDocumentTitle("Home");
+  useDocumentTitle("中文在线 · 剧本创作平台");
 
   const { authenticatedApi, currentUser } = useAuthenticatedApi();
   const navigate = useNavigate();
@@ -173,10 +173,10 @@ export function HomePageContent({ prompt }: HomeSearch) {
         {/* Hero */}
         <header className="text-center">
           <h1 className="text-3xl font-semibold tracking-tight leading-tight text-kumo-default sm:text-4xl">
-            What are we working on?
+            今天想创作哪部剧？
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-[14px] leading-5 tracking-[-0.25px] text-kumo-subtle">
-            Ask a question, create an output, or create an app that works with your tools and data.
+          <p className="mx-auto mt-3 max-w-lg text-[14px] leading-5 tracking-[-0.25px] text-kumo-subtle">
+            从爆款剧本拆解二创、纯原创漫剧孵化，到好莱坞工业分场与多角色共创
           </p>
         </header>
 

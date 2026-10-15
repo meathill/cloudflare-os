@@ -3494,10 +3494,18 @@ export const ChatInput = ({
                 }
               />
               <DropdownMenu.Content collisionPadding={16} className="themed-floating-shadow-lg !z-[1100] !min-w-[170px] rounded-2xl border border-kumo-line/70 bg-kumo-base p-1">
-                {/* The deployment's standard formats. Picking one drops its name into the message at
-                    the caret; the agent is told what to build from it. */}
+                {/* The deployment's standard formats and script directions. */}
                 {canChooseFormat && (
-                  <ComposerFormatMenuItems onSelect={(format) => void chooseFormat(format)} />
+                  <ComposerFormatMenuItems
+                    onSelect={(format) => void chooseFormat(format)}
+                    onSelectPrompt={(prompt) => {
+                      setInputValue(prompt);
+                      requestAnimationFrame(() => {
+                        composerTextareaRef.current?.focus();
+                        composerTextareaRef.current?.setSelectionRange(prompt.length, prompt.length);
+                      });
+                    }}
+                  />
                 )}
                 {onToggleThinkingTraces && (
                   <DropdownMenu.Item
