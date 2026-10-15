@@ -113,7 +113,16 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
       throw new TypeError("ADMINS must be configured as an array of usernames.");
     }
 
-    return admins.includes(name);
+    const normalizedName = name.toLowerCase();
+    return admins.some((admin) => {
+      if (typeof admin !== "string") return false;
+      const normalizedAdmin = admin.toLowerCase();
+      if (normalizedAdmin === normalizedName) return true;
+      if (normalizedAdmin.includes("@") && normalizedAdmin.split("@")[0] === normalizedName) {
+        return true;
+      }
+      return false;
+    });
   }
 
   whoami(): Promise<AiChatAuthorInfo> {
