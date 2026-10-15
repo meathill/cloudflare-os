@@ -78,6 +78,63 @@ describe('ScriptStudioModal', () => {
     expect(document.body.textContent).toContain('悬念断点 (Cliffhanger)')
   })
 
+  it('switches to drama research tab and imports summary into remake mode', async () => {
+    document.body.append(container)
+    root = createRoot(container)
+    const onOpenChange = vi.fn()
+
+    await act(async () => {
+      root!.render(<ScriptStudioModal open={true} onOpenChange={onOpenChange} />)
+    })
+
+    const buttons = Array.from(document.body.querySelectorAll('button'))
+    const researchTab = buttons.find((btn) => btn.textContent?.includes('剧目研报 (全网搜索)'))
+    expect(researchTab).toBeDefined()
+
+    await act(async () => {
+      researchTab?.click()
+    })
+
+    expect(document.body.textContent).toContain('剧目资料与口碑全网深度研报')
+
+    // Quick fill and search
+    const quickFillBtn = Array.from(document.body.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('填入示例剧名')
+    )
+    expect(quickFillBtn).toBeDefined()
+
+    await act(async () => {
+      quickFillBtn?.click()
+    })
+
+    const searchBtn = Array.from(document.body.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('检索全网研报')
+    )
+    expect(searchBtn).toBeDefined()
+
+    await act(async () => {
+      searchBtn?.click()
+    })
+
+    expect(document.body.textContent).toContain('核心剧情梗概')
+    expect(document.body.textContent).toContain('全网/豆瓣口碑')
+
+    // Click import to remake
+    const importBtn = Array.from(document.body.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('一键导入到爆款拆解流 (A模块)')
+    )
+    expect(importBtn).toBeDefined()
+
+    await act(async () => {
+      importBtn?.click()
+    })
+
+    // Should switch back to remake mode with the imported summary
+    expect(document.body.textContent).toContain('① 对标爆款剧本与新设定 (输入A)')
+    const textarea = document.body.querySelector('textarea')
+    expect(textarea?.value).toContain('全网深度调研简报')
+  })
+
   it('calls onOpenChange(false) when close button is clicked', async () => {
     document.body.append(container)
     root = createRoot(container)

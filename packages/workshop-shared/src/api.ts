@@ -2648,6 +2648,18 @@ export type AiToolCall = {
    */
   output?: string;
 } | {
+  /**
+   * Search Google for information, drama synopses, reviews, or public background facts.
+   * Grounded by Gemini Search Grounding.
+   */
+  toolName: "webSearch";
+  input: {
+    query: string;
+  };
+
+  /** Formatted search results and source citations. */
+  output?: string;
+} | {
   /** This actually shouldn't ever appear in logs unless the agent misunderstands the tool. */
   toolName: "observeUserChanges";
   input: {};

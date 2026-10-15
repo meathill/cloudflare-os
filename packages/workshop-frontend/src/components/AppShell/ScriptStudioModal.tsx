@@ -6,6 +6,7 @@ import {
   Copy as CopyIcon,
   FilmReel as FilmReelIcon,
   Lightning as LightningIcon,
+  MagnifyingGlass as MagnifyingGlassIcon,
   Sparkle as SparkleIcon,
   Television as TelevisionIcon,
   X as XIcon,
@@ -16,7 +17,7 @@ export interface ScriptStudioModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-type ModeTab = 'remake' | 'original' | 'skills'
+type ModeTab = 'remake' | 'original' | 'research' | 'skills'
 
 export default function ScriptStudioModal({ open, onOpenChange }: ScriptStudioModalProps) {
   const [activeTab, setActiveTab] = useState<ModeTab>('remake')
@@ -33,6 +34,10 @@ export default function ScriptStudioModal({ open, onOpenChange }: ScriptStudioMo
   const [genreTag, setGenreTag] = useState('')
   const [incubateResult, setIncubateResult] = useState('')
   const [originalScriptResult, setOriginalScriptResult] = useState('')
+
+  // 模式三：剧目全网调研状态 (联网检索)
+  const [researchQuery, setResearchQuery] = useState('')
+  const [researchSummary, setResearchSummary] = useState('')
 
   function handleTabChange(tab: ModeTab) {
     setActiveTab(tab)
@@ -117,6 +122,28 @@ export default function ScriptStudioModal({ open, onOpenChange }: ScriptStudioMo
     }, 2000)
   }
 
+  function handleQuickFillResearch() {
+    setResearchQuery('《重生之商界巅峰》短剧')
+  }
+
+  function handleRunResearch() {
+    if (!researchQuery) return
+    setResearchSummary(
+      `【《${researchQuery}》全网深度调研简报】\n` +
+      `• 核心剧情梗概：主角遭豪门妻子与合伙人背叛并溺亡，带着20年超前经济认知重生至1998年。借原始资本认购证与国库券疯狂套利，当场打脸退婚前妻，逆袭为华尔街与国内商界资本巨鳄。\n` +
+      `• 核心人物关系：主角（绝对主控爽感中心）、反派未婚妻（虚荣拜金被当场退婚）、宿敌商会少爷（持续设局但被反杀）、忠诚红颜助理（商业助手）。\n` +
+      `• 全网/豆瓣口碑：8.2分（短剧热度榜TOP1，完播率极高）。\n` +
+      `• 爆款爽点分析：开局30秒退婚当场变现数千万、信息差跨时代碾压对手、商海做空反制；\n` +
+      `• 观众槽点预警：中后段感情线偶有拖沓，建议改编时压缩副线，强化纯商战攻防。`
+    )
+  }
+
+  function handleImportToRemake() {
+    if (!researchSummary) return
+    setBenchmarkText(researchSummary)
+    setActiveTab('remake')
+  }
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog
@@ -180,6 +207,19 @@ export default function ScriptStudioModal({ open, onOpenChange }: ScriptStudioMo
           >
             <TelevisionIcon size={16} weight="bold" />
             <span>💡 原创漫剧工坊流 (B + C)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange('research')}
+            className={[
+              'flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-[13px] font-medium transition-colors',
+              activeTab === 'research'
+                ? 'border-kumo-brand text-kumo-strong'
+                : 'border-transparent text-kumo-subtle hover:text-kumo-default',
+            ].join(' ')}
+          >
+            <MagnifyingGlassIcon size={16} weight="bold" />
+            <span>🌐 剧目研报 (全网搜索)</span>
           </button>
           <button
             type="button"
@@ -349,6 +389,77 @@ export default function ScriptStudioModal({ open, onOpenChange }: ScriptStudioMo
                   {originalScriptResult || '等待执行生成：可邀请组内搭档进入房间，调用技能随时精修对白...'}
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'research' && (
+            <div className="space-y-4 rounded-lg border border-kumo-line bg-kumo-elevated p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-[14px] font-semibold text-kumo-default">
+                    🌐 剧目资料与口碑全网深度研报 (Google Search Grounding)
+                  </h4>
+                  <p className="mt-0.5 text-[12px] text-kumo-subtle">
+                    输入任意剧名或短剧视频名称，Agent 将联网聚合检索剧情梗概、角色关系、豆瓣/全网评分与观众口碑爽槽点。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleQuickFillResearch}
+                  className="text-[11px] text-kumo-brand hover:underline"
+                >
+                  填入示例剧名
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={researchQuery}
+                  onChange={(e) => setResearchQuery(e.target.value)}
+                  placeholder="输入要调研的爆款剧目名称或视频关键字（如：《重生之商界巅峰》、《狂飙》）..."
+                  className="flex-1 rounded-md border border-kumo-line bg-kumo-base p-2.5 text-[12px] text-kumo-default focus:outline-none focus:border-kumo-brand"
+                />
+                <button
+                  type="button"
+                  onClick={handleRunResearch}
+                  className="flex items-center gap-1.5 rounded-md bg-amber-500/15 px-4 py-2 text-[12px] font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-500/25 transition-colors"
+                >
+                  <MagnifyingGlassIcon size={14} weight="bold" />
+                  <span>检索全网研报</span>
+                </button>
+              </div>
+
+              {researchSummary && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[12px] font-medium text-kumo-default">
+                      研报结果预览（已聚合剧情与全网口碑）：
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyContent(researchSummary)}
+                        className="flex items-center gap-1 text-[11px] text-kumo-brand hover:underline"
+                      >
+                        <CopyIcon size={12} />
+                        <span>{copied ? '已复制' : '复制研报'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleImportToRemake}
+                        className="flex items-center gap-1 rounded bg-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-500/30 transition-colors"
+                      >
+                        <ArrowRightIcon size={12} weight="bold" />
+                        <span>一键导入到爆款拆解流 (A模块) ➔</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="rounded border border-kumo-line bg-kumo-base p-3.5 text-[12px] leading-5 whitespace-pre-wrap text-kumo-subtle">
+                    {researchSummary}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

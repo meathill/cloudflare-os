@@ -5,6 +5,7 @@ import {
   FilmReel as FilmReelIcon,
   Lightning as LightningIcon,
   ListBullets as ListBulletsIcon,
+  MagnifyingGlass as MagnifyingGlassIcon,
   Television as TelevisionIcon,
   UserCircle as UserCircleIcon,
   type Icon,
@@ -27,13 +28,22 @@ export interface ScriptDirection {
 
 export const SCRIPT_DIRECTIONS: ScriptDirection[] = [
   {
+    id: 'drama-research',
+    name: '剧目资料与口碑研报 (全网搜索)',
+    description: '全网检索剧名/视频，查剧情梗概与观众口碑',
+    icon: MagnifyingGlassIcon,
+    badgeColor: 'text-cyan-600 dark:text-cyan-400',
+    prompt:
+      '【剧目全网资料与口碑研报 (联网搜索)】\n请联网检索以下剧集/视频的权威资讯、剧情简介与全网真实口碑，并整理为剧目全景卡（包含剧情梗概、核心人物关系、全网评分与观众核心爽点/槽点，以及对编剧二创的建议）：\n\n【目标剧名或视频名称】：\n（如：《墨雨云间》、《周处除三害》、某热门短剧名）\n\n【重点关注维度】：\n（如：观众最沉浸的爽点、是否有逻辑争议、出圈话题梗）',
+  },
+  {
     id: 'script-remake',
     name: '爆款拆解与重构 (A+C)',
     description: '逆向提取节拍爽点，换皮二创',
     icon: LightningIcon,
     badgeColor: 'text-amber-600 dark:text-amber-400',
     prompt:
-      '【爆款剧本拆解与二创 (模式一：A + C)】\n请帮我深入拆解以下爆款剧本的主线、救猫咪15节拍与爽点公式，并按照漫剧节奏（黄金3秒、45秒反转、集尾悬念）进行新背景换皮重写：\n\n【对标剧本原文/梗概】：\n（请在此粘贴爆款剧本文本或剧情长文）\n\n【拟替换新题材/背景】：\n（如：仙侠宗门夺嫡、古代权谋反杀、都市商战逆袭）',
+      '【爆款剧本拆解与二创 (模式一：A + C)】\n请帮我深入拆解以下爆款剧本的主线、救猫咪15节拍与爽点公式（若仅提供剧名，请先联网检索其剧情），并按照漫剧节奏（黄金3秒、45秒反转、集尾悬念）进行新背景换皮重写：\n\n【对标剧名/剧本文本】：\n（可输入剧名如《墨雨云间》，或直接粘贴剧本文本）\n\n【拟替换新题材/背景】：\n（如：仙侠宗门夺嫡、古代权谋反杀、都市商战逆袭）',
   },
   {
     id: 'original-manga',

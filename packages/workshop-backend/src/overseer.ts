@@ -3018,6 +3018,11 @@ class OverseerImpl implements AgentHooks {
     };
   }
 
+  getWebSearchApiKey(): string | undefined {
+    return (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GEMINI_API_KEY ||
+           (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GOOGLE_API_KEY;
+  }
+
   // Record an observation that originated from a built-in agent tool (not a gatekeeper).
   // The `gatekeeperId` is set to the BUILTIN_TOOL_GATEKEEPER_ID sentinel so that downstream
   // code (which expects a gatekeeper to dereference for approve/reject) never touches it —
