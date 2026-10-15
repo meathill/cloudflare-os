@@ -85,10 +85,10 @@ export function useSlashCommandPicker({
   const popupRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
-  // A built-in command acts on the chat it is sent to, so a new-chat composer hides it rather than
-  // starting an empty thread that does nothing.
+  // A compaction command acts on an existing thread, so a new-chat composer hides it.
+  // Specialized creation skills remain fully offerable in new chat.
   const offerable = useCallback((catalog: SlashCommandChoice[]) =>
-      chatExists ? catalog : catalog.filter(choice => choice.selection.builtin !== true),
+      chatExists ? catalog : catalog.filter(choice => choice.selection.commandId !== "compact"),
     [chatExists]);
 
   const parsed = selectedCommand || disabled

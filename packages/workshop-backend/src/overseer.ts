@@ -1,6 +1,6 @@
 import { RpcCompatible, RpcStub, RpcTarget } from "capnweb";
 import { validateRpc } from "capnweb-validate";
-import { Overseer, GadgetMetadata, UiBundle, WorkpieceId, WorkpieceSummary, WorkpiecesSubscriber, GadgetClient, GadgetBindingInfo, GatekeeperClient, ActionState, ActionLogEntry, ActionsSubscriber, CodeUpdate, CodeSubscriber, AiChatMetadata, AiChatMessage, AiChatHistoryPage, AiChatSubscriber, AiChatAuthorInfo, AiModelConfig, AiChatMessageBody, AgentSpawnerConfig, ConsoleLogSubscriber, ConsoleLogEvent, CapsuleSpecifier, CollaboratorInfo, CollaboratorRole, AffectedCollaborator, ShareLinkInfo, GatekeeperCreationSpec, ObserverConfigCallback, ObserverBindingNeed, ObserverBindingFailure, BlueprintBindingAnnotation, BlueprintBinding, BlueprintMetadata, BlueprintOutput, MessageFormatRef, isOutputIcon, SpawnerEnvTarget, BlueprintGadgetSummary, AiChatStreamEvent, BlueprintScreenshotUpload, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ChatAttachmentUpload, ChatAttachmentHandle, ChatAttachmentRef, BoundHookInfo, PreApprovableAction, PresenceParticipant, PresenceSubscriber, SlashCommandChoice, SlashCommandRequest, validateBindingName, createOpenGadgetError, OPEN_GADGET_ERROR_CODES, resolveSiteName } from '@gadgets/workshop-shared/api';
+import { Overseer, GadgetMetadata, UiBundle, WorkpieceId, WorkpieceSummary, WorkpiecesSubscriber, GadgetClient, GadgetBindingInfo, GatekeeperClient, ActionState, ActionLogEntry, ActionsSubscriber, CodeUpdate, CodeSubscriber, AiChatMetadata, AiChatMessage, AiChatHistoryPage, AiChatSubscriber, AiChatAuthorInfo, AiModelConfig, AiChatMessageBody, AgentSpawnerConfig, ConsoleLogSubscriber, ConsoleLogEvent, CapsuleSpecifier, CollaboratorInfo, CollaboratorRole, AffectedCollaborator, ShareLinkInfo, GatekeeperCreationSpec, ObserverConfigCallback, ObserverBindingNeed, ObserverBindingFailure, BlueprintBindingAnnotation, BlueprintBinding, BlueprintMetadata, BlueprintOutput, MessageFormatRef, isOutputIcon, SpawnerEnvTarget, BlueprintGadgetSummary, AiChatStreamEvent, BlueprintScreenshotUpload, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ChatAttachmentUpload, ChatAttachmentHandle, ChatAttachmentRef, BoundHookInfo, PreApprovableAction, PresenceParticipant, PresenceSubscriber, SlashCommandChoice, SlashCommandRequest, validateBindingName, createOpenGadgetError, OPEN_GADGET_ERROR_CODES, resolveSiteName, CHINESE_ONLINE_SCRIPT_SKILLS } from '@gadgets/workshop-shared/api';
 import { Gatekeeper, HookInitiator, ResourceDescription, ApprovalQueue, ActionDescription, ObservationAuthorizer, ObservationDescription, VendorDescription, SupportedResource, resolveRequestedResource, HookController, HookDescription, ActionKind } from "@gadgets/workshop-shared/gatekeeper";
 import {
   DurableObject, WorkerEntrypoint, RpcStub as NativeRpcStub,
@@ -3507,8 +3507,22 @@ class OverseerImpl implements AgentHooks {
       // The name is typed but arrives over RPC, and one we don't implement would commit an event and
       // then start a turn with no prompt for the model to answer, so reject it here.
       if (message.id.builtin === true) {
-        if (message.id.commandId !== "compact") throw new Error("Unknown built-in slash command.");
-        return {slashCommand: message};
+        if (message.id.commandId === "compact") {
+          return {slashCommand: message};
+        }
+        const skill = CHINESE_ONLINE_SCRIPT_SKILLS.find(s => s.id === message.id.commandId);
+        if (skill) {
+          const userArgs = (message.args || "").trim();
+          const expandedMessage = userArgs
+            ? `【工业剧作专项指令：${skill.name}】\n\n${skill.systemInstruction}\n\n---\n【创作需求/输入背景】：\n${userArgs}`
+            : `【工业剧作专项指令：${skill.name}】\n\n${skill.systemInstruction}\n\n---\n请依据上述工业剧作标准，开启该专项剧作任务。`;
+          return {
+            slashCommand: message,
+            message: expandedMessage,
+            skillName: skill.name,
+          };
+        }
+        throw new Error(`Unknown built-in slash command: ${message.id.commandId}`);
       }
       // Held separately because reassigning `message` below widens `id` back to the union.
       let {gatekeeperId} = message.id;
@@ -5016,12 +5030,19 @@ class OverseerImpl implements AgentHooks {
         providerLabel: record.resourceTitle || `Gatekeeper ${record.id}`,
         gatekeeper: this.getGatekeeperFacet(record.id),
       }));
+    const scriptSkillChoices: SlashCommandChoice[] = CHINESE_ONLINE_SCRIPT_SKILLS.map(skill => ({
+      selection: {builtin: true, commandId: skill.id},
+      name: skill.id,
+      description: `${skill.name} · ${skill.description}`,
+      providerLabel: "中文在线剧作引擎",
+      resourceLabel: skill.name,
+    }));
     return [{
       selection: {builtin: true, commandId: "compact"},
       name: "compact",
       description: "Summarize older context while preserving recent messages.",
       providerLabel: resolveSiteName((await readAdminConfig(this.env)).siteName),
-    }, ...await collectSlashCommands(sources)];
+    }, ...scriptSkillChoices, ...await collectSlashCommands(sources)];
   }
 
   // =======================================================================================

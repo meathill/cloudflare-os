@@ -3561,3 +3561,5 @@ export type ShareLinkInfo = {
    */
   role?: CollaboratorRole;
 };
+
+export * from "./script-skills";
