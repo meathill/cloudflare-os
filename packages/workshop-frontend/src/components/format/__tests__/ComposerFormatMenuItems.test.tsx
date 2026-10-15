@@ -6,7 +6,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ComposerFormatMenuItems from '../ComposerFormatMenuItems'
 
-globalThis.IS_REACT_ACT_ENVIRONMENT = true
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 vi.mock('@cloudflare/kumo', () => {
   const DropdownMenu = Object.assign(

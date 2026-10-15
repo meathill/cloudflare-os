@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Dialog } from '@cloudflare/kumo'
 import {
   ArrowRight as ArrowRightIcon,
-  CheckCircle as CheckCircleIcon,
   Copy as CopyIcon,
   FilmReel as FilmReelIcon,
   Lightning as LightningIcon,
