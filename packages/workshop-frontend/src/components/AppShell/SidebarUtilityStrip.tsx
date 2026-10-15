@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Desktop, Moon, Plug, Sun } from '@phosphor-icons/react'
+import { Desktop, Moon, Plug, Question, Sun } from '@phosphor-icons/react'
 import { Tooltip } from '@cloudflare/kumo'
 import UserMenu from '../UserMenu'
 import { useTheme } from '../../ThemeContext'
 import type { ThemeMode } from '../../theme'
+import HelpGuideModal from './HelpGuideModal'
 
 const THEME_SEQUENCE: ThemeMode[] = ['system', 'light', 'dark']
 
@@ -35,6 +37,24 @@ function ThemeModeButton() {
           ) : (
             <Sun size={15} />
           )}
+        </button>
+      )}
+    />
+  )
+}
+
+function HelpButton({ onOpenHelp }: { onOpenHelp: () => void }) {
+  return (
+    <Tooltip
+      content="平台指南与名词解释"
+      render={(
+        <button
+          type="button"
+          aria-label="平台指南与名词解释"
+          onClick={onOpenHelp}
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-kumo-inactive transition-colors hover:bg-kumo-tint hover:text-kumo-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring focus-visible:ring-offset-2 focus-visible:ring-offset-kumo-elevated"
+        >
+          <Question size={16} />
         </button>
       )}
     />
@@ -74,22 +94,29 @@ function StripLink({
 }
 
 export default function SidebarUtilityStrip({ collapsed = false }: { collapsed?: boolean }) {
+  const [helpOpen, setHelpOpen] = useState(false)
+
   return (
-    <div
-      className={[
-        // shrink-0 + solid base so the strip is visually pinned above the scrolling rail body
-        // and content can't bleed through it. Flat treatment — no top shadow.
-        'shrink-0 flex items-center gap-1 border-t border-kumo-line bg-kumo-elevated px-3 py-2',
-        collapsed ? 'flex-col justify-center gap-2 px-1.5' : '',
-      ].join(' ')}
-    >
-      <StripLink to="/gatekeepers" label="Gatekeepers">
-        <Plug size={15} />
-      </StripLink>
-      <div className={collapsed ? 'flex flex-col items-center gap-2' : 'ml-auto flex items-center gap-1'}>
-        <ThemeModeButton />
-        <UserMenu />
+    <>
+      <div
+        className={[
+          // shrink-0 + solid base so the strip is visually pinned above the scrolling rail body
+          // and content can't bleed through it. Flat treatment — no top shadow.
+          'shrink-0 flex items-center gap-1 border-t border-kumo-line bg-kumo-elevated px-3 py-2',
+          collapsed ? 'flex-col justify-center gap-2 px-1.5' : '',
+        ].join(' ')}
+      >
+        <StripLink to="/gatekeepers" label="Gatekeepers">
+          <Plug size={15} />
+        </StripLink>
+        <HelpButton onOpenHelp={() => setHelpOpen(true)} />
+        <div className={collapsed ? 'flex flex-col items-center gap-2' : 'ml-auto flex items-center gap-1'}>
+          <ThemeModeButton />
+          <UserMenu />
+        </div>
       </div>
-    </div>
+      <HelpGuideModal open={helpOpen} onOpenChange={setHelpOpen} />
+    </>
   )
 }
+
