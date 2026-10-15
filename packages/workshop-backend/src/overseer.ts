@@ -1083,6 +1083,12 @@ class OverseerImpl implements AgentHooks {
     const owns = () => this.continuations.owns(record.chatId, record.continuationId) &&
       (this.#liveChats.get(record.chatId) === liveChat || !this.storage.chatMeta.get(record.chatId));
     if (!owns()) return;
+    // A step's cards may commit just before eviction, after a late child began suspension.
+    // Include those waits before settling the pause on recovery too.
+    const status = this.continuations.get(record.chatId)!.status;
+    if (status.phase === "suspending" && status.wait.kind === "approval") {
+      this.#closeAgentContinuation(record.chatId, "approval");
+    }
     try { await this.#deliverChatIntegrationEvents(record.chatId); }
     catch (error) {
       if (isDoResetError(error)) { this.#deferAgentResume(record, liveChat); return; }
@@ -4806,6 +4812,7 @@ class OverseerImpl implements AgentHooks {
       if (current.state === "approved") return;
       if (current.state !== "pending") throw new Error("Action is not pending.");
       let application = this.storage.actionApplications.get(record.id);
+      const recovering = application !== undefined;
       if (!application && current.action !== "create" && current.contextualApply && this.integrationGrant(current.gatekeeperId).recoverableActions) {
         application = { id: record.id, resolvedBy, autoApproved, resumeUserId,
           phase: "apply", retryAt: Date.now() + 1_000 };
@@ -4822,10 +4829,11 @@ class OverseerImpl implements AgentHooks {
           await this.#finishActionApplication(application);
         }
       } catch (error) {
-        // A normal handler error retains the explicit manual retry path. A reset/lost reply
-        // retains approved intent; only the opt-in receiver may reconcile/redeliver it.
-        if (application?.phase === "resume" || isDoResetError(error)) {
-          if (application) this.storage.actionApplications.put({ ...application, retryAt: Date.now() + 1_000 });
+        // A first handler failure retains the explicit manual retry path. Once a reply was
+        // lost, neither revocation nor another failed reconciliation proves it did not run.
+        if (recovering || application?.phase === "resume" || isDoResetError(error)) {
+          if (application) this.storage.actionApplications.put({ ...application,
+            retryAt: Date.now() + (recovering ? 30_000 : 1_000) });
         } else this.storage.actionApplications.delete(record.id);
         throw error;
       } finally { this.#updateAlarm(); }
@@ -4928,7 +4936,7 @@ class OverseerImpl implements AgentHooks {
         }
       } catch (error) {
         const latest = this.storage.actionApplications.get(application.id);
-        if (latest) this.storage.actionApplications.put({ ...latest, retryAt: Date.now() + 1_000 });
+        if (latest) this.storage.actionApplications.put({ ...latest, retryAt: Date.now() + 30_000 });
         this.logger.warn("approved action recovery deferred", {
           event: "action.recovery.deferred", actionId: application.id, error,
         });
@@ -5698,7 +5706,8 @@ class OverseerImpl implements AgentHooks {
       this.storage.actions.put(record);
       if (parent) {
         this.storage.actions.put({ ...parent, followupActionIds: [...(parent.followupActionIds ?? []), actionId] });
-        this.continuations.addFollowup(parent.integrationOrigin!.chatId, parent.id, actionId);
+        this.continuations.addFollowup(parent.integrationOrigin!.chatId, parent.id, actionId,
+          description.awaitDecision === true && this.#requiresManualDecision(record));
         // No executeCode call will consume a command's late approvals. Publish the existing
         // action card now, in the same durable transaction as the deduplication receipt.
         this.addChatMessages(parent.integrationOrigin!.chatId,
@@ -8796,6 +8805,13 @@ class OverseerImpl implements AgentHooks {
         return record?.type === "action" && record.description.awaitDecision &&
             record.state !== "approved";
       });
+    }
+    // A running command can request a manual follow-up after its executeCode call finished.
+    // Its card is already durable, so consume the journalled pause without publishing it again.
+    const status = this.continuations.get(chatId)?.status;
+    if (status?.phase === "suspending" && status.wait.kind === "approval") {
+      result ??= {actions: [], accessedGadget: false, awaitDecision: false};
+      result.awaitDecision = true;
     }
     return result;
   }
