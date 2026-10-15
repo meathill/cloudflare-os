@@ -29,6 +29,7 @@ import { resolveUiFeatureFlags } from "./feature-flags";
 import { serveSiteLogo, SITE_LOGO_PATH } from "./site-logo.js";
 import { createWorkshopLogger } from "./observability";
 import { wrapDoStubForTelemetry } from "./do-telemetry";
+import { getDoOptions } from "./do-location.js";
 
 const logger = createWorkshopLogger("workshop.server");
 
@@ -68,6 +69,7 @@ type Env = Cloudflare.Env & {
   CF_ACCESS_ISS?: string,  // team URL, i.e. https://<team>.cloudflareaccess.com
   DEV?: boolean;
   FLAGS?: Flagship;
+  DO_LOCATION_HINT?: string;
 }
 
 // =======================================================================================
@@ -91,10 +93,14 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
 
   #userId: DurableObjectId;
 
+  get #doOptions() {
+    return getDoOptions(this.env);
+  }
+
   // Get a stub pointing at the user DO. We create a new stub for every request so that we don't
   // have to worry about detecting when a stub has become broken.
   get #user(): DurableObjectStub<UserDurableObject> {
-    return wrapDoStubForTelemetry(this.users.get(this.#userId));
+    return wrapDoStubForTelemetry(this.users.get(this.#userId, this.#doOptions));
   }
 
   #isAdmin(): boolean {
@@ -232,7 +238,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     } catch {
       throw createOpenGadgetError(OPEN_GADGET_ERROR_CODES.workspaceNotFound);
     }
-    let overseer = this.overseers.get(overseerId);
+    let overseer = this.overseers.get(overseerId, this.#doOptions);
 
     // HACK: Detect loss of the connection to the DO by:
     // - Pass a callback to overseer.open() which it should call when the session is disposed.
@@ -298,7 +304,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
       source: "blank",
     });
     let username = this.#userId.name ?? this.#userId.toString();
-    this.ctx.waitUntil(this.adminSettings.getByName("").recordUserActivity(username, username, 0, 0, true, false));
+    this.ctx.waitUntil(this.adminSettings.getByName("", this.#doOptions).recordUserActivity(username, username, 0, 0, true, false));
     let result = await this.openGadget(id);
     if (!result) {
       throw new Error("Open failed despite newly-created workspace?");
@@ -456,11 +462,11 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     let id = this.overseers.newUniqueId().toString();
     await this.#user.newGadget(id, kvRecord.metadata.title);
     let username = this.#userId.name ?? this.#userId.toString();
-    this.ctx.waitUntil(this.adminSettings.getByName("").recordUserActivity(username, username, 0, 0, true, false));
+    this.ctx.waitUntil(this.adminSettings.getByName("", this.#doOptions).recordUserActivity(username, username, 0, 0, true, false));
     let overseerResult = await this.#openGadgetInternal(id);
 
     // 4. Initialize from blueprint code.
-    let overseerDo = this.overseers.get(this.overseers.idFromString(id));
+    let overseerDo = this.overseers.get(this.overseers.idFromString(id), this.#doOptions);
     await overseerDo.initializeFromBlueprint(codeBytes, kvRecord.metadata.title,
         deploymentOutputForBlueprint(await readAdminConfig(this.env), blueprintId,
             sanitizeBlueprintOutput(kvRecord.metadata.output)));
@@ -608,7 +614,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     let adminUserId = this.#userId.name!;
     // @ts-expect-error Cap'n Web RPC stubs and native RPC targets are compatible but the type
     //     system doesn't know this.
-    return new AdminApiImpl(this.adminSettings.getByName(""), adminUserId);
+    return new AdminApiImpl(this.adminSettings.getByName("", this.#doOptions), adminUserId);
   }
 }
 
@@ -655,6 +661,10 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     this.users = this.ctx.exports.UserDurableObject;
   }
 
+  get #doOptions() {
+    return getDoOptions(this.env);
+  }
+
   async getServerConfig(): Promise<ServerConfig> {
     return getServerConfig(this.env);
   }
@@ -671,7 +681,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     // The PendingLogin DO is the rendezvous between this request and the (separate) OAuth-callback
     // invocation. The client never sees its id — we hand back an `attempt` stub instead.
     const pendingId = this.ctx.exports.PendingLogin.newUniqueId();
-    const pending = this.ctx.exports.PendingLogin.get(pendingId);
+    const pending = this.ctx.exports.PendingLogin.get(pendingId, this.#doOptions);
     const callback = this.ctx.exports.LoginConnectCallbackImpl(
         { props: { pendingId: pendingId.toString(), vendorId } });
     // For most providers, sign-in needs only minimal scopes to verify the user's email (the grant is
@@ -694,14 +704,14 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     }
 
     let userId = this.users.idFromName(split[0]);
-    await this.users.get(userId).authenticate(split[1]);
+    await this.users.get(userId, this.#doOptions).authenticate(split[1]);
     recordAnalytics(this.ctx, this.env, {
       event_name: "user_authenticated",
       user_id: userId.toString(),
       source: "session_token",
     });
     let username = split[0];
-    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("").recordUserActivity(username, username, 0, 0, false, false));
+    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("", this.#doOptions).recordUserActivity(username, username, 0, 0, false, false));
     return new AuthenticatedApiImpl(this.ctx, this.env, userId, this.abortSession);
   }
 
@@ -714,7 +724,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     let userId = this.users.idFromName(email);
     let signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
     let accountCreated =
-        await this.users.get(userId).authenticateFromCfAccess(email, signupsEnabled);
+        await this.users.get(userId, this.#doOptions).authenticateFromCfAccess(email, signupsEnabled);
     if (accountCreated) {
       recordAnalytics(this.ctx, this.env, {
         event_name: "account_created",
@@ -727,7 +737,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       user_id: userId.toString(),
       source: "cf_access",
     });
-    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("").recordUserActivity(email, email, 0, 0, false, false));
+    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("", this.#doOptions).recordUserActivity(email, email, 0, 0, false, false));
     return new AuthenticatedApiImpl(this.ctx, this.env, userId, this.abortSession);
   }
 
@@ -742,7 +752,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     username = normalizeUsername(username);
 
     let id = this.users.idFromName(username);
-    let token = await this.users.get(id).login(passwordHash);
+    let token = await this.users.get(id, this.#doOptions).login(passwordHash);
     if (!token) return null;
 
     recordAnalytics(this.ctx, this.env, {
@@ -769,7 +779,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     username = normalizeUsername(username);
 
     let id = this.users.idFromName(username);
-    let user = this.users.get(id);
+    let user = this.users.get(id, this.#doOptions);
 
     let token = await user.createAccount(username, displayName, passwordHash);
     if (!token) return null;
@@ -779,7 +789,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       user_id: id.toString(),
       source: "password",
     });
-    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("").recordUserActivity(username, displayName, 0, 0, false, false));
+    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("", this.#doOptions).recordUserActivity(username, displayName, 0, 0, false, false));
 
     return `${username}:${token}`;
   }
@@ -834,7 +844,7 @@ export default {
       // and the DO is idempotent.
       if (!formatBlueprintInstallStarted) {
         formatBlueprintInstallStarted = true;
-        ctx.waitUntil(ctx.exports.AdminSettings.getByName("").ensureFormatBlueprintsInstalled()
+        ctx.waitUntil(ctx.exports.AdminSettings.getByName("", getDoOptions(env)).ensureFormatBlueprintsInstalled()
             .then((complete: boolean) => {
               // A partial install resolves rather than throwing, and nothing else will call the DO
               // from here, so clearing this is the whole retry: one bad archive would otherwise

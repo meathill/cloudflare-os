@@ -10,6 +10,9 @@ declare global {
       // (which is what a secret binding, can carry).
       ADMINS?: string[] | string;
 
+      // Durable Object regional proximity location hint (e.g. "apac-ne", "apac")
+      DO_LOCATION_HINT?: string;
+
       // Workers AI binding (injected by generate-wrangler-prod / run-dev-server; not in base wrangler.jsonc).
       WORKERS_AI: Ai;
 
