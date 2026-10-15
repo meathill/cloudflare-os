@@ -51,6 +51,7 @@ import {
   Question,
   ArrowUpRight,
   Blueprint,
+  Sparkle,
 } from "@phosphor-icons/react";
 import { RpcStub, RpcTarget } from "capnweb";
 import ReactMarkdown, { type Components } from "react-markdown";
@@ -3537,51 +3538,14 @@ export const ChatInput = ({
 
           {/* Right actions */}
           <div className="ml-auto flex min-w-0 flex-shrink items-center gap-1.5">
-              <DropdownMenu>
-                <DropdownMenu.Trigger
-                  render={
-                    <button
-                      type="button"
-                      className="group inline-flex h-8 min-w-0 max-w-[180px] cursor-pointer items-center gap-1.5 rounded-lg px-2 text-[13px] leading-5 tracking-[-0.25px] text-kumo-subtle transition-[background-color,color,transform] duration-150 ease-out hover:bg-kumo-tint hover:text-kumo-default focus-visible:bg-kumo-tint focus-visible:text-kumo-default focus-visible:outline-none active:scale-[0.97] data-[popup-open]:bg-kumo-tint data-[popup-open]:text-kumo-default"
-                      aria-label="Select model"
-                    >
-                      <span className="min-w-0 truncate">{selectedModelLabel}</span>
-                      <CaretDown
-                        size={12}
-                        weight="bold"
-                        className="flex-shrink-0 text-kumo-inactive transition-transform duration-150 ease-out group-data-[popup-open]:rotate-180"
-                      />
-                    </button>
-                  }
-                />
-                <DropdownMenu.Content className="themed-floating-shadow-lg !z-[1100] !min-w-[190px] rounded-2xl border border-kumo-line/70 bg-kumo-base p-1">
-                  {models.map((model) => {
-                    const active = selectedModel === model.id;
-                    return (
-                      <DropdownMenu.Item
-                        key={model.id}
-                        onClick={() => onModelChange(model.id)}
-                        className="!h-auto rounded-xl !px-2 !py-1.5 text-[12px] leading-4 font-normal tracking-[-0.15px] text-kumo-subtle transition-colors data-highlighted:bg-kumo-tint/70 data-highlighted:text-kumo-default"
-                      >
-                        <span className="min-w-0 flex-1 truncate">{model.name}</span>
-                        {active && (
-                          <Check size={12} weight="bold" className="ml-3 flex-shrink-0 text-kumo-inactive" />
-                        )}
-                      </DropdownMenu.Item>
-                    );
-                  })}
-                  <div className="my-1 border-t border-kumo-line/70" />
-                  <DropdownMenu.Item
-                    onClick={() => onModelChange(null)}
-                    className="!h-auto rounded-xl !px-2 !py-1.5 text-[12px] leading-4 font-normal tracking-[-0.15px] text-kumo-subtle transition-colors data-highlighted:bg-kumo-tint/70 data-highlighted:text-kumo-default"
-                  >
-                    <span className="min-w-0 flex-1 truncate">No agent</span>
-                    {selectedModel == null && (
-                      <Check size={12} weight="bold" className="ml-3 flex-shrink-0 text-kumo-inactive" />
-                    )}
-                  </DropdownMenu.Item>
-                </DropdownMenu.Content>
-              </DropdownMenu>
+            {/* Model is fixed to Gemini 3.8 Flash */}
+            <div
+              className="inline-flex h-8 min-w-0 max-w-[180px] select-none items-center gap-1.5 rounded-lg px-2 text-[13px] leading-5 tracking-[-0.25px] text-kumo-subtle bg-kumo-tint/50"
+              title="当前使用模型：Gemini 3.8 Flash"
+            >
+              <Sparkle size={13} weight="fill" className="text-kumo-brand flex-shrink-0" />
+              <span className="min-w-0 truncate font-medium">Gemini 3.8 Flash</span>
+            </div>
               {isAgentActive && onStop ? (
                 <WorkshopIconButton
                   onClick={onStop}

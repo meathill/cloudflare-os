@@ -35,7 +35,7 @@ import { AccountsSubscriberAdapter } from './accountsSubscriber'
 
 // ─── constants ──────────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS_WITH_CONNECTIONS = 4
+const TOTAL_STEPS_WITH_CONNECTIONS = 3
 
 // Maps RPC vendor IDs to logo keys in our logoComponents map
 const VENDOR_LOGO_MAP: Record<string, string> = {
@@ -289,9 +289,8 @@ export default function OnboardingWizard({
         await authenticatedApi.setAvatar(avatarData)
         if (currentUser?.id) invalidateAvatarCache(currentUser.id)
       }
-      // selectedModelId is null when the user chose "No agent" or didn't pick one
-      await authenticatedApi.setPreferredModel(selectedModelId)
-      persistSelectedModel(selectedModelId)
+      await authenticatedApi.setPreferredModel('gemini-3.8-flash')
+      persistSelectedModel('gemini-3.8-flash')
       await authenticatedApi.completeOnboarding()
       onComplete()
     } catch (err) {
@@ -472,91 +471,7 @@ export default function OnboardingWizard({
               </div>
             </div>
 
-            {/* ── Step 1: Model selection ───────────────────────────────────── */}
-            <div className="w-full flex-shrink-0 p-8 min-h-[420px]">
-              <div>
-                <h2 className="text-lg font-medium text-kumo-default mb-1">
-                  Choose your model
-                </h2>
-                <p className="text-sm text-kumo-subtle mb-6">
-                  Pick the AI model you&apos;d like to use by default
-                </p>
-
-                {modelsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-kumo-brand border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                      {models.map((model) => (
-                        <button
-                          key={model.id}
-                          onClick={() => setSelectedModelId(model.id)}
-                          className={`
-                            w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left
-                            transition-all duration-150
-                            ${selectedModelId === model.id
-                              ? 'border-kumo-brand bg-kumo-brand/5 ring-1 ring-kumo-brand/20'
-                              : 'border-kumo-line hover:border-kumo-fill hover:bg-kumo-tint'
-                            }
-                          `}
-                        >
-                          <div
-                            className={`
-                              w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
-                              transition-colors duration-150
-                              ${selectedModelId === model.id
-                                ? 'bg-kumo-brand text-kumo-inverse'
-                                : 'bg-kumo-tint text-kumo-subtle'
-                              }
-                            `}
-                          >
-                            {model.name[0]?.toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-kumo-default truncate">
-                              {model.name}
-                            </p>
-                            <p className="text-xs text-kumo-subtle truncate">
-                              {model.id}
-                            </p>
-                          </div>
-                          {selectedModelId === model.id && (
-                            <Check
-                              size={18}
-                              weight="bold"
-                              className="text-kumo-brand flex-shrink-0"
-                            />
-                          )}
-                        </button>
-                      ))}
-
-                      {models.length === 0 && (
-                        <div className="text-center py-8">
-                          <p className="text-sm text-kumo-subtle mb-1">
-                            No models configured yet
-                          </p>
-                          <p className="text-xs text-kumo-inactive">
-                            Add a model to get started
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => setAddModelOpen(true)}
-                      className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-kumo-subtle border border-dashed border-kumo-line rounded-xl hover:border-kumo-fill hover:text-kumo-default hover:bg-kumo-tint transition-colors"
-                    >
-                      <Plus size={14} weight="bold" />
-                      Add new model...
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* ── Step 2: Connections ───────────────────────────────────────── */}
+            {/* ── Step 1: Connections ───────────────────────────────────────── */}
             <div className={`w-full flex-shrink-0 p-8 min-h-[420px] ${showConnectionsStep ? '' : 'hidden'}`}>
               <div>
                 <h2 className="text-lg font-medium text-kumo-default mb-1">
@@ -702,19 +617,6 @@ export default function OnboardingWizard({
       </div>
 
     </div>
-
-    {/* Add Model Modal — outside the wizard's inner content so it's not
-        clipped by overflow-hidden on the sliding panel */}
-    <AddModelModal
-      visible={addModelOpen}
-      onCancel={() => setAddModelOpen(false)}
-      onSuccess={() => {
-        setAddModelOpen(false)
-        fetchModels()
-      }}
-      authenticatedApi={authenticatedApi}
-      aiConfig={aiConfig}
-    />
     </>
   )
 }

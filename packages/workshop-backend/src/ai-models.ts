@@ -365,10 +365,23 @@ export function getModel(env: Cloudflare.Env, config: AiModelConfig,
         options.sessionAffinity);
   }
 
+  const serverGoogleKey = (env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GEMINI_API_KEY ||
+                          (env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GOOGLE_API_KEY;
+  if (config.provider === "google" && !config.apiToken && serverGoogleKey) {
+    config = {
+      ...config,
+      apiToken: serverGoogleKey,
+    };
+  }
+
   // Otherwise: when a platform AI Gateway is configured, route through it (platform-funded free
   // tier). The config's apiToken/apiUrl are ignored in that mode.
   let gwConfig = getAiGatewayConfig(env);
   if (gwConfig) {
+    // If gateway lacks an API token for HTTPS Google inference but server has GEMINI_API_KEY, use direct model.
+    if (config.provider === "google" && !gwConfig.apiToken && serverGoogleKey) {
+      return getModelDirect(config, options.sessionAffinity);
+    }
     return getModelViaGateway(gwConfig, config, initiator, options);
   }
 

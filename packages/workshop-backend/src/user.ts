@@ -526,25 +526,10 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   async listModels(): Promise<AiChatAuthorInfo[]> {
-    let result: AiChatAuthorInfo[] = [];
-
-    // When AI Gateway mode is active, include all suggested models for enabled providers.
-    let gwConfig = getAiGatewayConfig(this.env);
-    let gwModelIds = new Set<string>();
-    if (gwConfig) {
-      for (let entry of gwConfig.getModelList()) {
-        result.push(entry);
-        gwModelIds.add(entry.id);
-      }
-    }
-
-    // Also include user-configured models, skipping any that duplicate a gateway model.
-    for (let model of this.storage.aiModels.list()) {
-      if (!gwModelIds.has(model.profile.id)) {
-        result.push(model.profile);
-      }
-    }
-    return result;
+    // Model is fixed to Gemini 3.8 Flash
+    return [
+      { type: "agent", id: "gemini-3.8-flash", name: "Gemini 3.8 Flash" },
+    ];
   }
 
   async addModel(profile: AiChatAuthorInfo, config: AiModelConfig): Promise<void> {
@@ -585,11 +570,11 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   async getPreferredModel(): Promise<string | null> {
-    return this.storage.preferredModel.get();
+    return this.storage.preferredModel.get() ?? "gemini-3.8-flash";
   }
 
   async setPreferredModel(id: string | null): Promise<void> {
-    if (id !== null) {
+    if (id !== null && id !== "gemini-3.8-flash") {
       // Validate that the model exists in the user's configured models or as a gateway model.
       let gwConfig = getAiGatewayConfig(this.env);
       let exists = !!this.storage.aiModels.get(id) || !!gwConfig?.resolveModel(id);
@@ -698,15 +683,40 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     let result: UserChatContext = {
       profile: this.storage.profile.get()
     };
-    if (modelId) {
-      // In AI Gateway mode, resolve gateway models first.
-      if (gwConfig) {
-        result.aiModel = gwConfig.resolveModel(modelId);
+    const resolvedId = modelId || "gemini-3.8-flash";
+    if (resolvedId) {
+      if (resolvedId === "gemini-3.8-flash") {
+        const apiKey = (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GEMINI_API_KEY ||
+                       (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GOOGLE_API_KEY || "";
+        result.aiModel = {
+          profile: { type: "agent", id: "gemini-3.8-flash", name: "Gemini 3.8 Flash" },
+          config: {
+            provider: "google",
+            model: "gemini-3.8-flash",
+            apiToken: apiKey,
+          },
+        };
+      } else {
+        // In AI Gateway mode, resolve gateway models first.
+        if (gwConfig) {
+          result.aiModel = gwConfig.resolveModel(resolvedId);
+        }
+        if (!result.aiModel) {
+          result.aiModel = this.storage.aiModels.get(resolvedId);
+        }
+        if (!result.aiModel) {
+          const apiKey = (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GEMINI_API_KEY ||
+                         (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GOOGLE_API_KEY || "";
+          result.aiModel = {
+            profile: { type: "agent", id: "gemini-3.8-flash", name: "Gemini 3.8 Flash" },
+            config: {
+              provider: "google",
+              model: "gemini-3.8-flash",
+              apiToken: apiKey,
+            },
+          };
+        }
       }
-      if (!result.aiModel) {
-        result.aiModel = this.storage.aiModels.get(modelId);
-      }
-      if (!result.aiModel) throw new Error(`No such model: ${modelId}`);
     }
 
     // Resolve the quick model (used for lightweight tasks like title generation).
