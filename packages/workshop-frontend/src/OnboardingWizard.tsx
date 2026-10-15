@@ -1,19 +1,13 @@
 import { logRpcFailure } from './rpcErrors'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useKumoToastManager } from '@cloudflare/kumo'
 import { useAuthenticatedApi } from './AuthContext'
-import {
-  AiChatAuthorInfo,
-  AiGatewayInfo,
-} from '@gadgets/workshop-shared/api'
 import {
   VendorDescription,
 } from '@gadgets/workshop-shared/gatekeeper'
 import {
   Camera,
   ArrowRight,
-  Check,
-  Plus,
   PlugsConnected,
   Sparkle,
   UsersThree,
@@ -21,7 +15,6 @@ import {
   Plugs,
   Hexagon,
 } from '@phosphor-icons/react'
-import AddModelModal from './AddModelModal'
 import { persistSelectedModel } from './modelSelection'
 import { logoComponents } from './components/ConnectionLogos'
 import { getVendorIconBackground } from './components/vendorColors'
@@ -81,13 +74,6 @@ export default function OnboardingWizard({
   const [avatarProcessing, setAvatarProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Model state
-  const [models, setModels] = useState<AiChatAuthorInfo[]>([])
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
-  const [aiConfig, setAiConfig] = useState<AiGatewayInfo | null>(null)
-  const [addModelOpen, setAddModelOpen] = useState(false)
-  const [modelsLoading, setModelsLoading] = useState(true)
-
   // Connections state
   const [vendors, setVendors] = useState<VendorEntry[]>([])
   const [connectedVendorIds, setConnectedVendorIds] = useState<Set<string>>(new Set())
@@ -113,30 +99,6 @@ export default function OnboardingWizard({
       setOriginalDisplayName(currentUser.name)
     }
   }, [currentUser])
-
-  // Load models + AI config
-  const fetchModels = useCallback(async () => {
-    try {
-      const [modelList, cfg] = await Promise.all([
-        authenticatedApi.listModels(),
-        authenticatedApi.getAiConfig(),
-      ])
-      setModels(modelList)
-      setAiConfig(cfg)
-      // Default to the first model in the list
-      if (modelList.length > 0) {
-        setSelectedModelId((prev) => prev ?? modelList[0].id)
-      }
-    } catch (err) {
-      console.error('Failed to load models:', err)
-    } finally {
-      setModelsLoading(false)
-    }
-  }, [authenticatedApi])
-
-  useEffect(() => {
-    fetchModels()
-  }, [fetchModels])
 
   // Load vendors and subscribe to connected accounts.
   // We use a url→vendorId lookup map (built from listGatekeeperVendors) so the

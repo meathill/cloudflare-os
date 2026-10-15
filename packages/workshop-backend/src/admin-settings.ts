@@ -1,4 +1,4 @@
-import { AdminApi, AdminFormat, AdminFormatPatch, AdminResourceVendor, AdminSettingsView, AmbientGatekeeperMode, BannerColor, BlueprintPublicInfo, MAX_ANNOUNCEMENT_LENGTH, MAX_INSTANCE_INSTRUCTIONS_LENGTH, MAX_SITE_NAME_LENGTH, isAmbientGatekeeperMode, isBannerColor, isHexColor } from '@gadgets/workshop-shared/api';
+import { AdminApi, AdminFormat, AdminFormatPatch, AdminResourceVendor, AdminSettingsView, AmbientGatekeeperMode, BannerColor, BlueprintPublicInfo, MAX_ANNOUNCEMENT_LENGTH, MAX_INSTANCE_INSTRUCTIONS_LENGTH, MAX_SITE_NAME_LENGTH, isAmbientGatekeeperMode, isBannerColor, isHexColor, UserUsageRecord, UsageOverviewStats, UsageStatsResponse } from '@gadgets/workshop-shared/api';
 import { GatekeeperVendor } from '@gadgets/workshop-shared/gatekeeper';
 import { DurableObject } from 'cloudflare:workers';
 import { RpcTarget } from 'capnweb';
@@ -23,6 +23,9 @@ function makeAdminSettingsStorage(storage: DurableObjectStorage) {
       // authoritative featured bit; this DO keeps the publishable deployment-wide copy.
       featuredBlueprints: collection<BlueprintPublicInfo>()({
         primaryKey: 'id',
+      }),
+      userUsage: collection<UserUsageRecord>()({
+        primaryKey: 'username',
       }),
     },
     singletons: {
@@ -551,6 +554,73 @@ export class AdminSettings extends DurableObject<Cloudflare.Env> {
     vendors.sort((a, b) => Number(b.autoProvisions) - Number(a.autoProvisions));
     return vendors;
   }
+
+  /**
+   * 记录用户活跃、新建工作区以及 Token / 成本消耗用量
+   */
+  async recordUserActivity(
+    username: string,
+    displayName: string,
+    tokensDelta: number = 0,
+    estimatedCostDelta: number = 0,
+    isNewWorkspace: boolean = false,
+    isAiInteraction: boolean = false
+  ): Promise<void> {
+    if (!username) return;
+    let existing = this.storage.userUsage.get(username);
+    let now = new Date().toISOString();
+    if (!existing) {
+      this.storage.userUsage.put({
+        username,
+        displayName: displayName || username,
+        createdAt: now,
+        lastActive: now,
+        totalTokens: Math.max(0, tokensDelta),
+        estimatedCost: Math.max(0, estimatedCostDelta),
+        callCount: isAiInteraction ? 1 : 0,
+        workspaceCount: isNewWorkspace ? 1 : 0,
+      });
+    } else {
+      this.storage.userUsage.put({
+        ...existing,
+        displayName: displayName || existing.displayName || username,
+        lastActive: now,
+        totalTokens: existing.totalTokens + Math.max(0, tokensDelta),
+        estimatedCost: existing.estimatedCost + Math.max(0, estimatedCostDelta),
+        callCount: existing.callCount + (isAiInteraction ? 1 : 0),
+        workspaceCount: existing.workspaceCount + (isNewWorkspace ? 1 : 0),
+      });
+    }
+  }
+
+  /**
+   * 汇总全平台用量概览及用户明细列表
+   */
+  async getUsageStats(): Promise<UsageStatsResponse> {
+    let users = [...this.storage.userUsage.list()];
+    // 按最后活跃时间倒序排序
+    users.sort((a, b) => new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime());
+
+    let overview: UsageOverviewStats = {
+      totalUsers: users.length,
+      totalWorkspaces: 0,
+      totalTokens: 0,
+      totalCost: 0,
+      totalCalls: 0,
+    };
+
+    for (let u of users) {
+      overview.totalWorkspaces += u.workspaceCount;
+      overview.totalTokens += u.totalTokens;
+      overview.totalCost += u.estimatedCost;
+      overview.totalCalls += u.callCount;
+    }
+
+    return {
+      overview,
+      users,
+    };
+  }
 }
 
 // Capability for managing deployment-wide admin settings, obtained via
@@ -654,5 +724,9 @@ export class AdminApiImpl extends RpcTarget implements AdminApi {
 
   setFormatOrder(blueprintIds: string[]): Promise<void> {
     return this.admin.setFormatOrder(blueprintIds);
+  }
+
+  getUsageStats(): Promise<UsageStatsResponse> {
+    return this.admin.getUsageStats();
   }
 }

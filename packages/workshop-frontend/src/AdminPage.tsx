@@ -9,6 +9,7 @@ import { cacheBustSiteLogoUrl, prepareSiteLogo } from './siteLogoUtils'
 import SiteLogo from './components/SiteLogo'
 import { useDocumentTitle } from './useDocumentTitle'
 import AdminFormatsPanel from './components/format/AdminFormatsPanel'
+import AdminUsagePanel from './components/admin/AdminUsagePanel'
 
 // Preset accent colors offered in the Theme section ('' = default brand).
 const ACCENT_PRESETS: { label: string; value: string }[] = [
@@ -401,11 +402,17 @@ export default function AdminPage() {
         onValueChange={setActiveTab}
         tabs={[
           { value: 'general', label: 'General' },
+          { value: 'usage', label: '用量统计' },
           { value: 'gatekeepers', label: 'Gatekeepers' },
           { value: 'formats', label: 'Formats' },
           { value: 'access', label: 'Access' },
         ]}
       />
+
+      {/* 用量统计看板 */}
+      {activeTab === 'usage' && admin && (
+        <AdminUsagePanel admin={admin.api} />
+      )}
 
       {/* Standard output formats */}
       {activeTab === 'formats' && admin && (

@@ -1016,7 +1016,45 @@ export interface AdminApi {
 
   /** Reorder the menu. `blueprintIds` must be a permutation of the currently promoted ids. */
   setFormatOrder(blueprintIds: string[]): Promise<void>;
+
+  /** 获取平台所有用户的行为与 Token 消耗用量统计 */
+  getUsageStats(): Promise<UsageStatsResponse>;
 }
+
+/** 单个用户的 Token 消耗与行为用量记录 */
+export type UserUsageRecord = {
+  /** 用户唯一标识（通常为 username 或 email） */
+  username: string;
+  /** 用户对外昵称 */
+  displayName: string;
+  /** 首次注册/进入系统时间 (ISO string) */
+  createdAt: string;
+  /** 最近一次交互或登录活跃时间 (ISO string) */
+  lastActive: string;
+  /** 累计消耗的 Token 总量 */
+  totalTokens: number;
+  /** 累计预估模型调用成本 (USD) */
+  estimatedCost: number;
+  /** 累计执行的 AI 会话交互轮次 */
+  callCount: number;
+  /** 累计创建的剧本/工作区总数 */
+  workspaceCount: number;
+};
+
+/** 平台全局汇总用量概览 */
+export type UsageOverviewStats = {
+  totalUsers: number;
+  totalWorkspaces: number;
+  totalTokens: number;
+  totalCost: number;
+  totalCalls: number;
+};
+
+/** 用量统计总响应体 */
+export type UsageStatsResponse = {
+  overview: UsageOverviewStats;
+  users: UserUsageRecord[];
+};
 
 /** A partial edit to one promoted format. Absent fields are left alone. */
 export type AdminFormatPatch = {
@@ -2741,7 +2779,7 @@ export type SlashCommandId = {
   builtin?: never;
 } | {
   builtin: true;
-  commandId: "compact";
+  commandId: string;
 };
 
 /** A slash command invocation parsed by the client. */

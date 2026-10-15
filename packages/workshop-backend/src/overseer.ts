@@ -3502,30 +3502,31 @@ class OverseerImpl implements AgentHooks {
       message: string | SlashCommandRequest,
       hasAttachments: boolean): Promise<PreparedChatMessage> {
     if (typeof message !== "string") {
+      const req = message;
       // A built-in command is handled by the Workshop, not a Gatekeeper: there is nothing to invoke
       // here. Committing the event is what makes the turn a compaction turn (see isCompactionTurn).
       // The name is typed but arrives over RPC, and one we don't implement would commit an event and
       // then start a turn with no prompt for the model to answer, so reject it here.
-      if (message.id.builtin === true) {
-        if (message.id.commandId === "compact") {
-          return {slashCommand: message};
+      if (req.id.builtin === true) {
+        if (req.id.commandId === "compact") {
+          return {slashCommand: req};
         }
-        const skill = CHINESE_ONLINE_SCRIPT_SKILLS.find(s => s.id === message.id.commandId);
+        const skill = CHINESE_ONLINE_SCRIPT_SKILLS.find(s => s.id === req.id.commandId);
         if (skill) {
-          const userArgs = (message.args || "").trim();
+          const userArgs = (req.args || "").trim();
           const expandedMessage = userArgs
             ? `【工业剧作专项指令：${skill.name}】\n\n${skill.systemInstruction}\n\n---\n【创作需求/输入背景】：\n${userArgs}`
             : `【工业剧作专项指令：${skill.name}】\n\n${skill.systemInstruction}\n\n---\n请依据上述工业剧作标准，开启该专项剧作任务。`;
           return {
-            slashCommand: message,
+            slashCommand: req,
             message: expandedMessage,
             skillName: skill.name,
           };
         }
-        throw new Error(`Unknown built-in slash command: ${message.id.commandId}`);
+        throw new Error(`Unknown built-in slash command: ${req.id.commandId}`);
       }
       // Held separately because reassigning `message` below widens `id` back to the union.
-      let {gatekeeperId} = message.id;
+      let {gatekeeperId} = req.id;
       let record = this.storage.gatekeepers.get(gatekeeperId);
       if (!record?.hasSlashCommands) throw new Error("Slash command provider is not available.");
       // Display-only, and from the browser, so a bad value is dropped rather than refused.
@@ -5511,6 +5512,27 @@ class OverseerImpl implements AgentHooks {
 
     if (totalTokens !== undefined) {
       meta.totalTokens = totalTokens;
+      if (this.ownerId) {
+        this.ctx.waitUntil((async () => {
+          try {
+            let username = await this.getOwnerProfileId();
+            let admin = this.ctx.exports.AdminSettings.getByName("");
+            await admin.recordUserActivity(
+              username,
+              username,
+              totalTokens,
+              estimatedCost ?? 0,
+              false,
+              true
+            );
+          } catch (e) {
+            logger.warn("failed to record user usage in admin settings", {
+              event: "admin.usage.record.failed",
+              error: e,
+            });
+          }
+        })());
+      }
     }
 
     meta.lastActive = this.getChatTimestamp();

@@ -1795,9 +1795,9 @@ export const ChatInput = ({
   getOverseer,
   onSend,
   isAgentActive,
-  models,
+  models: _models,
   selectedModel,
-  onModelChange,
+  onModelChange: _onModelChange,
   pendingConsoleLogCount = 0,
   consoleLogPreview = "",
   consoleLogSeverity = "info",
@@ -3169,9 +3169,6 @@ export const ChatInput = ({
     : consoleLogSeverity === "warn"
       ? "warning"
       : "log";
-  const selectedModelLabel = selectedModel == null
-    ? "No agent"
-    : models.find((model) => model.id === selectedModel)?.name ?? selectedModel;
 
   const hasReadyAttachment = pendingAttachments.some(
     (attachment) => attachment.uploadState === "ready" && attachment.ref,

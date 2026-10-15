@@ -288,6 +288,8 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
       gadget_id: id,
       source: "blank",
     });
+    let username = this.#userId.name ?? this.#userId.toString();
+    this.ctx.waitUntil(this.adminSettings.getByName("").recordUserActivity(username, username, 0, 0, true, false));
     let result = await this.openGadget(id);
     if (!result) {
       throw new Error("Open failed despite newly-created workspace?");
@@ -444,6 +446,8 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     // 3. Create new Overseer DO (same as newGadget()).
     let id = this.overseers.newUniqueId().toString();
     await this.#user.newGadget(id, kvRecord.metadata.title);
+    let username = this.#userId.name ?? this.#userId.toString();
+    this.ctx.waitUntil(this.adminSettings.getByName("").recordUserActivity(username, username, 0, 0, true, false));
     let overseerResult = await this.#openGadgetInternal(id);
 
     // 4. Initialize from blueprint code.
@@ -687,6 +691,8 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       user_id: userId.toString(),
       source: "session_token",
     });
+    let username = split[0];
+    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("").recordUserActivity(username, username, 0, 0, false, false));
     return new AuthenticatedApiImpl(this.ctx, this.env, userId, this.abortSession);
   }
 
@@ -712,6 +718,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       user_id: userId.toString(),
       source: "cf_access",
     });
+    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("").recordUserActivity(email, email, 0, 0, false, false));
     return new AuthenticatedApiImpl(this.ctx, this.env, userId, this.abortSession);
   }
 
@@ -763,6 +770,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       user_id: id.toString(),
       source: "password",
     });
+    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("").recordUserActivity(username, displayName, 0, 0, false, false));
 
     return `${username}:${token}`;
   }
