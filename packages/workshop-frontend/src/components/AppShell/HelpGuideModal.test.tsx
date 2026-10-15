@@ -30,8 +30,8 @@ describe('HelpGuideModal', () => {
     // Verify main modal title and writer scenario items
     expect(document.body.textContent).toContain('编剧创作指南与实战手册')
     expect(document.body.textContent).toContain('场景一：从零立项一部新剧本')
-    expect(document.body.textContent).toContain('场景二：套用成熟的戏份与类型流')
-    expect(document.body.textContent).toContain('哈利波特爱上林黛玉的武打戏')
+    expect(document.body.textContent).toContain('场景二：对标爆款剧本，拆解结构并换皮二创（模式一：A + C）')
+    expect(document.body.textContent).toContain('场景三：纯原创构思，漫剧节奏大纲与多人精修（模式二：B + C）')
     expect(document.body.textContent).toContain('哈利波特大战葫芦娃')
   })
 

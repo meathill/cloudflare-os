@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Desktop, Moon, Plug, Question, Sun } from '@phosphor-icons/react'
+import { Desktop, FilmReel, Moon, Plug, Question, Sun } from '@phosphor-icons/react'
 import { Tooltip } from '@cloudflare/kumo'
 import UserMenu from '../UserMenu'
 import { useTheme } from '../../ThemeContext'
 import type { ThemeMode } from '../../theme'
 import HelpGuideModal from './HelpGuideModal'
+import ScriptStudioModal from './ScriptStudioModal'
 
 const THEME_SEQUENCE: ThemeMode[] = ['system', 'light', 'dark']
 
@@ -61,6 +62,24 @@ function HelpButton({ onOpenHelp }: { onOpenHelp: () => void }) {
   )
 }
 
+function ScriptStudioButton({ onOpenStudio }: { onOpenStudio: () => void }) {
+  return (
+    <Tooltip
+      content="剧作工坊 · A/B/C生产台"
+      render={(
+        <button
+          type="button"
+          onClick={onOpenStudio}
+          aria-label="剧作工坊 · A/B/C生产台"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring focus-visible:ring-offset-2 focus-visible:ring-offset-kumo-elevated"
+        >
+          <FilmReel size={16} weight="bold" />
+        </button>
+      )}
+    />
+  )
+}
+
 // Bottom strip on the sidebar: tiny iconography for connections, theme, and the user menu. Mirrors
 // the very low-chrome bottom row in the reference design and surfaces Profile / Providers / Admin
 // from the user-menu dropdown rather than duplicating them as separate icons.
@@ -95,6 +114,7 @@ function StripLink({
 
 export default function SidebarUtilityStrip({ collapsed = false }: { collapsed?: boolean }) {
   const [helpOpen, setHelpOpen] = useState(false)
+  const [studioOpen, setStudioOpen] = useState(false)
 
   return (
     <>
@@ -109,6 +129,7 @@ export default function SidebarUtilityStrip({ collapsed = false }: { collapsed?:
         <StripLink to="/gatekeepers" label="Gatekeepers">
           <Plug size={15} />
         </StripLink>
+        <ScriptStudioButton onOpenStudio={() => setStudioOpen(true)} />
         <HelpButton onOpenHelp={() => setHelpOpen(true)} />
         <div className={collapsed ? 'flex flex-col items-center gap-2' : 'ml-auto flex items-center gap-1'}>
           <ThemeModeButton />
@@ -116,7 +137,9 @@ export default function SidebarUtilityStrip({ collapsed = false }: { collapsed?:
         </div>
       </div>
       <HelpGuideModal open={helpOpen} onOpenChange={setHelpOpen} />
+      <ScriptStudioModal open={studioOpen} onOpenChange={setStudioOpen} />
     </>
   )
 }
+
 

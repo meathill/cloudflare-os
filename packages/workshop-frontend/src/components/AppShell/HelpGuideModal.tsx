@@ -7,6 +7,7 @@ import {
   FilmReel,
   FolderSimple,
   Lightbulb,
+  Lightning,
   Sparkle,
   Stack,
   UsersThree,
@@ -140,7 +141,32 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                 </div>
               </div>
 
-              {/* Scenario 2: 套用戏份工作流 */}
+              {/* Scenario 2: 爆款拆解重写流 (A + C) */}
+              <div className="rounded-lg border border-kumo-line bg-kumo-elevated p-4">
+                <div className="flex items-start gap-2.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Lightning size={16} weight="bold" />
+                  </span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-[14px] font-semibold text-kumo-default">
+                        场景二：对标爆款剧本，拆解结构并换皮二创（模式一：A + C）
+                      </h4>
+                      <span className="rounded bg-kumo-fill px-1.5 py-0.5 text-[11px] font-medium text-kumo-brand">
+                        爆款换皮流
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-[13px] leading-5 text-kumo-default">
+                      <b>做法：</b>在左侧侧边栏点击 <b>“剧作工坊”</b>（或在对话框输入 <code className="text-kumo-brand">/script-deconstructor</code>），粘贴参考爆款剧本。
+                    </p>
+                    <p className="mt-1 text-[12px] leading-5 text-kumo-subtle">
+                      <b>编剧视角：</b>模块 A（拆解 Agent）利用 Gemini 3.8 Flash 百万上下文快速提取主线、救猫咪 15 节拍与爽点公式；随后输入你拟替换的新题材（如：商战重生换皮为仙侠宗门），由模块 C 自动按照漫剧特定卡点（黄金 3 秒、1.5 分钟、集尾悬念）产出全新分集剧本。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scenario 3: 原创选题漫剧工坊 (B + C) */}
               <div className="rounded-lg border border-kumo-line bg-kumo-elevated p-4">
                 <div className="flex items-start gap-2.5">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
@@ -149,23 +175,23 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h4 className="text-[14px] font-semibold text-kumo-default">
-                        场景二：套用成熟的戏份与类型流（武打戏、爱情拉扯戏、反转短剧）
+                        场景三：纯原创构思，漫剧节奏大纲与多人精修（模式二：B + C）
                       </h4>
                       <span className="rounded bg-kumo-fill px-1.5 py-0.5 text-[11px] font-medium text-kumo-brand">
-                        用 Blueprint
+                        原创工坊流
                       </span>
                     </div>
                     <p className="mt-1.5 text-[13px] leading-5 text-kumo-default">
-                      <b>做法：</b>选择或发布一个 <b>Blueprint（工作流蓝图）</b>。比如团队沉淀的“硬核武打戏流”、“爆款短剧反转大纲流”或“男女主极限拉扯情感戏流”。
+                      <b>做法：</b>输入一段灵感或题材构思（或在对话框输入 <code className="text-kumo-brand">/concept-incubator</code>），模块 B 快速推演 Logline 与世界观冲突网。
                     </p>
                     <p className="mt-1 text-[12px] leading-5 text-kumo-subtle">
-                      <b>编剧视角：</b>它是一套<b>经过验证的自动化剧作工作流</b>。成型后，编剧只需输入一句话（例如：<i>“哈利波特爱上林黛玉的武打戏”</i>），系统就会自动调用固化好的镜头语言、攻防节拍与情绪起伏流水线，直接生成一套规整的初稿剧本，极大减少重复机械劳动。
+                      <b>编剧视角：</b>无需具体的对标剧本，系统直接按漫剧节奏拉出分集；在多人协作聊天室中随时输入 <code className="text-kumo-brand">/dialogue-polisher</code> 精修台词，或邀请搭档编剧进房共同推敲改戏。
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Scenario 3: 多人实时合编 */}
+              {/* Scenario 4: 多人实时合编 */}
               <div className="rounded-lg border border-kumo-line bg-kumo-elevated p-4">
                 <div className="flex items-start gap-2.5">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -174,23 +200,23 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h4 className="text-[14px] font-semibold text-kumo-default">
-                        场景三：双人或多人合写一部戏（主编与跟组编剧同台）
+                        场景四：双人或多人合写一部戏（主编与跟组编剧同台）
                       </h4>
                       <span className="rounded bg-kumo-fill px-1.5 py-0.5 text-[11px] font-medium text-kumo-brand">
                         多人实时协作
                       </span>
                     </div>
                     <p className="mt-1.5 text-[13px] leading-5 text-kumo-default">
-                      <b>做法：</b>在《哈利波特大战葫芦娃》的 Workspace 里点击右上角分享，将链接发给编剧搭档。
+                      <b>做法：</b>在任意剧目的 Workspace 里点击右上角分享，将链接发给编剧搭档。
                     </p>
                     <p className="mt-1 text-[12px] leading-5 text-kumo-subtle">
-                      <b>编剧视角：</b>就像两人坐在同一个白板前写戏：一人写分场动作，一人润色对白潜台词，AI 编剧在旁边随时解答“霍格沃茨魔法与葫芦娃法宝克制关系”，所有编辑光标毫秒级实时同步，不用再互相传 Word 搞版本冲突。
+                      <b>编剧视角：</b>就像两人坐在同一个白板前写戏：一人写分场动作，一人润色对白潜台词，AI 编剧在旁边随时解答世界观设定与法宝克制，所有编辑光标毫秒级实时同步，不用再互相传 Word 搞版本冲突。
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Scenario 4: 打包定稿输出 */}
+              {/* Scenario 5: 打包定稿输出 */}
               <div className="rounded-lg border border-kumo-line bg-kumo-elevated p-4">
                 <div className="flex items-start gap-2.5">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400">
@@ -199,7 +225,7 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h4 className="text-[14px] font-semibold text-kumo-default">
-                        场景四：多轮推敲调整后，彻底打包定稿（最终交付）
+                        场景五：多轮推敲调整后，彻底打包定稿（最终交付）
                       </h4>
                       <span className="rounded bg-kumo-fill px-1.5 py-0.5 text-[11px] font-medium text-kumo-brand">
                         成为 Output
@@ -349,14 +375,14 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                 </div>
               </div>
 
-              {/* Gatekeepers (编剧技能) */}
+              {/* Gatekeepers (编剧技能与 A/B/C 模块) */}
               <div className="rounded-lg border border-kumo-line bg-kumo-elevated p-3.5">
                 <div className="flex items-center gap-2 text-kumo-default">
                   <Sparkle size={15} className="text-kumo-brand" />
-                  <span className="text-[13px] font-semibold">中文在线 6 大专属编剧智囊（Gatekeeper Skills）</span>
+                  <span className="text-[13px] font-semibold">中文在线 9 大工业编剧技能与 A/B/C 生产矩阵</span>
                 </div>
                 <p className="mt-1.5 text-[12px] leading-5 text-kumo-subtle">
-                  内置好莱坞工业级方法论：① 人物小传设计、② 故事节拍大纲、③ 工业分场剧作、④ 潜台词与声线打磨、⑤ 工业格式规范化、⑥ 5 维剧本医生质检。全天候陪伴编剧左右。
+                  内置好莱坞工业方法论与爆款漫剧范式：<b>模块 A</b> 爆款逆向拆解 (<code className="text-kumo-brand">/script-deconstructor</code>)、<b>模块 B</b> 原创选题孵化 (<code className="text-kumo-brand">/concept-incubator</code>)、<b>模块 C</b> 漫剧节奏分集精调 (<code className="text-kumo-brand">/manga-drama-tuner</code>)；并配合人物小传、节拍大纲、分场写作、潜台词打磨、工业排版与 5 维工业质检。
                 </p>
               </div>
             </div>
