@@ -391,9 +391,14 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
 
         {/* Footer */}
         <div className="flex shrink-0 items-center justify-between border-t border-kumo-line bg-kumo-elevated px-6 py-3">
-          <span className="text-[12px] text-kumo-inactive">
-            快捷键：按 <kbd className="rounded border border-kumo-line bg-kumo-base px-1 py-0.5 text-[11px]">Esc</kbd> 快速关闭
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-[12px] text-kumo-inactive">
+              快捷键：按 <kbd className="rounded border border-kumo-line bg-kumo-base px-1 py-0.5 text-[11px]">Esc</kbd> 快速关闭
+            </span>
+            <span className="rounded border border-kumo-line bg-kumo-base px-2 py-0.5 text-[11px] font-mono text-kumo-subtle shadow-xs">
+              v1.2.0 (Build 2026.10.16)
+            </span>
+          </div>
           <button
             type="button"
             onClick={handleClose}

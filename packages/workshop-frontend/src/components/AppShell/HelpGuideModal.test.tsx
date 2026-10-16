@@ -81,4 +81,16 @@ describe('HelpGuideModal', () => {
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
+
+  it('renders version badge in modal footer', async () => {
+    document.body.append(container)
+    root = createRoot(container)
+    const onOpenChange = vi.fn()
+
+    await act(async () => {
+      root!.render(<HelpGuideModal open={true} onOpenChange={onOpenChange} />)
+    })
+
+    expect(document.body.textContent).toContain('v1.2.0 (Build 2026.10.16)')
+  })
 })
