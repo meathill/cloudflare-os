@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_ADMIN_CONFIG, defaultOutputFormatId, parseAdminConfig, reorderFormats, resolveFormatOutput, sanitizeOutputOverrides, serializeAdminConfig } from "../src/admin-config.js";
+import { CHINESEONLINE_DEFAULT_INSTRUCTIONS, DEFAULT_ADMIN_CONFIG, defaultOutputFormatId, formatInstanceInstructions, parseAdminConfig, reorderFormats, resolveFormatOutput, sanitizeOutputOverrides, serializeAdminConfig } from "../src/admin-config.js";
 
 describe("parseAdminConfig", () => {
   it("backfills fields missing from a config persisted before they existed", () => {
@@ -115,5 +115,21 @@ describe("admin config site logo", () => {
     let config = parseAdminConfig('{"siteLogoConfigured":true}');
     expect(config.siteLogoConfigured).toBe(true);
     expect(parseAdminConfig(serializeAdminConfig(config))).toEqual(config);
+  });
+});
+
+describe("formatInstanceInstructions", () => {
+  it("injects Chinese Online Script Studio guardrails when instructions are empty", () => {
+    let result = formatInstanceInstructions("");
+    expect(result).toContain(CHINESEONLINE_DEFAULT_INSTRUCTIONS);
+    expect(result).toContain("中文在线剧本创作协作平台");
+    expect(result).toContain("绝对禁止调用 `createGadget` 去手写任何 client.js / server.js 游戏引擎或网页应用代码");
+    expect(result).toContain("format.script");
+  });
+
+  it("prepends guardrails when custom admin instructions are provided", () => {
+    let result = formatInstanceInstructions("Custom admin rule 123");
+    expect(result).toContain(CHINESEONLINE_DEFAULT_INSTRUCTIONS);
+    expect(result).toContain("Custom admin rule 123");
   });
 });

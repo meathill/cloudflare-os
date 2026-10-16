@@ -3,6 +3,7 @@ import { DropdownMenu } from '@cloudflare/kumo'
 import type { OutputFormatOffer } from '@gadgets/workshop-shared/api'
 import {
   FilmReel as FilmReelIcon,
+  GameController as GameControllerIcon,
   Lightning as LightningIcon,
   ListBullets as ListBulletsIcon,
   MagnifyingGlass as MagnifyingGlassIcon,
@@ -80,6 +81,15 @@ export const SCRIPT_DIRECTIONS: ScriptDirection[] = [
     badgeColor: 'text-rose-600 dark:text-rose-400',
     prompt:
       '【人物小传与弧光设计】\n请为以下角色打造立体的人物小传，包含：人物标签、核心动机(Desire)、致命盲点(Flaw)、台词音色风格、戏剧弧光变化与人物关系冲突网：\n\n【角色身份与初始设想】：\n',
+  },
+  {
+    id: 'interactive-game-script',
+    name: '互动影游与分支剧情 (Interactive Script)',
+    description: '分支选择树、节点反转与傲娇好感度反馈',
+    icon: GameControllerIcon,
+    badgeColor: 'text-indigo-600 dark:text-indigo-400',
+    prompt:
+      '【互动影游与分支剧情剧本创作】\n请为以下互动影游/分支游戏设计剧本，必须选用【剧本工坊】(format.script) 标准输出格式并录入数据（不要手写游戏代码）：\n\n【背景与人设设定】：\n（例如：哈利波特世界，马尔福是个女孩且极度死傲娇，重写列车初遇与分院抉择）\n\n【互动节点要求】：\n（设计不同对话分支选项、跳转节点、属性变动与心动/傲娇度反馈提示）',
   },
 ]
 

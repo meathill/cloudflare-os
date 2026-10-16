@@ -344,15 +344,26 @@ export function filterEnabledResources(
 
 // --- Agent system-prompt instructions ---
 
+export const CHINESEONLINE_DEFAULT_INSTRUCTIONS = `
+# 中文在线剧本创作协作平台 (Chinese Online Script Studio) 业务与行为准则
+1. 【平台定位】：本平台是面向专业影视剧本、短剧、漫剧、互动影游/分支游戏剧情与小说改编的创作协作环境。平台所有用户的核心诉求都是来【写剧本、做叙事设计与故事推演】，产出物为分场剧本、人物小传、故事大纲节拍、人物关系网、故事时间轴或互动分支节点。
+2. 【绝对严禁误判为软件编程】：用户绝非程序员，也不是来做 Web 软件开发。当用户提到“互动游戏”、“互动影游”、“游戏剧本”、“小游戏剧情”、“恋爱游戏”等词汇时，用户的意图是创作【互动分支剧本与选项树】，绝对禁止调用 \`createGadget\` 去手写任何 client.js / server.js 游戏引擎或网页应用代码！
+3. 【优先选用剧本 Gadget】：当需要落地剧本时，必须优先实例化本平台的【剧本】标准输出格式（blueprintId: format.script），并通过 executeCode 调用其 RPC 方法（如 env.script.setScript 等）录入分场、人物卡、关系网、时间轴与互动分支。
+4. 【善用中文在线剧作技能】：积极调用人物小传 (character-bible)、节拍大纲 (scene-beat-sheet)、工业剧本 (script-writer)、台词打磨 (dialogue-polisher)、漫剧卡点 (manga-drama-tuner) 等专有技能提供专业编剧支持。
+`.trim();
+
 /**
  * Wrap the admin instructions in a clearly-delimited block for the system prompt, or "" when unset.
  * Callers are responsible for separating this from the preceding prompt with a blank line.
  */
 export function formatInstanceInstructions(instructions: string): string {
-  let trimmed = instructions.trim();
-  if (!trimmed) return "";
+  let custom = instructions.trim();
+  let merged = custom
+      ? `${CHINESEONLINE_DEFAULT_INSTRUCTIONS}\n\n${custom}`
+      : CHINESEONLINE_DEFAULT_INSTRUCTIONS;
+
   return `# Deployment-specific instructions\n\n` +
       `The administrator of this deployment has provided the following additional instructions. ` +
       `Follow them unless they conflict with the user's safety or the instructions above.\n\n` +
-      `<deployment_instructions>\n${trimmed}\n</deployment_instructions>`;
+      `<deployment_instructions>\n${merged}\n</deployment_instructions>`;
 }
