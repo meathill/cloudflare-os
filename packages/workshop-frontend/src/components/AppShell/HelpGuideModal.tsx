@@ -396,7 +396,7 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
               快捷键：按 <kbd className="rounded border border-kumo-line bg-kumo-base px-1 py-0.5 text-[11px]">Esc</kbd> 快速关闭
             </span>
             <span className="rounded border border-kumo-line bg-kumo-base px-2 py-0.5 text-[11px] font-mono text-kumo-subtle shadow-xs">
-              v1.2.2 (Build 2026-10-16 16:55)
+              v1.3.0 (Build 2026-10-16 17:30)
             </span>
           </div>
           <button
