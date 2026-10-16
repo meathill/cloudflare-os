@@ -13,6 +13,7 @@ import { buildGatekeeperVendorMap } from './auth/auth-vendors.js';
 import { UserDurableObject } from './user.js';
 import { formatBlueprintsManifestVersion, installFormatBlueprints } from './format-blueprints.js';
 import { FORMAT_BLUEPRINTS } from './generated/format-blueprints.js';
+import { estimateTokenCost } from './gemini-pricing.js';
 
 const logger = createWorkshopLogger("workshop.admin.settings");
 
@@ -569,6 +570,14 @@ export class AdminSettings extends DurableObject<Cloudflare.Env> {
     if (!username) return;
     let existing = this.storage.userUsage.get(username);
     let now = new Date().toISOString();
+
+    // 兜底防 0 机制：如果是 AI 对话交互且产生了 tokens，但外部传入的 costDelta 为 0，
+    // 则按 Gemini 3.8 Flash 当前有效优惠费率进行合理估算兜底，防止漏记
+    let effectiveCostDelta = estimatedCostDelta;
+    if (effectiveCostDelta <= 0 && tokensDelta > 0 && isAiInteraction) {
+      effectiveCostDelta = estimateTokenCost(tokensDelta);
+    }
+
     if (!existing) {
       this.storage.userUsage.put({
         username,
@@ -576,7 +585,7 @@ export class AdminSettings extends DurableObject<Cloudflare.Env> {
         createdAt: now,
         lastActive: now,
         totalTokens: Math.max(0, tokensDelta),
-        estimatedCost: Math.max(0, estimatedCostDelta),
+        estimatedCost: Math.max(0, effectiveCostDelta),
         callCount: isAiInteraction ? 1 : 0,
         workspaceCount: isNewWorkspace ? 1 : 0,
       });
@@ -586,7 +595,7 @@ export class AdminSettings extends DurableObject<Cloudflare.Env> {
         displayName: displayName || existing.displayName || username,
         lastActive: now,
         totalTokens: existing.totalTokens + Math.max(0, tokensDelta),
-        estimatedCost: existing.estimatedCost + Math.max(0, estimatedCostDelta),
+        estimatedCost: existing.estimatedCost + Math.max(0, effectiveCostDelta),
         callCount: existing.callCount + (isAiInteraction ? 1 : 0),
         workspaceCount: existing.workspaceCount + (isNewWorkspace ? 1 : 0),
       });
@@ -610,6 +619,13 @@ export class AdminSettings extends DurableObject<Cloudflare.Env> {
     };
 
     for (let u of users) {
+      // 历史零成本平滑校准：如果用户历史消耗了 Tokens，但因旧版本未适配 Gemini 计费导致 estimatedCost 为 0，
+      // 则按当前官方有效优惠费率进行补正估算，并回写持久化存储，解决管理后台显示 $0.0000 的问题
+      if (u.estimatedCost === 0 && u.totalTokens > 0) {
+        u.estimatedCost = estimateTokenCost(u.totalTokens);
+        this.storage.userUsage.put(u);
+      }
+
       overview.totalWorkspaces += u.workspaceCount;
       overview.totalTokens += u.totalTokens;
       overview.totalCost += u.estimatedCost;

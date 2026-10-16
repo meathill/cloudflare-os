@@ -16,8 +16,14 @@ interface AdminUsagePanelProps {
   admin: RpcStub<AdminApi>
 }
 
-type SortField = 'lastActive' | 'totalTokens' | 'callCount' | 'workspaceCount' | 'createdAt'
+type SortField = 'lastActive' | 'totalTokens' | 'callCount' | 'workspaceCount' | 'createdAt' | 'estimatedCost'
 type SortOrder = 'asc' | 'desc'
+
+function formatCostDisplay(cost: number) {
+  if (!cost || cost <= 0) return '$0.0000'
+  if (cost < 0.0001) return '<$0.0001'
+  return `$${cost.toFixed(4)}`
+}
 
 function formatDateTime(iso: string) {
   if (!iso) return '-'
@@ -195,16 +201,34 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
 
           <div className="bg-kumo-base border border-kumo-line rounded-lg p-4">
             <div className="flex items-center justify-between text-kumo-subtle">
-              <span className="text-xs font-medium">AI 对话轮次</span>
+              <span className="text-xs font-medium">预估总消费</span>
               <ChatCircleDots size={18} className="text-emerald-500" />
             </div>
-            <div className="mt-2 text-2xl font-semibold text-kumo-strong">
-              {overview.totalCalls.toLocaleString()}
+            <div className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
+              {formatCostDisplay(overview.totalCost)}
             </div>
-            <div className="mt-1 text-xs text-kumo-subtle">
-              预估费用: ${overview.totalCost.toFixed(4)}
+            <div
+              className="mt-1 text-xs text-kumo-subtle truncate"
+              title="含 2026 年底前 Google 5 折优惠：输入 $0.75 / 输出 $3.75 / 缓存 $0.075 每 1M Tokens"
+            >
+              AI 对话 {overview.totalCalls.toLocaleString()} 轮 (含年底前半价)
             </div>
           </div>
+        </div>
+
+        {/* 官方计费说明提示 */}
+        <div className="mt-4 px-3.5 py-2.5 bg-kumo-base/60 border border-kumo-line rounded-lg flex items-center justify-between text-xs text-kumo-subtle">
+          <span>
+            💡 <strong>计费规则说明：</strong>严格依照 Google Gemini 官方定价核算。2026 年底前享受半价试用优惠（输入 $0.75 / 输出 $3.75 / 缓存读取 $0.075 每百万 Tokens）；2027 年恢复原价（$1.50 / $7.50 / $0.15）。
+          </span>
+          <a
+            href="https://ai.google.dev/gemini-api/docs/pricing"
+            target="_blank"
+            rel="noreferrer"
+            className="text-kumo-brand hover:underline flex-shrink-0 ml-3"
+          >
+            查看官方价目表 ↗
+          </a>
         </div>
       </div>
 
@@ -265,7 +289,17 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
                     )}
                   </div>
                 </th>
-                <th className="py-3 px-4">预估费用</th>
+                <th
+                  className="py-3 px-4 cursor-pointer hover:text-kumo-strong transition-colors"
+                  onClick={() => handleSort('estimatedCost')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>预估费用</span>
+                    {sortField === 'estimatedCost' && (
+                      sortOrder === 'asc' ? <SortAscending size={14} /> : <SortDescending size={14} />
+                    )}
+                  </div>
+                </th>
                 <th
                   className="py-3 px-4 cursor-pointer hover:text-kumo-strong transition-colors"
                   onClick={() => handleSort('lastActive')}
@@ -327,8 +361,8 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
                     <td className="py-3 px-4 font-mono font-medium text-amber-600 dark:text-amber-400">
                       {user.totalTokens.toLocaleString()}
                     </td>
-                    <td className="py-3 px-4 font-mono text-xs text-kumo-subtle">
-                      ${user.estimatedCost.toFixed(4)}
+                    <td className="py-3 px-4 font-mono text-xs font-medium text-kumo-strong">
+                      {formatCostDisplay(user.estimatedCost)}
                     </td>
                     <td className="py-3 px-4 text-xs text-kumo-default" title={formatDateTime(user.lastActive)}>
                       {formatRelativeTime(user.lastActive)}

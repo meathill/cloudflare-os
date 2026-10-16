@@ -20,6 +20,7 @@ import { AiChatAuthorInfo, AiModelConfig, SUGGESTED_MODELS, WORKERS_AI_OUTPUT_LI
 import { AiGatewayConfig, getAiGatewayConfig, type AiGatewayLogRoute } from "./ai-gateway.js";
 import { completeText } from "./ai-invoke.js";
 import { bridgePdfAttachments } from "./chat-attachment-pdf.js";
+import { getGoogleModelCost, GEMINI_3_8_FLASH_FALLBACK } from "./gemini-pricing.js";
 
  /**
   * Routing to bill a user's own Cloudflare account for inference (BYOK path once the free tier is
@@ -131,7 +132,25 @@ function catalogModel(provider: AiModelConfig["provider"], modelId: string): Mod
   switch (provider) {
     case "anthropic": return (ANTHROPIC_MODELS as Record<string, Model<Api>>)[modelId];
     case "openai": return (OPENAI_MODELS as Record<string, Model<Api>>)[modelId];
-    case "google": return (GOOGLE_MODELS as Record<string, Model<Api>>)[modelId];
+    case "google": {
+      let m = (GOOGLE_MODELS as Record<string, Model<Api>>)[modelId];
+      if (!m && modelId === "gemini-3.8-flash") {
+        m = {
+          id: GEMINI_3_8_FLASH_FALLBACK.id,
+          name: GEMINI_3_8_FLASH_FALLBACK.name,
+          api: "google-generative-ai",
+          provider: "google",
+          baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+          reasoning: true,
+          thinkingLevelMap: GEMINI_3_8_FLASH_FALLBACK.thinkingLevelMap,
+          input: ["text", "image"],
+          cost: getGoogleModelCost(modelId),
+          contextWindow: GEMINI_3_8_FLASH_FALLBACK.contextWindow,
+          maxTokens: GEMINI_3_8_FLASH_FALLBACK.maxTokens,
+        };
+      }
+      return m;
+    }
     case "cloudflare": return (CLOUDFLARE_WORKERS_AI_MODELS as Record<string, Model<Api>>)[modelId];
     case "ollama": return undefined;
     default: return undefined;
@@ -144,11 +163,12 @@ function catalogModel(provider: AiModelConfig["provider"], modelId: string): Mod
 function modelTokenWindow(config: AiModelConfig, catalog: Model<Api> | undefined)
     : { contextWindow: number, maxTokens: number } {
   const suggested = SUGGESTED_MODELS[config.provider]?.[config.model];
+  const fallbackMaxTokens = config.model === "gemini-3.8-flash" ? GEMINI_3_8_FLASH_FALLBACK.maxTokens : 4096;
   return {
     contextWindow: suggested?.contextWindow ?? catalog?.contextWindow ?? 128_000,
     maxTokens: suggested?.outputLimit ??
         (config.provider === "cloudflare" ? WORKERS_AI_OUTPUT_LIMIT : undefined) ??
-        catalog?.maxTokens ?? 4096,
+        catalog?.maxTokens ?? fallbackMaxTokens,
   };
 }
 
@@ -223,9 +243,9 @@ function gatewayNativeModel(config: AiModelConfig, gatewayUrl: string): Model<Ap
         baseUrl: `${gatewayUrl}/google-ai-studio/v1beta`,
         reasoning: catalog?.reasoning ?? true,
         input: catalog?.input ?? ["text", "image"],
-        cost: catalog?.cost ?? ZERO_COST,
+        cost: getGoogleModelCost(config.model),
         ...window,
-        thinkingLevelMap: catalog?.thinkingLevelMap,
+        thinkingLevelMap: catalog?.thinkingLevelMap ?? (config.model === "gemini-3.8-flash" ? GEMINI_3_8_FLASH_FALLBACK.thinkingLevelMap : undefined),
       };
     case "cloudflare":
       // Workers AI's own OpenAI-compatible endpoint, exposed through the gateway's workers-ai
@@ -577,9 +597,9 @@ function getModelDirect(config: AiModelConfig, sessionAffinity?: string): ModelH
           baseUrl: config.apiUrl ?? "https://generativelanguage.googleapis.com/v1beta",
           reasoning: catalog?.reasoning ?? true,
           input: catalog?.input ?? ["text", "image"],
-          cost: catalog?.cost ?? ZERO_COST,
+          cost: getGoogleModelCost(config.model),
           ...window,
-          thinkingLevelMap: catalog?.thinkingLevelMap,
+          thinkingLevelMap: catalog?.thinkingLevelMap ?? (config.model === "gemini-3.8-flash" ? GEMINI_3_8_FLASH_FALLBACK.thinkingLevelMap : undefined),
         },
         apiKey: config.apiToken,
         sessionAffinity,
