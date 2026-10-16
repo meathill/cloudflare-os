@@ -91,6 +91,6 @@ describe('HelpGuideModal', () => {
       root!.render(<HelpGuideModal open={true} onOpenChange={onOpenChange} />)
     })
 
-    expect(document.body.textContent).toContain('v1.2.0 (Build 2026.10.16)')
+    expect(document.body.textContent).toContain('v1.2.1 (Build 2026-10-16 15:35)')
   })
 })
