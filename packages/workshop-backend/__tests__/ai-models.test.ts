@@ -500,6 +500,37 @@ describe("getModel direct routing (no gateway)", () => {
       expect(handle.model.baseUrl).toBe("http://my-ollama:11434/v1");
     }
   });
+
+  it("defaults Google Gemini to LOW thinking level to avoid Cloudflare 524 timeouts", async () => {
+    const handle = getModel(env({ CF_AI_GATEWAY: undefined }), {
+      provider: "google",
+      model: "gemini-3.8-flash",
+      apiToken: "test-google-key",
+    }, INITIATOR);
+
+    expect(handle.model.api).toBe("google-generative-ai");
+
+    let capturedConfig: any = null;
+    const stream = handle.stream(handle.model, {
+      messages: [{ role: "user", content: "hello", timestamp: 0 }],
+    }, {
+      apiKey: "test-google-key",
+      onPayload: (payload: any) => {
+        capturedConfig = payload.config;
+        return payload;
+      },
+    });
+
+    for await (const _ of stream) {
+      // drain
+    }
+
+    expect(capturedConfig).toBeDefined();
+    expect(capturedConfig.thinkingConfig).toEqual({
+      includeThoughts: true,
+      thinkingLevel: "LOW",
+    });
+  });
 });
 
 describe("PDF attachment bridging", () => {

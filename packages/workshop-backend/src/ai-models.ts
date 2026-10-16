@@ -314,10 +314,19 @@ function makeHandle(args: HandleArgs): ModelHandle {
   //   ZDR behavior with reasoning carried between tool steps.
   // - Everything else: provider defaults.
   const anthropicCompat = args.model.compat as AnthropicMessagesCompat | undefined;
+  const isGemini3OrLater = /gemini-3/i.test(args.model.id);
+  const googleThinking = isGemini3OrLater
+    ? { enabled: true, level: "LOW" as const }
+    : { enabled: true, budgetTokens: 1024 };
+  const googleThinkingOff = isGemini3OrLater
+    ? { enabled: false, level: "MINIMAL" as const }
+    : { enabled: false, budgetTokens: 0 };
+
   const apiExtras: Record<string, unknown> =
       args.model.api === "anthropic-messages"
           ? (anthropicCompat?.forceAdaptiveThinking === true ? { thinkingEnabled: true } : {}) :
-      args.model.api === "openai-responses" ? { reasoningEffort: "medium" } : {};
+      args.model.api === "openai-responses" ? { reasoningEffort: "medium" } :
+      args.model.api === "google-generative-ai" ? { thinking: googleThinking } : {};
 
   const handle: ModelHandle = {
     model: args.model,
@@ -337,10 +346,11 @@ function makeHandle(args: HandleArgs): ModelHandle {
         // replaces them with an explicit thinking-off request: for Anthropic pi sends
         // `thinking: {type:"disabled"}` (and knows to omit it for models that can't turn thinking
         // off, e.g. claude-fable-5); for OpenAI Responses, passing no reasoningEffort makes pi
-        // disable reasoning.
+        // disable reasoning; for Google, LOW thinking level avoids 524 timeouts on Cloudflare.
         ...(thinking
             ? apiExtras
-            : args.model.api === "anthropic-messages" ? { thinkingEnabled: false } : {}),
+            : args.model.api === "anthropic-messages" ? { thinkingEnabled: false }
+            : args.model.api === "google-generative-ai" ? { thinking: googleThinkingOff } : {}),
         ...(args.fetch !== undefined ? { fetch: args.fetch } : {}),
         ...options,
         ...(args.apiKey !== undefined ? { apiKey: args.apiKey } : {}),
