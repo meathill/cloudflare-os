@@ -16,12 +16,20 @@ import { AdminConfig } from "./admin-config.js";
 
 export const DEFAULT_AMBIENT_GATEKEEPER_MODE: AmbientGatekeeperMode = "optional";
 
+// 未单独配置时，剧作引擎对每个用户强制开通。管理员仍可改成 optional 或 disabled。
+const DEPLOYMENT_AMBIENT_DEFAULTS: Record<string, AmbientGatekeeperMode> = {
+  custom: "enabled",
+};
+
 /**
  * The configured mode for an ambient vendor, defaulting to "optional" when the admin hasn't set one.
  * Tolerates a config persisted before this field existed (ambientGatekeeperModes may be undefined).
  */
 export function ambientGatekeeperMode(config: AdminConfig, vendorId: string): AmbientGatekeeperMode {
-  return config.ambientGatekeeperModes?.[vendorId.toLowerCase()] ?? DEFAULT_AMBIENT_GATEKEEPER_MODE;
+  let key = vendorId.toLowerCase();
+  return config.ambientGatekeeperModes?.[key]
+      ?? DEPLOYMENT_AMBIENT_DEFAULTS[key]
+      ?? DEFAULT_AMBIENT_GATEKEEPER_MODE;
 }
 
 /**

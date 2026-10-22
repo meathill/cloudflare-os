@@ -125,6 +125,8 @@ describe("formatInstanceInstructions", () => {
     expect(result).toContain("中文在线剧本创作协作平台");
     expect(result).toContain("绝对禁止调用 `createGadget` 去手写任何 client.js / server.js 游戏引擎或网页应用代码");
     expect(result).toContain("format.script");
+    expect(result).toContain("skills/short-drama-skill-codex/SKILL.md");
+    expect(result).toContain("readDramaDocument");
   });
 
   it("prepends guardrails when custom admin instructions are provided", () => {

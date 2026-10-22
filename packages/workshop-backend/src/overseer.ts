@@ -5029,6 +5029,7 @@ class OverseerImpl implements AgentHooks {
   }
 
   async listSlashCommands(): Promise<SlashCommandChoice[]> {
+    await this.#refreshDramaSlashCommands();
     let sources = [...this.storage.gatekeepers.list()]
       .filter(record => record.hasSlashCommands)
       .map(record => ({
@@ -5049,6 +5050,27 @@ class OverseerImpl implements AgentHooks {
       description: "Summarize older context while preserving recent messages.",
       providerLabel: resolveSiteName((await readAdminConfig(this.env)).siteName),
     }, ...scriptSkillChoices, ...await collectSlashCommands(sources)];
+  }
+
+  // 剧作引擎是后来才声明斜杠命令的。已有连接不会重跑 describe()，打开命令面板时补一次。
+  async #refreshDramaSlashCommands(): Promise<void> {
+    for (let record of this.storage.gatekeepers.list()) {
+      if (record.hasSlashCommands || gatekeeperVendorId(record) !== "custom") continue;
+      try {
+        let description = await this.getGatekeeperFacet(record.id).describe();
+        if (!description.hasSlashCommands) continue;
+        record.hasSlashCommands = true;
+        record.resourceTitle = description.title;
+        record.resourceUrl = description.url;
+        this.storage.gatekeepers.put(record);
+      } catch (error) {
+        this.logger.warn("failed to refresh custom gatekeeper slash commands", {
+          event: "slash.custom.refresh.failed",
+          gatekeeperId: record.id,
+          error,
+        });
+      }
+    }
   }
 
   // =======================================================================================
