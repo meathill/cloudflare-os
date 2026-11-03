@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES, DEFAULT_UPDATE_MINIMUM_AGE_HOURS, DEFAULT_UPDATE_NOTICE_SNOOZE_HOURS, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, type GatewayModel } from "@gadgets/workshop-shared/api";
-import { defaultOutputFormatId, isUpdateCheckInterval, isUpdateHours, normalizeAdminConfig, parseAdminConfig, parseRestrictedWebFetchHosts, reorderFormats, resolveFormatOutput, sanitizeAddedModel, sanitizeModelSettings, sanitizeOutputOverrides, serializeAdminConfig } from "../src/admin-config.js";
+import { DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES, DEFAULT_UPDATE_MINIMUM_AGE_HOURS, DEFAULT_UPDATE_NOTICE_SNOOZE_HOURS, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, resolveSiteName, type GatewayModel } from "@gadgets/workshop-shared/api";
+import { defaultOutputFormatId, isUpdateCheckInterval, isUpdateHours, normalizeAdminConfig, parseAdminConfig, parseRestrictedWebFetchHosts, reorderFormats, resolveFormatOutput, sanitizeAddedModel, sanitizeModelSettings, sanitizeOutputOverrides, serializeAdminConfig, CHINESEONLINE_DEFAULT_INSTRUCTIONS, formatInstanceInstructions } from "../src/admin-config.js";
 import { DEFAULT_ADMIN_CONFIG } from "../src/storage-schema/admin-settings-storage.js";
 
 describe("parseAdminConfig", () => {
+  it("未配置站点名时使用有缘心之助，并保留管理员自定义名称", () => {
+    expect(resolveSiteName(undefined)).toBe("有缘心之助");
+    expect(resolveSiteName(parseAdminConfig("{}").siteName)).toBe("有缘心之助");
+    expect(resolveSiteName(parseAdminConfig(JSON.stringify({ siteName: "创作团队" })).siteName))
+      .toBe("创作团队");
+  });
+
   it("backfills fields missing from a config persisted before they existed", () => {
     // A config written before `formats` was added. Every consumer indexes into these, so a missing
     // field must come back as its default rather than undefined.
@@ -476,5 +483,26 @@ describe("admin config update notice", () => {
       expect(parseAdminConfig(kv).updateCheckIntervalMinutes).toBe(stored);
       expect(isUpdateCheckInterval(stored)).toBe(true);
     }
+  });
+});
+
+describe("formatInstanceInstructions", () => {
+  it("injects 有缘心之助 guardrails when instructions are empty", () => {
+    let result = formatInstanceInstructions("");
+    expect(result).toContain(CHINESEONLINE_DEFAULT_INSTRUCTIONS);
+    expect(result).toContain("有缘心之助剧本创作协作平台");
+    expect(result).toContain("绝对禁止调用 `createGadget` 去手写任何 client.js / server.js 游戏引擎或网页应用代码");
+    expect(result).toContain("format.script");
+    expect(result).toContain("format.outline");
+    expect(result).toContain("必须先问用户");
+    expect(result).not.toContain("互动分支");
+    expect(result).toContain("skills/short-drama-skill-codex/SKILL.md");
+    expect(result).toContain("readDramaDocument");
+  });
+
+  it("prepends guardrails when custom admin instructions are provided", () => {
+    let result = formatInstanceInstructions("Custom admin rule 123");
+    expect(result).toContain(CHINESEONLINE_DEFAULT_INSTRUCTIONS);
+    expect(result).toContain("Custom admin rule 123");
   });
 });

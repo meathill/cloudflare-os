@@ -797,6 +797,37 @@ describe("getModel direct routing (no gateway)", () => {
       expect(handle.model.baseUrl).toBe("http://my-ollama:11434/v1");
     }
   });
+
+  it("defaults Google Gemini to LOW thinking level to avoid Cloudflare 524 timeouts", async () => {
+    const handle = getModel(env({ CF_AI_GATEWAY: undefined }), {
+      provider: "google",
+      model: "gemini-3.8-flash",
+      apiToken: "test-google-key",
+    }, INITIATOR);
+
+    expect(handle.model.api).toBe("google-generative-ai");
+
+    let capturedConfig: any = null;
+    const stream = handle.stream(handle.model, {
+      messages: [{ role: "user", content: "hello", timestamp: 0 }],
+    }, {
+      apiKey: "test-google-key",
+      onPayload: (payload: any) => {
+        capturedConfig = payload.config;
+        return payload;
+      },
+    });
+
+    for await (const _ of stream) {
+      // drain
+    }
+
+    expect(capturedConfig).toBeDefined();
+    expect(capturedConfig.thinkingConfig).toEqual({
+      includeThoughts: true,
+      thinkingLevel: "LOW",
+    });
+  });
 });
 
 // The parts of a request body that ask for reasoning, and what they are for each answer of
@@ -1110,6 +1141,7 @@ describe("gateway model reasoning levels", () => {
     ["openai", "gpt-5.6-luna", "medium"],
     ["openai", "gpt-5.6-terra", "medium"],
     ["google", "gemini-3.6-flash", null],
+    ["google", "gemini-3.8-flash", "low"],
     ["cloudflare", "@cf/moonshotai/kimi-k2.7-code", null],
     ["cloudflare", "@cf/zai-org/glm-5.2", null],
     ["cloudflare", "@cf/zai-org/glm-5.3-flash", null],
@@ -1206,6 +1238,14 @@ describe("gateway model reasoning levels", () => {
   });
 
   // Google's requests go over HTTPS alone.
+  it("Gemini 3.8 Flash 默认使用 LOW，并允许显式覆盖思考等级", async () => {
+    expect(gatewayBuiltInReasoning("google", "gemini-3.8-flash")).toBe("low");
+    expect(await googleThinking("gemini-3.8-flash"))
+      .toEqual({ includeThoughts: true, thinkingLevel: "LOW" });
+    expect(await googleThinking("gemini-3.8-flash", "high"))
+      .toEqual({ includeThoughts: true, thinkingLevel: "HIGH" });
+  });
+
   it.each(["gemini-3.6-flash", "gemini-2.5-flash", "gemini-next"])(
       "sends Gemini model %s nothing, as its built-in reasoning says", async (model) => {
     expect(gatewayBuiltInReasoning("google", model)).toBeNull();

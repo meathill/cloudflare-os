@@ -268,21 +268,9 @@ function ProvidersPage() {
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-kumo-default">AI providers</h1>
           <p className="mt-1 text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-subtle">
-            Configure the AI models available to your workspaces.
+            系统已统一配置并锁定主力模型为 Google Gemini 3.8 Flash，凭据由服务端统一托管。
           </p>
         </div>
-        {canAddModels && (
-          <button
-            type="button"
-            onClick={openAdd}
-            // Until the deployment's configuration loads, nothing says whether adding is allowed.
-            disabled={aiConfig === null}
-            className={`${PRIMARY_BTN} h-11 justify-center text-[14px] disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:text-[13px]`}
-          >
-            <Plus size={14} weight="bold" />
-            Add provider
-          </button>
-        )}
       </header>
 
       {/* Search — hidden when the user has no models */}

@@ -34,6 +34,7 @@ import { createWorkshopLogger } from "./observability";
 import { deployServiceInstall, routerVersionTag } from "./deployment-updates.js";
 import { retryOnDoReset, wrapDoStubForTelemetry } from "./do-retry";
 import { deviceSessionCallback } from "./auth/device-session-callback.js";
+import { getDoOptions } from "./do-location.js";
 
 const logger = createWorkshopLogger("workshop.server");
 
@@ -86,6 +87,7 @@ type Env = Cloudflare.Env & {
   CF_ACCESS_ISS?: string,  // team URL, i.e. https://<team>.cloudflareaccess.com
   DEV?: boolean;
   FLAGS?: Flagship;
+  DO_LOCATION_HINT?: string;
 }
 
 // =======================================================================================
@@ -124,10 +126,14 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     return promise;
   }
 
+  get #doOptions() {
+    return getDoOptions(this.env);
+  }
+
   // Get a stub pointing at the user DO. We create a new stub for every request so that we don't
   // have to worry about detecting when a stub has become broken.
   get #user(): DurableObjectStub<UserDurableObject> {
-    return wrapDoStubForTelemetry(this.users.get(this.#userId));
+    return wrapDoStubForTelemetry(this.users.get(this.#userId, this.#doOptions));
   }
 
   #isAdmin(): boolean {
@@ -146,7 +152,16 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
       throw new TypeError("ADMINS must be configured as an array of usernames.");
     }
 
-    return admins.includes(name);
+    const normalizedName = name.toLowerCase();
+    return admins.some((admin) => {
+      if (typeof admin !== "string") return false;
+      const normalizedAdmin = admin.toLowerCase();
+      if (normalizedAdmin === normalizedName) return true;
+      if (normalizedAdmin.includes("@") && normalizedAdmin.split("@")[0] === normalizedName) {
+        return true;
+      }
+      return false;
+    });
   }
 
   whoami(): Promise<AiChatAuthorInfo> {
@@ -304,7 +319,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     } catch {
       throw createOpenWorkspaceError(OPEN_WORKSPACE_ERROR_CODES.workspaceNotFound);
     }
-    let overseer = this.overseers.get(overseerId);
+    let overseer = this.overseers.get(overseerId, this.#doOptions);
 
     // HACK: Detect loss of the connection to the DO by:
     // - Pass a callback to overseer.open() which it should call when the session is disposed.
@@ -363,6 +378,8 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
       gadget_id: id,
       source: "blank",
     });
+    let username = this.#userId.name ?? this.#userId.toString();
+    this.ctx.waitUntil(this.adminSettings.getByName("", this.#doOptions).recordUserActivity(username, username, 0, 0, true, false));
     let result = await this.openWorkspace(id);
     if (!result) {
       throw new Error("Open failed despite newly-created workspace?");
@@ -528,11 +545,13 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     // 2. Create new Overseer DO (same as newWorkspace()).
     let id = this.overseers.newUniqueId().toString();
     await this.#user.newWorkspace(id, kvRecord.metadata.title);
+    let username = this.#userId.name ?? this.#userId.toString();
+    this.ctx.waitUntil(this.adminSettings.getByName("", this.#doOptions).recordUserActivity(username, username, 0, 0, true, false));
     let overseerResult = await this.#openWorkspaceInternal(id);
 
     // 3. Initialize from the blueprint's code. The Overseer reads it for itself, as the version
     //    this metadata describes, so that it is the code the bindings assigned below belong to.
-    let overseerDo = this.overseers.get(this.overseers.idFromString(id));
+    let overseerDo = this.overseers.get(this.overseers.idFromString(id), this.#doOptions);
     await overseerDo.initializeFromBlueprint(blueprintId, kvRecord.metadata,
         deploymentOutputForBlueprint(await readAdminConfig(this.env), blueprintId,
             sanitizeBlueprintOutput(kvRecord.metadata.output)));
@@ -690,7 +709,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     let adminUserId = this.#userId.name!;
     // @ts-expect-error Cap'n Web RPC stubs and native RPC targets are compatible but the type
     //     system doesn't know this.
-    return new AdminApiImpl(this.adminSettings.getByName(""), adminUserId);
+    return new AdminApiImpl(this.adminSettings.getByName("", this.#doOptions), adminUserId);
   }
 }
 
@@ -739,6 +758,10 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
 
   async ping(): Promise<void> {}
 
+  get #doOptions() {
+    return getDoOptions(this.env);
+  }
+
   async getServerConfig(): Promise<ServerConfig> {
     return getServerConfig(this.env);
   }
@@ -759,7 +782,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     // redeems through the `attempt` capability.
     const { secret, hash } = await newSecretToken();
     const pendingId = this.ctx.exports.PendingLogin.idFromName(hash);
-    const pending = this.ctx.exports.PendingLogin.get(pendingId);
+    const pending = this.ctx.exports.PendingLogin.get(pendingId, this.#doOptions);
     // Mark the attempt as started before the gatekeeper can deliver to it, so receive() answers null
     // while it is still running instead of reporting it expired.
     await pending.begin();
@@ -794,12 +817,14 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     }
 
     let userId = this.users.idFromName(split[0]);
-    await this.users.get(userId).authenticate(split[1]);
+    await this.users.get(userId, this.#doOptions).authenticate(split[1]);
     recordAnalytics(this.ctx, this.env, {
       event_name: "user_authenticated",
       user_id: userId.toString(),
       source: "session_token",
     });
+    let username = split[0];
+    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("", this.#doOptions).recordUserActivity(username, username, 0, 0, false, false));
     return new AuthenticatedApiImpl(this.ctx, this.env, userId, this.abortSession);
   }
 
@@ -812,7 +837,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     let userId = this.users.idFromName(email);
     let signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
     let accountCreated =
-        await this.users.get(userId).authenticateFromCfAccess(email, signupsEnabled);
+        await this.users.get(userId, this.#doOptions).authenticateFromCfAccess(email, signupsEnabled);
     if (accountCreated) {
       recordAnalytics(this.ctx, this.env, {
         event_name: "account_created",
@@ -825,6 +850,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       user_id: userId.toString(),
       source: "cf_access",
     });
+    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("", this.#doOptions).recordUserActivity(email, email, 0, 0, false, false));
     return new AuthenticatedApiImpl(this.ctx, this.env, userId, this.abortSession,
         { jwt: this.accessSession.jwt, expiresAt: (this.accessSession.payload.exp ?? 0) * 1000 });
   }
@@ -840,7 +866,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     username = normalizeUsername(username);
 
     let id = this.users.idFromName(username);
-    let token = await this.users.get(id).login(passwordHash);
+    let token = await this.users.get(id, this.#doOptions).login(passwordHash);
     if (!token) return null;
 
     recordAnalytics(this.ctx, this.env, {
@@ -867,7 +893,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     username = normalizeUsername(username);
 
     let id = this.users.idFromName(username);
-    let user = this.users.get(id);
+    let user = this.users.get(id, this.#doOptions);
 
     let token = await user.createAccount(username, displayName, passwordHash);
     if (!token) return null;
@@ -877,6 +903,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       user_id: id.toString(),
       source: "password",
     });
+    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("", this.#doOptions).recordUserActivity(username, displayName, 0, 0, false, false));
 
     return `${username}:${token}`;
   }
@@ -986,7 +1013,7 @@ export default {
       // and the DO is idempotent.
       if (!bundledBlueprintInstallStarted) {
         bundledBlueprintInstallStarted = true;
-        ctx.waitUntil(ctx.exports.AdminSettings.getByName("").ensureBundledBlueprintsInstalled()
+        ctx.waitUntil(ctx.exports.AdminSettings.getByName("", getDoOptions(env)).ensureBundledBlueprintsInstalled()
             .then((complete: boolean) => {
               // A partial install resolves rather than throwing, and nothing else will call the DO
               // from here, so clearing this is the whole retry: one bad archive would otherwise

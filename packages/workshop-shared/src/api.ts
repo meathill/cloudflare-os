@@ -1087,7 +1087,7 @@ export const MAX_SITE_NAME_LENGTH = 40;
  * What this deployment calls itself when the admin has not set a custom `siteName`. Also the
  * product's own name, so it appears in prose the server and UI address to the user.
  */
-export const DEFAULT_SITE_NAME = "Cloudflare OS";
+export const DEFAULT_SITE_NAME = "有缘心之助";
 
 /**
  * The name to display for this deployment. Accepts an unset or not-yet-loaded `siteName` so both
@@ -1602,7 +1602,44 @@ export interface AdminApi {
    * visit to Home. Throws unless `hours` is a whole number from 0 to MAX_UPDATE_HOURS.
    */
   setUpdateNoticeSnoozeHours(hours: number): Promise<void>;
+  /** 获取平台所有用户的行为与 Token 消耗用量统计 */
+  getUsageStats(): Promise<UsageStatsResponse>;
 }
+
+/** 单个用户的 Token 消耗与行为用量记录 */
+export type UserUsageRecord = {
+  /** 用户唯一标识（通常为 username 或 email） */
+  username: string;
+  /** 用户对外昵称 */
+  displayName: string;
+  /** 首次注册/进入系统时间 (ISO string) */
+  createdAt: string;
+  /** 最近一次交互或登录活跃时间 (ISO string) */
+  lastActive: string;
+  /** 累计消耗的 Token 总量 */
+  totalTokens: number;
+  /** 累计预估模型调用成本 (USD) */
+  estimatedCost: number;
+  /** 累计执行的 AI 会话交互轮次 */
+  callCount: number;
+  /** 累计创建的剧本/工作区总数 */
+  workspaceCount: number;
+};
+
+/** 平台全局汇总用量概览 */
+export type UsageOverviewStats = {
+  totalUsers: number;
+  totalWorkspaces: number;
+  totalTokens: number;
+  totalCost: number;
+  totalCalls: number;
+};
+
+/** 用量统计总响应体 */
+export type UsageStatsResponse = {
+  overview: UsageOverviewStats;
+  users: UserUsageRecord[];
+};
 
 /** A partial edit to one promoted format. Absent fields are left alone. */
 export type AdminFormatPatch = {
@@ -2222,6 +2259,7 @@ const SUGGESTED_MODEL_CATALOG = {
     },
   },
   "google": {
+    "gemini-3.8-flash": {name: "Gemini 3.8 Flash", contextWindow: 1048576},
     "gemini-3.6-flash": {name: "Gemini 3.6 Flash", contextWindow: 1048576},
   },
   "ollama": {
@@ -4571,6 +4609,18 @@ export type AiToolCall = {
    */
   output?: string;
 } | {
+  /**
+   * Search Google for information, drama synopses, reviews, or public background facts.
+   * Grounded by Gemini Search Grounding.
+   */
+  toolName: "webSearch";
+  input: {
+    query: string;
+  };
+
+  /** Formatted search results and source citations. */
+  output?: string;
+} | {
   /** This actually shouldn't ever appear in logs unless the agent misunderstands the tool. */
   toolName: "observeUserChanges";
   input: {};
@@ -4724,7 +4774,7 @@ export type SlashCommandId = {
   builtin?: never;
 } | {
   builtin: true;
-  commandId: "compact";
+  commandId: string;
 };
 
 /** A slash command invocation parsed by the client. */
@@ -5884,3 +5934,5 @@ export type ShareLinkInfo = {
    */
   role?: CollaboratorRole;
 };
+
+export * from "./script-skills";

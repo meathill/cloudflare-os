@@ -87,8 +87,9 @@ export function useSlashCommandPicker({
   const popupRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
+  // 压缩命令作用于已有会话，新建聊天时不展示；创作类技能在新建聊天里照常可选。
   const offerable = useCallback((catalog: SlashCommandChoice[]) =>
-      chatExists ? catalog : catalog.filter(choice => choice.selection.builtin !== true),
+      chatExists ? catalog : catalog.filter(choice => choice.selection.commandId !== "compact"),
     [chatExists]);
 
   const parsed = selectedCommand || disabled

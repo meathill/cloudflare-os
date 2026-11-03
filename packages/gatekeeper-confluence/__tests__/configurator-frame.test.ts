@@ -3,8 +3,8 @@
 // frame (`build:configurator`, which `test:run` runs first).
 
 import { describe, expect, it, vi } from "vitest";
-import type { ConfluenceBrowseRequest, ConfluenceConfiguratorStatus, ConfluenceNode } from "../src/configurator/confluence-configurator-types";
-import { browse, ENGINEERING, MFS, READY, SEARCH_ARCH, SITE_REF, spaceAvatars } from "./fixtures";
+import type { ConfluenceBrowsePage, ConfluenceBrowseRequest, ConfluenceConfiguratorStatus, ConfluenceNode } from "../src/configurator/confluence-configurator-types";
+import { browse, ENGINEERING, MFS, MFS_ROOT, READY, SEARCH_ARCH, SITE_REF, spaceAvatars } from "./fixtures";
 import { PATTERNS, startFrame, useFrameHost, type Answer } from "./frame-host";
 
 useFrameHost();
@@ -135,11 +135,20 @@ describe("choosing", () => {
   });
 
   it("opens a space at its home page, blog and pages, and chooses it or a page in it", async () => {
-    const picker = await start();
+    const children = Promise.withResolvers<ConfluenceBrowsePage>();
+    const picker = await start({
+      answers: {
+        loadItems: (request: ConfluenceBrowseRequest) => request.parent === MFS.ref
+          ? children.promise
+          : browse(request),
+      },
+    });
     await picker.tab("Spaces").click();
     await picker.option("My first space").click();
     await poll(picker.location).toBe("Spaces My first space");
-    expect(await picker.titles()).toEqual([
+    await poll(picker.titles).toEqual(["All of My first space"]);
+    children.resolve(MFS_ROOT);
+    await poll(picker.titles).toEqual([
       "All of My first space", "My first space", "Blog", "Engineering", "Onboarding", "Q4 planning",
       "Retro board", "Launch tracker", "Archive",
     ]);

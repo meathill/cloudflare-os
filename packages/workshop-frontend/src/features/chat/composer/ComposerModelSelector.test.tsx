@@ -5,7 +5,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AiChatAuthorInfo } from "@gadgets/workshop-shared/api";
-import { ComposerModelSelector, type SelectedModel } from "./ComposerModelSelector";
+import { ComposerModelSelector } from "./ComposerModelSelector";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -23,31 +23,25 @@ afterEach(() => {
   container = null;
 });
 
-function renderTriggerLabel(selectedModel: SelectedModel): string {
+function render(): HTMLDivElement {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
   act(() => root!.render(
     <ComposerModelSelector
       models={models}
-      selectedModel={selectedModel}
+      selectedModel={{ id: "gemini-3.8-flash" }}
       onModelChange={() => {}}
     />,
   ));
-  return container.querySelector('[aria-label="Select model"]')!.textContent!;
+  return container;
 }
 
 describe("ComposerModelSelector", () => {
-  it("labels an offered model by its listed name", () => {
-    expect(renderTriggerLabel({ id: "claude-opus-5-5", name: "Stale name" })).toBe("Claude Opus 5.5");
-  });
-
-  // An existing chat can still be on a model the picker has since hidden.
-  it("labels a model the list doesn't offer by the chat's own name for it", () => {
-    expect(renderTriggerLabel({ id: "claude-opus-5", name: "Claude Opus 5" })).toBe("Claude Opus 5");
-  });
-
-  it("falls back to the raw id when no name is known", () => {
-    expect(renderTriggerLabel({ id: "claude-opus-5" })).toBe("claude-opus-5");
+  it("shows the fixed model and offers no picker", () => {
+    const rendered = render();
+    expect(rendered.textContent).toContain("Gemini 3.8 Flash");
+    expect(rendered.querySelector('[aria-label="Select model"]')).toBeNull();
+    expect(rendered.querySelector("button")).toBeNull();
   });
 });

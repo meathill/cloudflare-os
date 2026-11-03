@@ -5,6 +5,7 @@ import { StrictMode, act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Toasty, useKumoToastManager } from '@cloudflare/kumo'
+import { DEFAULT_SITE_NAME } from '@gadgets/workshop-shared/api'
 
 const testState = vi.hoisted(() => ({ reload: vi.fn<() => void>() }))
 vi.mock('./versionChecks', async (importOriginal) => ({
@@ -108,7 +109,7 @@ describe('PageUpdateNotice', () => {
 
     expect(liveToasts()).toHaveLength(1)
     expect(liveToasts()[0]).toMatchObject({
-      title: 'Cloudflare OS was updated', description: 'Reload to use the new version.', timeout: 0,
+      title: `${DEFAULT_SITE_NAME} was updated`, description: 'Reload to use the new version.', timeout: 0,
     })
 
     await sessionCheck()

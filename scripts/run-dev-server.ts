@@ -568,9 +568,20 @@ for (const gk of gatekeepers) {
 
   config.services = config.services || [];
 
-  // For local testing, create an account named "admin" to test admin features.
+  // For local testing, default to "admin" or read from ADMINS / ADMIN_USERS env vars.
   config.vars = config.vars || {};
-  config.vars.ADMINS = ["admin"];
+  const customAdmins = process.env["ADMINS"] || process.env["ADMIN_USERS"];
+  if (customAdmins) {
+    try {
+      config.vars.ADMINS = customAdmins.startsWith("[")
+        ? JSON.parse(customAdmins)
+        : customAdmins.split(",").map((s: string) => s.trim()).filter(Boolean);
+    } catch {
+      config.vars.ADMINS = customAdmins.split(",").map((s: string) => s.trim()).filter(Boolean);
+    }
+  } else {
+    config.vars.ADMINS = ["admin"];
+  }
 
   if (cloudflareOsDeployment !== undefined) {
     config.vars.CLOUDFLARE_OS_DEPLOYMENT = cloudflareOsDeployment;
@@ -591,6 +602,7 @@ for (const gk of gatekeepers) {
     // needs the token even when the binding is present.
     "CF_AI_GATEWAY", "CF_AI_GATEWAY_PROVIDERS", "CF_AI_GATEWAY_ACCOUNT_ID",
     "CF_AI_GATEWAY_API_TOKEN", "CF_AI_GATEWAY_USE_BINDING",
+    "GEMINI_API_KEY", "GOOGLE_API_KEY",
   ];
   // OAuth app credentials (GOOGLE_/GITHUB_/CLOUDFLARE_OAUTH_*) are NOT passed to the backend anymore;
   // they are injected into the gatekeeper Workers (see SHARED_GATEKEEPER_CREDS below).

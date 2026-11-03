@@ -1,20 +1,14 @@
 import { logRpcFailure } from './rpcErrors'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Switch, useKumoToastManager } from '@cloudflare/kumo'
 import { useAuthenticatedApi } from './AuthContext'
-import {
-  AiChatAuthorInfo,
-  AiGatewayInfo,
-  GatekeeperVendorInfo,
-} from '@gadgets/workshop-shared/api'
+import { GatekeeperVendorInfo } from '@gadgets/workshop-shared/api'
 import {
   VendorDescription,
 } from '@gadgets/workshop-shared/gatekeeper'
 import {
   Camera,
   ArrowRight,
-  Check,
-  Plus,
   PlugsConnected,
   Sparkle,
   UsersThree,
@@ -22,8 +16,7 @@ import {
   Plugs,
   Hexagon,
 } from '@phosphor-icons/react'
-import AddModelModal from './AddModelModal'
-import { persistSelectedModel } from './modelSelection'
+import { FIXED_MODEL_ID, persistSelectedModel } from './modelSelection'
 import { logoComponents } from './components/ConnectionLogos'
 import { getVendorIconBackground } from './components/vendorColors'
 import { GatekeeperIcon } from './components/GatekeeperIcon'
@@ -40,8 +33,9 @@ import { AuthPopupCancelledError } from './features/native-app/authPopup'
 
 // ─── constants ──────────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS_WITH_CONNECTIONS = 4
-const CONNECTIONS_STEP = 2
+// 步骤：0 = avatar, 1 = connections, 2 = showcase（模型固定，没有选择步骤）
+const TOTAL_STEPS_WITH_CONNECTIONS = 3
+const CONNECTIONS_STEP = 1
 
 // Maps RPC vendor IDs to logo keys in our logoComponents map
 const VENDOR_LOGO_MAP: Record<string, string> = {
@@ -87,15 +81,6 @@ export default function OnboardingWizard({
   const [avatarProcessing, setAvatarProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Model state
-  const [models, setModels] = useState<AiChatAuthorInfo[]>([])
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
-  const [aiConfig, setAiConfig] = useState<AiGatewayInfo | null>(null)
-  const [addModelOpen, setAddModelOpen] = useState(false)
-  const [modelsLoading, setModelsLoading] = useState(true)
-  // False only on an AI Gateway deployment whose administrator turned adding models off.
-  const canAddModels = aiConfig?.enabled !== true || aiConfig.userModelsEnabled
-
   // Connections state
   const [vendors, setVendors] = useState<VendorEntry[]>([])
   const [connectedVendorIds, setConnectedVendorIds] = useState<Set<string>>(new Set())
@@ -126,30 +111,6 @@ export default function OnboardingWizard({
       setOriginalDisplayName(currentUser.name)
     }
   }, [currentUser])
-
-  // Load models + AI config
-  const fetchModels = useCallback(async () => {
-    try {
-      const [modelList, cfg] = await Promise.all([
-        authenticatedApi.listModels(),
-        authenticatedApi.getAiConfig(),
-      ])
-      setModels(modelList)
-      setAiConfig(cfg)
-      // Default to the first model in the list
-      if (modelList.length > 0) {
-        setSelectedModelId((prev) => prev ?? modelList[0].id)
-      }
-    } catch (err) {
-      console.error('Failed to load models:', err)
-    } finally {
-      setModelsLoading(false)
-    }
-  }, [authenticatedApi])
-
-  useEffect(() => {
-    fetchModels()
-  }, [fetchModels])
 
   // Load vendors and subscribe to connected accounts.
   // We use a url→vendorId lookup map (built from listGatekeeperVendors) so the
@@ -331,9 +292,9 @@ export default function OnboardingWizard({
         await authenticatedApi.setAvatar(avatarData)
         if (currentUser?.id) invalidateAvatarCache(currentUser.id)
       }
-      // selectedModelId is null when the user chose "No agent" or didn't pick one
-      await authenticatedApi.setPreferredModel(selectedModelId)
-      persistSelectedModel(selectedModelId)
+      // 主力模型固定为 Gemini 3.8 Flash，不随用户选择变化。
+      await authenticatedApi.setPreferredModel(FIXED_MODEL_ID)
+      persistSelectedModel(FIXED_MODEL_ID)
       // The tools are optional, so one that fails (say, an admin disabled it meanwhile) is
       // reported and doesn't keep the user in onboarding.
       const ambientToProvision = ambientVendors.filter((v) => !switchedOffAmbientIds.has(v.id))
@@ -531,96 +492,8 @@ export default function OnboardingWizard({
               </div>
             </div>
 
-            {/* ── Step 1: Model selection ───────────────────────────────────── */}
-            <div className="min-h-[320px] w-full flex-shrink-0 p-5 sm:min-h-[420px] sm:p-8">
-              <div>
-                <h2 className="text-lg font-medium text-kumo-default mb-1">
-                  Choose your model
-                </h2>
-                <p className="text-sm text-kumo-subtle mb-6">
-                  Pick the AI model you&apos;d like to use by default
-                </p>
-
-                {modelsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-kumo-brand border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                      {models.map((model) => (
-                        <button
-                          key={model.id}
-                          onClick={() => setSelectedModelId(model.id)}
-                          className={`
-                            w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left
-                            transition-all duration-150
-                            ${selectedModelId === model.id
-                              ? 'border-kumo-brand bg-kumo-brand/5 ring-1 ring-kumo-brand/20'
-                              : 'border-kumo-line hover:border-kumo-fill hover:bg-kumo-tint'
-                            }
-                          `}
-                        >
-                          <div
-                            className={`
-                              w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
-                              transition-colors duration-150
-                              ${selectedModelId === model.id
-                                ? 'bg-kumo-brand text-kumo-inverse'
-                                : 'bg-kumo-tint text-kumo-subtle'
-                              }
-                            `}
-                          >
-                            {model.name[0]?.toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-kumo-default truncate">
-                              {model.name}
-                            </p>
-                            <p className="text-xs text-kumo-subtle truncate">
-                              {model.description ?? model.id}
-                            </p>
-                          </div>
-                          {selectedModelId === model.id && (
-                            <Check
-                              size={18}
-                              weight="bold"
-                              className="text-kumo-brand flex-shrink-0"
-                            />
-                          )}
-                        </button>
-                      ))}
-
-                      {models.length === 0 && (
-                        <div className="text-center py-8">
-                          <p className="text-sm text-kumo-subtle mb-1">
-                            {canAddModels ? 'No models configured yet' : 'No models available yet'}
-                          </p>
-                          <p className="text-xs text-kumo-inactive">
-                            {canAddModels
-                              ? 'Add a model to get started'
-                              : 'Your deployment’s administrator provides the models'}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {canAddModels && (
-                      <button
-                        onClick={() => setAddModelOpen(true)}
-                        className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-kumo-subtle border border-dashed border-kumo-line rounded-xl hover:border-kumo-fill hover:text-kumo-default hover:bg-kumo-tint transition-colors"
-                      >
-                        <Plus size={14} weight="bold" />
-                        Add new model...
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* ── Step 2: Connections ───────────────────────────────────────── */}
-            <div className={`min-h-[320px] w-full flex-shrink-0 p-5 sm:min-h-[420px] sm:p-8 ${showConnectionsStep ? '' : 'hidden'}`}>
+            {/* ── Step 1: Connections ───────────────────────────────────────── */}
+            <div className={`w-full flex-shrink-0 p-8 min-h-[420px] ${showConnectionsStep ? '' : 'hidden'}`}>
               <div>
                 <h2 className="text-lg font-medium text-kumo-default mb-1">
                   Connect your services
@@ -707,7 +580,7 @@ export default function OnboardingWizard({
 
             {/* ── Final step: What you can do ────────────────────────────────── */}
             <div className="min-h-[320px] w-full flex-shrink-0 p-5 sm:min-h-[420px] sm:p-8">
-              <ShowcaseStep active={step === showcaseStep} siteName={siteName} canAddModels={canAddModels} />
+              <ShowcaseStep active={step === showcaseStep} siteName={siteName} />
             </div>
           </div>
 
@@ -775,20 +648,6 @@ export default function OnboardingWizard({
       </div>
 
     </div>
-
-    {/* Add Model Modal — outside the wizard's inner content so it's not
-        clipped by overflow-hidden on the sliding panel */}
-    <AddModelModal
-      visible={addModelOpen}
-      onCancel={() => setAddModelOpen(false)}
-      onSuccess={() => {
-        setAddModelOpen(false)
-        fetchModels()
-      }}
-      authenticatedApi={authenticatedApi}
-      aiConfig={aiConfig}
-      chatModelsOnly
-    />
     </>
   )
 }
@@ -885,10 +744,9 @@ const SHOWCASE_FEATURES: ShowcaseFeature[] = [
   },
 ]
 
-function ShowcaseStep({ active, siteName, canAddModels }: {
+function ShowcaseStep({ active, siteName }: {
   active: boolean
   siteName: string
-  canAddModels: boolean
 }) {
   // Mount-trigger for staggered fade-in when the step becomes visible
   const [revealed, setRevealed] = useState(false)
@@ -913,7 +771,7 @@ function ShowcaseStep({ active, siteName, canAddModels }: {
       </div>
 
       <div className="space-y-2.5">
-        {SHOWCASE_FEATURES.filter((feature) => canAddModels || !feature.ownModels).map((feature, i) => {
+        {SHOWCASE_FEATURES.filter((feature) => !feature.ownModels).map((feature, i) => {
           const Icon = feature.icon
           return (
             <div

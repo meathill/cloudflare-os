@@ -1,4 +1,4 @@
-import { AdminApi, AdminFormat, AdminFormatPatch, AdminModel, AdminResourceVendor, AdminSettingsView, AiModelConfig, AiModelProvider, AmbientGatekeeperMode, BannerColor, BlueprintPublicInfo, DeploymentUpdateStatus, GatewayModel, GatewayModelLevelTest, GatewayModelMode, GatewayModelSettings, GatewayModelTest, MAX_ANNOUNCEMENT_LENGTH, MAX_INSTANCE_INSTRUCTIONS_LENGTH, MAX_SITE_NAME_LENGTH, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, ReasoningLevel, SUGGESTED_MODELS, isAmbientGatekeeperMode, isBannerColor, isHexColor } from '@gadgets/workshop-shared/api';
+import { AdminApi, AdminFormat, AdminFormatPatch, AdminModel, AdminResourceVendor, AdminSettingsView, AiModelConfig, AiModelProvider, AmbientGatekeeperMode, BannerColor, BlueprintPublicInfo, DeploymentUpdateStatus, GatewayModel, GatewayModelLevelTest, GatewayModelMode, GatewayModelSettings, GatewayModelTest, MAX_ANNOUNCEMENT_LENGTH, MAX_INSTANCE_INSTRUCTIONS_LENGTH, MAX_SITE_NAME_LENGTH, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, ReasoningLevel, SUGGESTED_MODELS, isAmbientGatekeeperMode, isBannerColor, isHexColor , UsageOverviewStats, UsageStatsResponse } from '@gadgets/workshop-shared/api';
 import { GatekeeperVendor } from '@gadgets/workshop-shared/gatekeeper';
 import { DurableObject } from 'cloudflare:workers';
 import { RpcTarget } from 'capnweb';
@@ -19,6 +19,7 @@ import { UserDurableObject } from './user.js';
 import { bundledBlueprintsManifestVersion, installBundledBlueprints } from './bundled-blueprints.js';
 import { BUNDLED_BLUEPRINTS } from './generated/bundled-blueprints.js';
 import { type DeployServiceInstall, NO_ANSWER, type VersionAnswer, deployServiceInstall, deploymentUpdateStatus, fetchLatestRelease, updateCheckDue } from './deployment-updates.js';
+import { estimateTokenCost } from './gemini-pricing.js';
 
 const logger = createWorkshopLogger("workshop.admin.settings");
 
@@ -1068,6 +1069,88 @@ export class AdminSettings extends DurableObject<Cloudflare.Env> {
     vendors.sort((a, b) => Number(b.autoProvisions) - Number(a.autoProvisions));
     return vendors;
   }
+
+  /**
+   * 记录用户活跃、新建工作区以及 Token / 成本消耗用量
+   */
+  async recordUserActivity(
+    username: string,
+    displayName: string,
+    tokensDelta: number = 0,
+    estimatedCostDelta: number = 0,
+    isNewWorkspace: boolean = false,
+    isAiInteraction: boolean = false
+  ): Promise<void> {
+    if (!username) return;
+    let existing = this.storage.userUsage.get(username);
+    let now = new Date().toISOString();
+
+    // 兜底防 0 机制：如果是 AI 对话交互且产生了 tokens，但外部传入的 costDelta 为 0，
+    // 则按 Gemini 3.8 Flash 当前有效优惠费率进行合理估算兜底，防止漏记
+    let effectiveCostDelta = estimatedCostDelta;
+    if (effectiveCostDelta <= 0 && tokensDelta > 0 && isAiInteraction) {
+      effectiveCostDelta = estimateTokenCost(tokensDelta);
+    }
+
+    if (!existing) {
+      this.storage.userUsage.put({
+        username,
+        displayName: displayName || username,
+        createdAt: now,
+        lastActive: now,
+        totalTokens: Math.max(0, tokensDelta),
+        estimatedCost: Math.max(0, effectiveCostDelta),
+        callCount: isAiInteraction ? 1 : 0,
+        workspaceCount: isNewWorkspace ? 1 : 0,
+      });
+    } else {
+      this.storage.userUsage.put({
+        ...existing,
+        displayName: displayName || existing.displayName || username,
+        lastActive: now,
+        totalTokens: existing.totalTokens + Math.max(0, tokensDelta),
+        estimatedCost: existing.estimatedCost + Math.max(0, effectiveCostDelta),
+        callCount: existing.callCount + (isAiInteraction ? 1 : 0),
+        workspaceCount: existing.workspaceCount + (isNewWorkspace ? 1 : 0),
+      });
+    }
+  }
+
+  /**
+   * 汇总全平台用量概览及用户明细列表
+   */
+  async getUsageStats(): Promise<UsageStatsResponse> {
+    let users = [...this.storage.userUsage.list()];
+    // 按最后活跃时间倒序排序
+    users.sort((a, b) => new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime());
+
+    let overview: UsageOverviewStats = {
+      totalUsers: users.length,
+      totalWorkspaces: 0,
+      totalTokens: 0,
+      totalCost: 0,
+      totalCalls: 0,
+    };
+
+    for (let u of users) {
+      // 历史零成本平滑校准：如果用户历史消耗了 Tokens，但因旧版本未适配 Gemini 计费导致 estimatedCost 为 0，
+      // 则按当前官方有效优惠费率进行补正估算，并回写持久化存储，解决管理后台显示 $0.0000 的问题
+      if (u.estimatedCost === 0 && u.totalTokens > 0) {
+        u.estimatedCost = estimateTokenCost(u.totalTokens);
+        this.storage.userUsage.put(u);
+      }
+
+      overview.totalWorkspaces += u.workspaceCount;
+      overview.totalTokens += u.totalTokens;
+      overview.totalCost += u.estimatedCost;
+      overview.totalCalls += u.callCount;
+    }
+
+    return {
+      overview,
+      users,
+    };
+  }
 }
 
 // Capability for managing deployment-wide admin settings, obtained via
@@ -1250,5 +1333,9 @@ export class AdminApiImpl extends RpcTarget implements AdminApi {
 
   setUpdateNoticeSnoozeHours(hours: number): Promise<void> {
     return this.admin.setUpdateNoticeSnoozeHours(hours);
+  }
+
+  getUsageStats(): Promise<UsageStatsResponse> {
+    return this.admin.getUsageStats();
   }
 }

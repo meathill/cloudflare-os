@@ -17,6 +17,7 @@ import { probeRouterTag } from './features/deployment-updates/probeRouterTag'
 import { RestrictedWebFetchHostsCard } from './features/web-fetch/RestrictedWebFetchHostsCard'
 import { isAdminTab, resolveAdminTab } from './adminTab'
 import { logRpcFailure } from './rpcErrors'
+import AdminUsagePanel from './components/admin/AdminUsagePanel'
 
 // Preset accent colors offered in the Theme section ('' = default brand).
 const ACCENT_PRESETS: { label: string; value: string }[] = [
@@ -466,6 +467,7 @@ export default function AdminPage() {
         onValueChange={handleTabChange}
         tabs={[
           { value: 'general', label: 'General' },
+          { value: 'usage', label: '用量统计' },
           { value: 'gatekeepers', label: 'Gatekeepers' },
           { value: 'formats', label: 'Formats' },
           { value: 'models', label: 'Models' },
@@ -492,6 +494,11 @@ export default function AdminPage() {
               onChanged={() => reloadUpdateStatus(() => admin.api.getUpdateStatus())}
             />
           )
+      )}
+
+      {/* 用量统计看板 */}
+      {activeTab === 'usage' && admin && (
+        <AdminUsagePanel admin={admin.api} />
       )}
 
       {/* Standard output formats */}

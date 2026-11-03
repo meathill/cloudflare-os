@@ -977,11 +977,21 @@ export const ChatComposer = ({
                 }
               />
               <DropdownMenu.Content collisionPadding={16} className="themed-floating-shadow-lg !z-[1100] !min-w-[170px] rounded-2xl border border-kumo-line/70 bg-kumo-base p-1">
-                {/* The deployment's standard formats. Picking one drops its name into the message at
-                    the caret; the agent is told what to build from it. */}
+                {/* 剧作方向与通用产物格式。方向会整段替换输入框，格式名插入到光标处。 */}
                 {canChooseFormat && (
                   <ComposerFormatMenuItems
                     onSelect={(format) => void chooseFormat(format)}
+                    onSelectPrompt={(prompt) => {
+                      recordDraftEdit();
+                      replaceComposerDocument({ text: prompt, capsules: [], formats: [], command: null });
+                      requestAnimationFrame(() => {
+                        const textarea = composerTextareaRef.current;
+                        if (!textarea) return;
+                        textarea.focus();
+                        textarea.setSelectionRange(prompt.length, prompt.length);
+                        resizeTextarea(textarea);
+                      });
+                    }}
                     showTrailingSeparator={onToggleThinkingTraces !== undefined}
                   />
                 )}
