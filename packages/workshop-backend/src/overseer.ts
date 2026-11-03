@@ -6714,7 +6714,7 @@ class OverseerImpl implements AgentHooks {
     this.ctx.storage.transactionSync(() => {
       let meta: AiChatMetadata = {
         id: chatId,
-        title: "New Chat",   // filled in later by AI
+        title: "新对话",   // 后续由 AI 生成标题
         started: timestamp,
         lastActive: timestamp,
       };
@@ -8867,7 +8867,7 @@ class OverseerImpl implements AgentHooks {
       // Also rename the gadget if this is the first chat. Since the gadget likely doesn't have
       // any code yet, the user still sees it as just a chat, and therefore it makes sense to
       // apply the same title as the chat itself.
-      if (chatId === 0 && ["Untitled Gadget", "Untitled Workspace"].includes(this.storage.title.get()) && this.ownerId) {
+      if (chatId === 0 && ["Untitled Gadget", "Untitled Workspace", "未命名工作区"].includes(this.storage.title.get()) && this.ownerId) {
         this.storage.title.put(result);
         let owner = this.users.get(this.users.idFromString(this.ownerId));
         await owner.updateTitle(this.ctx.id.toString(), result);
@@ -8875,7 +8875,7 @@ class OverseerImpl implements AgentHooks {
 
       // TODO: Should we track costs for title generation? It's pretty negligible.
     } catch (err) {
-      // Oh well, just leave the title as "New Chat".
+      // 标题生成失败时保留默认标题。
       this.logger.warn("error generating chat title", {
         event: "chat.title.generate.failed", chatId, error: err,
       });

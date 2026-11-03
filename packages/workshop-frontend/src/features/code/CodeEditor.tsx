@@ -1,3 +1,4 @@
+import { editorPhrases } from './editorPhrases'
 import { useEffect, useRef } from 'react'
 import { Annotation, Compartment, EditorState, Transaction } from '@codemirror/state'
 import type { Extension } from '@codemirror/state'
@@ -133,6 +134,7 @@ export default function CodeEditor({
       // stream's changes are offsets into the exact stored text, and CodeMirror's default splitter
       // would silently normalize other line endings away, desynchronizing the first edit.
       // (Stray \r characters render via highlightSpecialChars below.)
+      editorPhrases,
       EditorState.lineSeparator.of('\n'),
       lineNumbers(),
       highlightSpecialChars(),
@@ -208,7 +210,7 @@ export default function CodeEditor({
         className="flex justify-center items-center bg-kumo-base text-kumo-subtle"
         style={{ height }}
       >
-        Select a file to start editing
+        选择文件以开始编辑
       </div>
     )
   }

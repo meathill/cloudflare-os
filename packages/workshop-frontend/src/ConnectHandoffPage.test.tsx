@@ -116,7 +116,7 @@ describe('ConnectHandoffPage', () => {
     expect(JSON.parse(sessionStorage.getItem(NATIVE_AUTH_KEY)!)).toEqual({
       id, expiresAt: expect.any(Number),
     })
-    expect(page.textContent).toContain('Opening sign-in')
+    expect(page.textContent).toContain('正在打开登录页面')
     expect(useAuth).not.toHaveBeenCalled()
     expect(confirmLogin).not.toHaveBeenCalled()
     expect(completeConnectHandoff).not.toHaveBeenCalled()
@@ -148,8 +148,8 @@ describe('ConnectHandoffPage', () => {
     expect(window.location.pathname).toBe(HANDOFF_PATH)
     expect(sessionStorage.getItem(HANDOFF_KEY)).toBeNull()
     expect(close).toHaveBeenCalledOnce()
-    expect(page.textContent).toContain('Connected')
-    expect(page.textContent).toContain('You can close this window.')
+    expect(page.textContent).toContain('已连接')
+    expect(page.textContent).toContain('现在可以关闭此窗口。')
     expect(confirmLogin).not.toHaveBeenCalled()
   })
 
@@ -160,7 +160,7 @@ describe('ConnectHandoffPage', () => {
 
     const page = await render()
 
-    expect(page.textContent).toContain('Could not complete the connection')
+    expect(page.textContent).toContain('无法完成连接')
     expect(page.textContent).toContain('This connection attempt has expired.')
     expect(close).not.toHaveBeenCalled()
   })
@@ -171,8 +171,8 @@ describe('ConnectHandoffPage', () => {
 
     const page = await render()
 
-    expect(page.textContent).toContain("This link isn't valid")
-    expect(page.textContent).toContain('Reload the Workshop and start the connection again.')
+    expect(page.textContent).toContain("链接无效")
+    expect(page.textContent).toContain('请刷新工作台并重新开始连接。')
     expect(completeConnectHandoff).not.toHaveBeenCalled()
     expect(confirmLogin).not.toHaveBeenCalled()
     expect(window.location.hash).toBe('')
@@ -184,7 +184,7 @@ describe('ConnectHandoffPage', () => {
 
     const page = await render()
 
-    expect(page.textContent).toContain("This link isn't valid")
+    expect(page.textContent).toContain("链接无效")
     expect(completeConnectHandoff).not.toHaveBeenCalled()
     expect(sessionStorage.getItem(HANDOFF_KEY)).toBeNull()
   })
@@ -198,8 +198,8 @@ describe('ConnectHandoffPage', () => {
     expect(confirmLogin).toHaveBeenCalledExactlyOnceWith(TICKET, NONCE)
     expect(completeConnectHandoff).not.toHaveBeenCalled()
     expect(close).toHaveBeenCalledOnce()
-    expect(page.textContent).toContain('Signed in')
-    expect(page.textContent).toContain('You can close this window.')
+    expect(page.textContent).toContain('已登录')
+    expect(page.textContent).toContain('现在可以关闭此窗口。')
   })
 
   it('shows the server message when a sign-in ticket is rejected', async () => {
@@ -208,7 +208,7 @@ describe('ConnectHandoffPage', () => {
 
     const page = await render()
 
-    expect(page.textContent).toContain('Could not sign in')
+    expect(page.textContent).toContain('无法登录')
     expect(page.textContent).toContain('This sign-in attempt has expired.')
     expect(close).not.toHaveBeenCalled()
   })
@@ -218,8 +218,8 @@ describe('ConnectHandoffPage', () => {
 
     const page = await render()
 
-    expect(page.textContent).toContain("You're signed out")
-    expect(page.textContent).toContain('Sign in to the Workshop and start the connection again.')
+    expect(page.textContent).toContain("你已退出登录")
+    expect(page.textContent).toContain('请登录工作台并重新开始连接。')
     expect(completeConnectHandoff).not.toHaveBeenCalled()
     expect(confirmLogin).not.toHaveBeenCalled()
   })
@@ -230,7 +230,7 @@ describe('ConnectHandoffPage', () => {
     arrive(TICKET, { kind: 'connect', nonce: NONCE })
 
     const page = await render()
-    expect(page.textContent).toContain('Finishing up…')
+    expect(page.textContent).toContain('正在完成…')
     expect(completeConnectHandoff).not.toHaveBeenCalled()
 
     testState.isLoading = false
@@ -239,7 +239,7 @@ describe('ConnectHandoffPage', () => {
     await settle()
 
     expect(completeConnectHandoff).toHaveBeenCalledExactlyOnceWith(TICKET, NONCE)
-    expect(page.textContent).toContain('Connected')
+    expect(page.textContent).toContain('已连接')
   })
 
   it('retries over the reconnected session when the first attempt died with the socket', async () => {
@@ -255,12 +255,12 @@ describe('ConnectHandoffPage', () => {
 
     const page = await render()
     expect(completeConnectHandoff).toHaveBeenCalledExactlyOnceWith(TICKET, NONCE)
-    expect(page.textContent).toContain('Could not complete the connection')
+    expect(page.textContent).toContain('无法完成连接')
 
     provider = { stub, connectionLost: true }
     await rerender()
-    expect(page.textContent).toContain('Finishing up…')
-    expect(page.textContent).not.toContain('Could not complete the connection')
+    expect(page.textContent).toContain('正在完成…')
+    expect(page.textContent).not.toContain('无法完成连接')
     expect(completeConnectHandoff).toHaveBeenCalledOnce()
 
     provider = { stub: { confirmLogin } as unknown as RpcStub<PublicApi>, connectionLost: false }
@@ -270,7 +270,7 @@ describe('ConnectHandoffPage', () => {
 
     expect(completeConnectHandoff).toHaveBeenCalledTimes(2)
     expect(completeConnectHandoff).toHaveBeenLastCalledWith(TICKET, NONCE)
-    expect(page.textContent).toContain('Connected')
+    expect(page.textContent).toContain('已连接')
     expect(close).toHaveBeenCalledOnce()
   })
 
@@ -295,7 +295,7 @@ describe('ConnectHandoffPage', () => {
 
     const page = await render()
     expect(confirmLogin).toHaveBeenCalledExactlyOnceWith(TICKET, NONCE)
-    expect(page.textContent).toContain('Could not sign in')
+    expect(page.textContent).toContain('无法登录')
 
     // The same session again: nothing is re-sent.
     await rerender()
@@ -308,6 +308,6 @@ describe('ConnectHandoffPage', () => {
 
     expect(confirmLogin).toHaveBeenCalledTimes(2)
     expect(confirmLogin).toHaveBeenLastCalledWith(TICKET, NONCE)
-    expect(page.textContent).toContain('Signed in')
+    expect(page.textContent).toContain('已登录')
   })
 })

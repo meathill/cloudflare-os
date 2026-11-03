@@ -46,7 +46,7 @@ const GitTokenManager = ({
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const onLoadError = useEffectEvent((error: unknown) => {
     toasts.add({
-      title: error instanceof Error ? error.message : "Failed to load Git tokens",
+      title: error instanceof Error ? error.message : "加载 Git 令牌失败",
       variant: "error",
     });
   });
@@ -75,15 +75,15 @@ const GitTokenManager = ({
     try {
       const token = await context.createContextCollectionGitToken(collectionId);
       setNewToken(token);
-      toasts.add({ title: "Git token created", variant: "success" });
+      toasts.add({ title: "Git 令牌已创建", variant: "success" });
       try {
         setTokens((await context.listContextCollectionGitTokens(collectionId)).tokens);
       } catch {
-        toasts.add({ title: "Token created, but the token list could not be refreshed", variant: "error" });
+        toasts.add({ title: "令牌已创建，但无法刷新令牌列表", variant: "error" });
       }
     } catch (error) {
       toasts.add({
-        title: error instanceof Error ? error.message : "Failed to create Git token",
+        title: error instanceof Error ? error.message : "创建 Git 令牌失败",
         variant: "error",
       });
     } finally {
@@ -100,10 +100,10 @@ const GitTokenManager = ({
       await context.revokeContextCollectionGitToken(collectionId, tokenId);
       setTokens((current) => current.filter((token) => token.id !== tokenId));
       if (newToken?.id === tokenId) setNewToken(null);
-      toasts.add({ title: "Git token revoked", variant: "success" });
+      toasts.add({ title: "Git 令牌已撤销", variant: "success" });
     } catch (error) {
       toasts.add({
-        title: error instanceof Error ? error.message : "Failed to revoke Git token",
+        title: error instanceof Error ? error.message : "撤销 Git 令牌失败",
         variant: "error",
       });
     } finally {
@@ -116,7 +116,7 @@ const GitTokenManager = ({
     <section className="flex flex-col gap-3">
       {loading ? (
         <LayerCard className="bg-kumo-control p-0">
-          <Text variant="secondary" DANGEROUS_className="px-3 py-2">Loading tokens...</Text>
+          <Text variant="secondary" DANGEROUS_className="px-3 py-2">正在加载令牌…</Text>
         </LayerCard>
       ) : tokens.length === 0 && !newToken ? (
         <Button
@@ -126,14 +126,14 @@ const GitTokenManager = ({
           onClick={createToken}
           loading={creating}
         >
-          Create token
+          创建令牌
         </Button>
       ) : (
         <>
           <div>
-            <Text as="h3" bold>Git tokens</Text>
+            <Text as="h3" bold>Git 令牌</Text>
             <Text variant="secondary" DANGEROUS_className="mt-1">
-              Credentials for repository mirroring to the {branch || DEFAULT_GIT_BRANCH} branch.
+              用于将仓库镜像到 {branch || DEFAULT_GIT_BRANCH} 分支的凭据。
             </Text>
           </div>
 
@@ -145,7 +145,7 @@ const GitTokenManager = ({
                 <div key={token.id} className="flex items-center justify-between gap-3 px-3 py-2">
                   <div className="min-w-0">
                     <Text DANGEROUS_className="truncate font-mono">{token.id}</Text>
-                    <Text variant="secondary">Expires {new Date(token.expiresAt).toLocaleDateString()}</Text>
+                    <Text variant="secondary">过期时间 {new Date(token.expiresAt).toLocaleDateString("zh-CN")}</Text>
                   </div>
                   <Button
                     variant="secondary"
@@ -153,7 +153,7 @@ const GitTokenManager = ({
                     loading={revokingId === token.id}
                     disabled={revokingId !== null}
                   >
-                    Revoke
+                    撤销
                   </Button>
                 </div>
               ))}
@@ -168,7 +168,7 @@ const GitTokenManager = ({
             loading={creating}
             disabled={revokingId !== null}
           >
-            Create another token
+            创建另一个令牌
           </Button>
         </>
       )}
@@ -220,7 +220,7 @@ export const EditCollectionDialog = ({
       dialog.closeAfterSuccess();
     } catch (error) {
       toasts.add({
-        title: error instanceof Error ? error.message : "Failed to update collection",
+        title: error instanceof Error ? error.message : "更新知识集合失败",
         variant: "error",
       });
     } finally {
@@ -237,45 +237,45 @@ export const EditCollectionDialog = ({
       <Dialog className="w-[min(560px,calc(100vw-32px))]! bg-kumo-base p-0 top-[8%]! translate-y-0!" size="sm">
         <div className="flex items-center justify-between gap-4 border-b border-kumo-line px-4 py-4 sm:px-6">
           <Dialog.Title className="text-[17px] leading-6 font-medium tracking-[-0.35px] text-kumo-default">
-            Edit collection
+            编辑知识集合
           </Dialog.Title>
           <Dialog.Close
             disabled={updating || tokenBusy}
             render={(props) => (
-              <Button {...props} variant="ghost" shape="square" aria-label="Close">
+              <Button {...props} variant="ghost" shape="square" aria-label="关闭">
                 <X size={18} />
               </Button>
             )}
           />
         </div>
         <div className="flex max-h-[min(72vh,680px)] flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-6">
-          <Field label="Name">
+          <Field label="名称">
             <div className="flex w-full items-center gap-2">
               <CollectionIconPicker value={icon} onChange={setIcon} variant="boxed" size={24} />
               <Input
-                aria-label="Name"
+                aria-label="名称"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 onKeyDown={(event) => { if (event.key === "Enter") void update(); }}
                 maxLength={100}
-                placeholder="A short name, e.g., Brand guidelines"
+                placeholder="简短的名称，例如品牌指南"
                 autoFocus
                 className="min-w-0 flex-1"
               />
             </div>
           </Field>
           <InputArea
-            label={<span>Description <span className="font-normal text-kumo-inactive">Optional</span></span>}
+            label={<span>描述 <span className="font-normal text-kumo-inactive">可选</span></span>}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="What it contains and when to use it"
+            placeholder="包含什么内容以及何时使用"
             rows={3}
           />
           {collection.content.source === "git" && supportsGitCollections && (
             <div className="flex flex-col gap-4 border-t border-kumo-line pt-4">
               <Input
-                label="Git branch"
-                description="The branch pulled when the collection is refreshed."
+                label="Git 分支"
+                description="刷新知识集合时拉取的分支。"
                 value={branch}
                 onChange={(event) => setBranch(event.target.value)}
                 placeholder={DEFAULT_GIT_BRANCH}
@@ -289,13 +289,13 @@ export const EditCollectionDialog = ({
           )}
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-kumo-line px-4 py-3 sm:px-6">
-          <Button variant="secondary" onClick={dialog.requestClose} disabled={updating || tokenBusy}>Cancel</Button>
+          <Button variant="secondary" onClick={dialog.requestClose} disabled={updating || tokenBusy}>取消</Button>
           <Button
             onClick={update}
             loading={updating}
             disabled={!title.trim() || tokenBusy}
           >
-            Save changes
+            保存更改
           </Button>
         </div>
       </Dialog>

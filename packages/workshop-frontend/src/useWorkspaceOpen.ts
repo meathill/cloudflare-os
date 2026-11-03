@@ -147,7 +147,7 @@ export function useWorkspaceOpen({
         if (message.includes(OBSERVER_CANCELLED)) {
           showTerminalError({
             kind: 'message',
-            message: 'To open this workspace, you must choose connected accounts for the services it uses.',
+            message: '打开此工作区前，请为其使用的服务选择已连接的账号。',
           })
         } else if (message.includes('permitted to observe') ||
                    message.includes('no longer connected') ||

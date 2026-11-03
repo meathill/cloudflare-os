@@ -34,7 +34,7 @@ export const ComposerAttachmentTray = ({
         className="overflow-hidden"
       >
         <ul
-          aria-label="Attachments"
+          aria-label="附件"
           aria-hidden={!open}
           className="m-0 flex list-none gap-2 overflow-x-auto px-3 pb-2 pt-3"
         >

@@ -114,7 +114,7 @@ export function useAutoApproval(overseer: RpcStub<Overseer> | null) {
     } catch (err) {
       console.error('Failed to update auto-approval rule:', err)
       toasts.add({
-        title: `Failed to ${enabled ? 'enable' : 'disable'} auto-approval`,
+        title: `${enabled ? '启用' : '禁用'}自动审批失败`,
         variant: 'error',
       })
     } finally {

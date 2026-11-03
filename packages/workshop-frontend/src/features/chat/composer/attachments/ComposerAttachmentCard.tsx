@@ -55,7 +55,7 @@ export const ComposerAttachmentCard = ({
   disabled: boolean;
   onRemove: () => void;
 }) => {
-  const name = attachment.name ?? "Attached file";
+  const name = attachment.name ?? "附件";
   const KindIcon = KIND_ICONS[attachmentKind(attachment.mimeType, attachment.name)];
   const failed = attachment.uploadState === "error";
 
@@ -65,7 +65,7 @@ export const ComposerAttachmentCard = ({
         {attachment.uploadState === "uploading" ? (
           <>
             <SkeletonLine minWidth={100} maxWidth={100} className="h-full w-full" />
-            <span className="sr-only">Uploading {name}</span>
+            <span className="sr-only">正在上传 {name}</span>
           </>
         ) : attachment.previewUrl && !failed ? (
           <img src={attachment.previewUrl} alt={name} className="h-full w-full object-contain" />
@@ -75,7 +75,7 @@ export const ComposerAttachmentCard = ({
               <div className="flex flex-col gap-1">
                 <WarningIcon size={16} className="text-kumo-danger" />
                 <span className="text-[11px] font-medium leading-[14px] text-kumo-danger sm:text-[12px] sm:leading-4">
-                  Upload failed
+                  上传失败
                 </span>
               </div>
             ) : (
@@ -89,7 +89,7 @@ export const ComposerAttachmentCard = ({
         <span aria-hidden="true" className={OUTLINE_CLASS} />
         <button
           type="button"
-          aria-label={`Remove ${name}`}
+          aria-label={`移除 ${name}`}
           disabled={disabled}
           onClick={onRemove}
           className={REMOVE_BUTTON_CLASS}

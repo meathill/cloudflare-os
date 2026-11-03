@@ -25,10 +25,10 @@ export const DeleteNavigatorNodeDialog = ({
   const [deleting, setDeleting] = useState(false);
   const dialog = useMutationDialog(deleting, onClose);
   const title = target.type === "collection"
-    ? "Delete collection"
+    ? "删除知识集合"
     : target.type === "directory"
-      ? "Delete folder"
-      : "Delete skill";
+      ? "删除文件夹"
+      : "删除技能";
 
   const remove = async () => {
     if (deleting) return;
@@ -39,7 +39,7 @@ export const DeleteNavigatorNodeDialog = ({
       dialog.closeAfterSuccess();
     } catch (error) {
       toasts.add({
-        title: error instanceof Error ? error.message : "Failed to delete",
+        title: error instanceof Error ? error.message : "删除失败",
         variant: "error",
       });
     } finally {
@@ -61,7 +61,7 @@ export const DeleteNavigatorNodeDialog = ({
           <Dialog.Close
             disabled={deleting}
             render={(props) => (
-              <Button {...props} variant="ghost" shape="square" aria-label="Close">
+              <Button {...props} variant="ghost" shape="square" aria-label="关闭">
                 <X size={18} />
               </Button>
             )}
@@ -69,13 +69,13 @@ export const DeleteNavigatorNodeDialog = ({
         </div>
         <div className="px-4 py-5 sm:px-6">
           <Text size="sm" variant="secondary">
-            This permanently deletes <span className="font-medium text-kumo-default">{target.name}</span>
-            {target.type === "directory" ? " and everything inside it" : ""}. This cannot be undone.
+            此操作将永久删除 <span className="font-medium text-kumo-default">{target.name}</span>
+            {target.type === "directory" ? "及其中所有内容" : ""}。此操作不可撤销。
           </Text>
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-kumo-line px-4 py-3 sm:px-6">
-          <Button variant="secondary" onClick={dialog.requestClose} disabled={deleting}>Cancel</Button>
-          <Button variant="destructive" onClick={remove} loading={deleting}>Delete</Button>
+          <Button variant="secondary" onClick={dialog.requestClose} disabled={deleting}>取消</Button>
+          <Button variant="destructive" onClick={remove} loading={deleting}>删除</Button>
         </div>
       </Dialog>
     </Dialog.Root>

@@ -20,16 +20,16 @@ export const ExtraHeadersEditor = ({ rows, errors, onRowsChange, storedValuesUsa
 
   return (
     <fieldset className="grid gap-2">
-      <legend className="mb-2 text-base font-medium text-kumo-default">Extra Headers</legend>
+      <legend className="mb-2 text-base font-medium text-kumo-default">额外请求头</legend>
       <p className="text-sm leading-snug text-kumo-subtle">
-        Sent with every request to the provider, replacing any default header of the same name
+        随每次请求发送给服务商，覆盖同名默认请求头
       </p>
       {rows.map(row => (
         <div key={row.id} className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <Input
-              aria-label="Header name"
-              placeholder="Header name"
+              aria-label="请求头名称"
+              placeholder="请求头名称"
               value={row.name}
               onChange={(e) => updateRow(row.id, { name: e.target.value })}
               error={errors[row.id]}
@@ -37,8 +37,8 @@ export const ExtraHeadersEditor = ({ rows, errors, onRowsChange, storedValuesUsa
           </div>
           <div className="min-w-0 flex-1">
             <StoredSecretInput
-              aria-label="Header value"
-              placeholder="Value"
+              aria-label="请求头值"
+              placeholder="值"
               stored={storedValuesUsable && canKeepStoredValue(row)}
               value={row.value}
               onValueChange={(value) => updateRow(row.id, { value })}
@@ -48,7 +48,7 @@ export const ExtraHeadersEditor = ({ rows, errors, onRowsChange, storedValuesUsa
             variant="ghost"
             shape="square"
             icon={Trash}
-            aria-label="Remove header"
+            aria-label="移除请求头"
             onClick={() => onRowsChange(rows.filter(r => r.id !== row.id))}
           />
         </div>
@@ -60,7 +60,7 @@ export const ExtraHeadersEditor = ({ rows, errors, onRowsChange, storedValuesUsa
           icon={Plus}
           onClick={() => onRowsChange([...rows, newHeaderRow()])}
         >
-          Add header
+          添加请求头
         </Button>
       </div>
     </fieldset>

@@ -100,8 +100,8 @@ describe('ResourcePicker', () => {
     })
 
     const row = [...picker.querySelectorAll('div')].findLast(div => div.textContent?.includes('dan@example.com'))!
-    expect(row.textContent).toContain('Fill in :threadId first')
-    expect(row.textContent).not.toContain('Grant access')
+    expect(row.textContent).toContain('请填写 :threadId 后继续')
+    expect(row.textContent).not.toContain('授予访问权限')
     act(() => row.click())
     expect(onSelectAccount).not.toHaveBeenCalled()
   })

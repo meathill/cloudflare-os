@@ -137,7 +137,7 @@ describe('useWorkspaceOpen', () => {
     expect(document.title).toBe(`Quarterly planning - ${DEFAULT_SITE_NAME}`)
 
     await act(async () => root!.render(<WorkspaceProbe authenticatedApi={api(deniedOverseer)} />))
-    expect(container.textContent).toContain("You don't have access to this workspace")
+    expect(container.textContent).toContain("你无权访问此工作区")
     expect(container.textContent).not.toContain('Quarterly planning')
     expect(document.title).toBe(DEFAULT_SITE_NAME)
     expect(firstSubscriptionDispose).toHaveBeenCalledOnce()
@@ -157,8 +157,8 @@ describe('useWorkspaceOpen', () => {
     root = createRoot(container)
     await act(async () => root!.render(<WorkspaceProbe authenticatedApi={api(overseer)} />))
 
-    expect(container.textContent).toContain('Share links are turned off for this workspace')
+    expect(container.textContent).toContain('此工作区已关闭分享链接')
     expect(container.textContent)
-      .toContain('Ask the workspace owner to add you directly, then try again.')
+      .toContain('请联系工作区所有者直接添加你，然后重试。')
   })
 })

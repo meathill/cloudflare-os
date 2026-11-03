@@ -7,7 +7,7 @@ import type { NotificationMute } from '@gadgets/workshop-shared/api'
  */
 export const describeMute = (mute: NotificationMute | undefined): string | undefined => {
   if (!mute) return undefined
-  if ('indefinite' in mute) return 'Muted'
+  if ('indefinite' in mute) return '已静音'
   if (mute.until.getTime() <= Date.now()) return undefined
-  return `Muted until ${mute.until.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`
+  return `静音至 ${mute.until.toLocaleString('zh-CN', { dateStyle: 'medium', timeStyle: 'short' })}`
 }

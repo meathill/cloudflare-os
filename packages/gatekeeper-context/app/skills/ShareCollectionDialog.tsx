@@ -41,9 +41,9 @@ type ShareState = {
 };
 
 const MEMBER_ROLE_LABELS: Record<ContextCollectionRole, string> = {
-  viewer: "Can view",
-  editor: "Can edit",
-  owner: "Owner",
+  viewer: "可查看",
+  editor: "可编辑",
+  owner: "所有者",
 };
 
 const errorMessage = (error: unknown, fallback: string) =>
@@ -126,7 +126,7 @@ export const ShareCollectionDialog = ({
       setState({ sharing, permissions });
       setLoadError(null);
     } catch (loadFailure) {
-      if (isCurrent()) setLoadError(errorMessage(loadFailure, "Sharing settings could not be loaded."));
+      if (isCurrent()) setLoadError(errorMessage(loadFailure, "无法加载分享设置。"));
     } finally {
       if (isCurrent()) setLoading(false);
     }
@@ -173,7 +173,7 @@ export const ShareCollectionDialog = ({
     try {
       await selectUsers(receiver);
     } catch (failure) {
-      setError(errorMessage(failure, "The person picker could not be opened."));
+      setError(errorMessage(failure, "无法打开用户选择器。"));
     } finally {
       pickerOpen = false;
       // An in-flight delivery may finish later; its receiver reconciles again when it settles.
@@ -187,7 +187,7 @@ export const ShareCollectionDialog = ({
     await mutate(
       member.memberId,
       () => context.setContextCollectionMemberRole(collection.id, member.memberId, role),
-      "The role could not be changed.",
+      "无法更改角色。",
     );
   };
 
@@ -195,7 +195,7 @@ export const ShareCollectionDialog = ({
     await mutate(
       member.memberId,
       () => context.removeContextCollectionMember(collection.id, member.memberId),
-      "The person could not be removed.",
+      "无法移除用户。",
     );
   };
 
@@ -203,7 +203,7 @@ export const ShareCollectionDialog = ({
     await mutate(
       "everyone",
       () => context.setContextCollectionEveryoneCanView(collection.id, everyoneCanView),
-      "Organization access could not be changed.",
+      "无法更改组织访问权限。",
     );
   };
 
@@ -218,7 +218,7 @@ export const ShareCollectionDialog = ({
   const otherMembers = sharing?.members.filter((member) => !member.isViewer) ?? [];
 
   const renderMember = (member: ContextCollectionMember) => {
-    const name = member.isViewer ? "You" : member.displayName ?? "Collection creator";
+    const name = member.isViewer ? "你" : member.displayName ?? "知识集合创建者";
     const isOwner = member.role === "owner";
     const soleOwner = isOwner && ownerCount === 1;
     const canChangeRole = permissions?.canShare
@@ -245,7 +245,7 @@ export const ShareCollectionDialog = ({
                   variant="ghost"
                   size="sm"
                   className="group shrink-0 gap-1.5 text-xs"
-                  aria-label={`Role for ${member.isViewer ? "you" : name}`}
+                  aria-label={`${member.isViewer ? "你" : name}的角色`}
                 >
                   {MEMBER_ROLE_LABELS[member.role]}
                   <CaretDown size={10} weight="bold" className="group-data-[popup-open]:rotate-180" />
@@ -274,7 +274,7 @@ export const ShareCollectionDialog = ({
                       else void removeMember(member);
                     }}
                   >
-                    {member.isViewer ? "Leave collection" : "Remove access"}
+                    {member.isViewer ? "退出知识集合" : "移除访问权限"}
                   </DropdownMenu.Item>
                 </>
               )}
@@ -302,12 +302,12 @@ export const ShareCollectionDialog = ({
       >
         <div className="flex shrink-0 items-start justify-between gap-4 px-4 pb-2 pt-5 sm:px-6">
           <Dialog.Title className="min-w-0 text-[17px] leading-6 font-medium tracking-[-0.35px] text-kumo-default">
-            Share <span className="text-kumo-subtle">“{collection.title}”</span>
+            分享 <span className="text-kumo-subtle">“{collection.title}”</span>
           </Dialog.Title>
           <Dialog.Close
             disabled={pending !== null}
             render={(props) => (
-              <Button {...props} variant="ghost" shape="square" aria-label="Close">
+              <Button {...props} variant="ghost" shape="square" aria-label="关闭">
                 <X size={18} />
               </Button>
             )}
@@ -321,10 +321,10 @@ export const ShareCollectionDialog = ({
                 size="sm"
                 icon={<WarningCircle weight="fill" />}
                 description={loadError}
-                action={<Button size="xs" variant="secondary" disabled={loading} onClick={() => void reload()}>Retry</Button>}
+                action={<Button size="xs" variant="secondary" disabled={loading} onClick={() => void reload()}>重试</Button>}
               />
             ) : (
-              <div role="status" aria-label="Loading sharing settings" className="flex justify-center py-8">
+              <div role="status" aria-label="正在加载分享设置" className="flex justify-center py-8">
                 <Loader size="lg" />
               </div>
             )
@@ -335,9 +335,9 @@ export const ShareCollectionDialog = ({
                   variant="error"
                   size="sm"
                   icon={<WarningCircle weight="fill" />}
-                  title="Sharing settings may be out of date"
+                  title="分享设置可能已过期"
                   description={loadError}
-                  action={<Button size="xs" variant="secondary" disabled={loading} onClick={() => void reload()}>Retry</Button>}
+                  action={<Button size="xs" variant="secondary" disabled={loading} onClick={() => void reload()}>重试</Button>}
                 />
               )}
               {!sharing.hasOwner && (
@@ -345,8 +345,8 @@ export const ShareCollectionDialog = ({
                   variant="alert"
                   size="sm"
                   icon={<Warning weight="fill" />}
-                  title="This collection no longer has an owner"
-                  description="The owner's account was disconnected. Everyone keeps their current access."
+                  title="此知识集合已没有所有者"
+                  description="所有者的账号已断开连接，所有人保留当前访问权限。"
                 />
               )}
               {error && (
@@ -359,7 +359,7 @@ export const ShareCollectionDialog = ({
               )}
 
               <div className="flex flex-wrap items-center gap-x-0 gap-y-2 rounded-xl bg-kumo-tint p-3">
-                <Text>Add users with role</Text>
+                <Text>添加用户并设置角色</Text>
                 <DropdownMenu>
                   <DropdownMenu.Trigger
                     // Each picker session keeps the role it opened with.
@@ -369,7 +369,7 @@ export const ShareCollectionDialog = ({
                         variant="ghost"
                         size="sm"
                         className="group shrink-0 gap-1.5 text-base"
-                        aria-label="Role for users you add"
+                        aria-label="新增用户的角色"
                       >
                         {COLLECTION_ROLE_LABELS[newRole]}
                         <CaretDown size={10} weight="bold" className="group-data-[popup-open]:rotate-180" />
@@ -396,11 +396,11 @@ export const ShareCollectionDialog = ({
                   disabled={!permissions.canShare || controlsDisabled}
                   onClick={() => void addPeople()}
                 >
-                  Select users
+                  选择用户
                 </Button>
               </div>
 
-              <ul aria-label="People with access" className="flex flex-col">
+              <ul aria-label="有权访问的用户" className="flex flex-col">
                 {sharing.members.filter((member) => member.isViewer).map(renderMember)}
                 <li className="flex items-center gap-2 py-3 pl-1.5">
                   <span
@@ -409,7 +409,7 @@ export const ShareCollectionDialog = ({
                   >
                     <Buildings size={16} />
                   </span>
-                  <span className="min-w-0 flex-1 text-sm text-kumo-default">Anyone in organization</span>
+                  <span className="min-w-0 flex-1 text-sm text-kumo-default">组织内所有人</span>
                   <DropdownMenu>
                     <DropdownMenu.Trigger
                       disabled={!permissions.canShare || controlsDisabled}
@@ -418,9 +418,9 @@ export const ShareCollectionDialog = ({
                           variant="ghost"
                           size="sm"
                           className="group shrink-0 gap-1.5 text-xs"
-                          aria-label="Access for anyone in organization"
+                          aria-label="组织内所有人的访问权限"
                         >
-                          {sharing.everyoneCanView ? "Can view" : "No access"}
+                          {sharing.everyoneCanView ? "可查看" : "无访问权限"}
                           <CaretDown size={10} weight="bold" className="group-data-[popup-open]:rotate-180" />
                         </Button>
                       )}
@@ -431,14 +431,14 @@ export const ShareCollectionDialog = ({
                         className="text-xs"
                         onClick={() => { if (sharing.everyoneCanView) void setEveryoneCanView(false); }}
                       >
-                        <span className="min-w-0 flex-1 pr-4">No access</span>
+                        <span className="min-w-0 flex-1 pr-4">无访问权限</span>
                       </DropdownMenu.Item>
                       <DropdownMenu.Item
                         selected={sharing.everyoneCanView}
                         className="text-xs"
                         onClick={() => { if (!sharing.everyoneCanView) void setEveryoneCanView(true); }}
                       >
-                        <span className="min-w-0 flex-1 pr-4">Can view</span>
+                        <span className="min-w-0 flex-1 pr-4">可查看</span>
                       </DropdownMenu.Item>
                     </DropdownMenu.Content>
                   </DropdownMenu>
@@ -452,7 +452,7 @@ export const ShareCollectionDialog = ({
           )}
         </div>
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-kumo-line px-4 py-3 sm:px-6">
-          <Button variant="secondary" onClick={dialog.requestClose} disabled={pending !== null}>Done</Button>
+          <Button variant="secondary" onClick={dialog.requestClose} disabled={pending !== null}>完成</Button>
         </div>
       </Dialog>
       {confirmLeave && (

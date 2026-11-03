@@ -11,16 +11,16 @@ const hoursFromNow = (hours: number): NotificationMute =>
 
 // Each choice computes its mute when picked; "end of day" is the user's next local midnight.
 const MUTE_CHOICES: [label: string, mute: () => NotificationMute][] = [
-  ['For 1 hour', () => hoursFromNow(1)],
-  ['For 3 hours', () => hoursFromNow(3)],
-  ['Until end of day', () => {
+  ['1 小时', () => hoursFromNow(1)],
+  ['3 小时', () => hoursFromNow(3)],
+  ['到今天结束', () => {
     const midnight = new Date()
     midnight.setHours(24, 0, 0, 0)
     return { until: midnight }
   }],
-  ['For 1 day', () => hoursFromNow(24)],
-  ['For 3 days', () => hoursFromNow(3 * 24)],
-  ['Until I turn it back on', () => ({ indefinite: true })],
+  ['1 天', () => hoursFromNow(24)],
+  ['3 天', () => hoursFromNow(3 * 24)],
+  ['直到手动取消静音', () => ({ indefinite: true })],
 ]
 
 /**
@@ -42,14 +42,14 @@ export const WorkspaceNotificationsMenu = ({ workspaceId, mute, onMuteChange }: 
       onMuteChange(next)
     } catch (error) {
       logRpcFailure('Failed to update workspace notifications:', error)
-      toasts.add({ title: 'Failed to update notifications', variant: 'error' })
+      toasts.add({ title: '更新通知失败', variant: 'error' })
     }
   }
 
   if (describeMute(mute)) {
     return (
       <DropdownMenu.Item onClick={() => setMute(undefined)} className={MENU_ITEM}>
-        <Bell size={13} /> Unmute notifications
+        <Bell size={13} /> 取消静音通知
       </DropdownMenu.Item>
     )
   }
@@ -57,12 +57,12 @@ export const WorkspaceNotificationsMenu = ({ workspaceId, mute, onMuteChange }: 
   return (
     <DropdownMenu.Sub>
       <DropdownMenu.SubTrigger className={MENU_ITEM}>
-        <BellSlash size={13} /> Mute notifications
+        <BellSlash size={13} /> 静音通知
       </DropdownMenu.SubTrigger>
       <DropdownMenu.SubContent className={MENU_CONTENT} style={MENU_POSITIONER_STYLE}>
         <DropdownMenu.Group>
           <DropdownMenu.Label className="!px-2.5 !py-1.5 text-[12px] text-kumo-subtle">
-            Still notifies when a task needs your permission
+            任务需要你的许可时仍会通知
           </DropdownMenu.Label>
           {MUTE_CHOICES.map(([label, choose]) => (
             <DropdownMenu.Item key={label} onClick={() => setMute(choose())} className={MENU_ITEM}>

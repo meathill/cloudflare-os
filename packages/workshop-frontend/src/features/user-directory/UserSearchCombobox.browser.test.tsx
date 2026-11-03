@@ -37,9 +37,9 @@ it.each([
   container = document.body.appendChild(document.createElement('div'))
   root = createRoot(container)
   await act(async () => root!.render(<Harness />))
-  const combobox = page.getByRole('combobox', { name: 'Search people' })
+  const combobox = page.getByRole('combobox', { name: '搜索用户' })
   await input(() => userEvent.fill(combobox, 'ada'))
-  const resultText = results.length > 0 ? 'Ada Lovelace' : 'No users found.'
+  const resultText = results.length > 0 ? 'Ada Lovelace' : '未找到用户。'
   await expect.element(page.getByText(resultText)).toBeVisible()
   await input(() => userEvent.keyboard('{ArrowDown}'))
   await expect.element(combobox).toHaveFocus()

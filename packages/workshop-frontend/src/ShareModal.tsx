@@ -30,7 +30,7 @@ type CollaboratorRow =
 // the chip stays for correction while everyone else's goes through.
 type StagedRecipient = { id: string; name: string; error?: string }
 const NO_IDS: ReadonlySet<string> = new Set()
-const NAME_LIST = new Intl.ListFormat('en', { type: 'conjunction' })
+const NAME_LIST = new Intl.ListFormat('zh-CN', { type: 'conjunction' })
 
 function withRecipient(list: StagedRecipient[], recipient: StagedRecipient): StagedRecipient[] {
   return list.some(entry => entry.id === recipient.id) ? list : [...list, recipient]
@@ -62,21 +62,21 @@ function formatRelativeTime(date: Date): string {
   const diffHours = Math.floor(diffMinutes / 60)
   const diffDays = Math.floor(diffHours / 24)
 
-  if (diffSeconds < 60) return 'just now'
-  if (diffMinutes < 60) return `${diffMinutes}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString()
+  if (diffSeconds < 60) return '刚刚'
+  if (diffMinutes < 60) return `${diffMinutes} 分钟前`
+  if (diffHours < 24) return `${diffHours} 小时前`
+  if (diffDays < 7) return `${diffDays} 天前`
+  return date.toLocaleDateString('zh-CN')
 }
 
 const ROLE_LABELS: Record<CollaboratorRole, string> = {
-  build: 'Workspace',
-  use: 'Gadget only',
+  build: '工作区',
+  use: '仅应用',
 }
 
 const ROLE_DESCRIPTIONS: Record<CollaboratorRole, string> = {
-  build: 'Edit gadgets, use chat, and manage access.',
-  use: 'Use gadgets without agent chat or editing.',
+  build: '编辑应用、使用对话并管理访问权限。',
+  use: '使用应用，但不能编辑或与智能体对话。',
 }
 
 function roleLabel(role: CollaboratorRole | undefined): string {
@@ -189,7 +189,7 @@ function InlineConfirm({
         type="button"
         onClick={onCancel}
         disabled={busy}
-        aria-label="Cancel"
+        aria-label="取消"
         className="grid h-7 w-7 cursor-pointer place-items-center rounded-lg text-kumo-inactive transition-[background-color,color,transform] duration-150 ease-out hover:bg-kumo-tint hover:text-kumo-default active:scale-[0.96] disabled:opacity-60"
       >
         <X size={14} />
@@ -259,7 +259,7 @@ function RecipientVerification({
   if (failed) {
     body = (
       <p className="px-1 text-[12px] leading-[16px] tracking-[-0.15px] text-kumo-subtle">
-        Couldn’t check which connections recipients will be asked to verify.
+        无法检查接收者需要验证哪些连接。
       </p>
     )
   } else if (requirements === null || requirements.length === 0) {
@@ -270,8 +270,8 @@ function RecipientVerification({
       <div className="rounded-2xl border border-kumo-line/80 bg-kumo-base px-3 py-2.5">
         <p className="text-[12px] leading-[16px] tracking-[-0.15px] text-kumo-subtle">
           {role ? (
-            <>People with <span className="font-medium text-kumo-default">{roleLabel(role)}</span> access must</>
-          ) : 'Recipients must'} prove their own account can reach:
+            <>拥有<span className="font-medium text-kumo-default">{roleLabel(role)}</span>权限的人必须</>
+          ) : '接收者必须'}证明自己的账号可以访问：
         </p>
         <ul className="mt-1.5 max-h-32 space-y-1 overflow-y-auto">
           {requirements.map(requirement => (
@@ -528,7 +528,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
       return { collaborators: collabs, shareLinks: keys }
     } catch (err) {
       console.error('Failed to load share data:', err)
-      toasts.add({ title: 'Failed to load sharing info', variant: 'error' })
+      toasts.add({ title: '加载分享信息失败', variant: 'error' })
       setMembershipStatus(current => current === 'ready' ? current : 'failed')
       return null
     }
@@ -617,7 +617,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
         requirements={null}
         failed
         headingId="recipient-verification-heading"
-        heading="Recipient verification"
+        heading="接收者验证"
       />
     )
   } else if (requirements !== null) {
@@ -629,7 +629,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
           failed={false}
           role={addRole}
           headingId="recipient-verification-heading"
-          heading="Recipient verification"
+          heading="接收者验证"
         />
       )
     } else {
@@ -641,7 +641,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
             failed={false}
             role={addRole === newLinkRole ? addRole : undefined}
             headingId="recipient-verification-heading"
-            heading="Recipient verification"
+            heading="接收者验证"
           />
         )
       } else {
@@ -652,14 +652,14 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
               failed={false}
               role={addRole}
               headingId="invite-verification-heading"
-              heading="Direct invite verification"
+              heading="直接邀请验证"
             />
             <RecipientVerification
               requirements={linkRequirements}
               failed={false}
               role={newLinkRole}
               headingId="link-verification-heading"
-              heading="Share-link verification"
+              heading="分享链接验证"
             />
           </>
         )
@@ -670,12 +670,12 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
   const revokeTarget = confirmationTarget?.kind === 'revoke' ? confirmationTarget : null
 
   const describeAccess = (info: CollaboratorInfo): string => {
-    if (info.addedBy.length > 1) return `Access from ${info.addedBy.length} sources`
+    if (info.addedBy.length > 1) return `来自 ${info.addedBy.length} 个来源的访问权限`
     const edge = info.addedBy[0]
-    if (!edge) return 'Collaborator'
-    if (edge.type === 'user') return `Added directly by ${edge.sharer}`
+    if (!edge) return '协作者'
+    if (edge.type === 'user') return `由 ${edge.sharer} 直接添加`
     const key = shareLinks.find(item => item.linkId === edge.keyId)
-    return key?.note ? `Joined through “${key.note}”` : 'Joined through a share link'
+    return key?.note ? `通过“${key.note}”加入` : '通过分享链接加入'
   }
 
   const copyNewLink = async () => {
@@ -684,7 +684,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
     if (copied) {
       setNewShareLinkCopied(true)
     } else {
-      toasts.add({ title: 'Could not copy share link.', variant: 'error' })
+      toasts.add({ title: '无法复制分享链接。', variant: 'error' })
     }
   }
 
@@ -696,7 +696,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
     if (await copyToClipboard(workspaceUrl)) {
       setInvitedLinkCopied(true)
     } else {
-      toasts.add({ title: 'Could not copy the workspace link.', variant: 'error' })
+      toasts.add({ title: '无法复制工作区链接。', variant: 'error' })
     }
   }
 
@@ -716,8 +716,8 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
   const stageRecipient = (recipient: StagedRecipient) => {
     const label = recipientLabel(recipient)
     setComposerNotice(staged.some(entry => entry.id === recipient.id)
-      ? `${label} is already listed.`
-      : `Added ${label}.`)
+      ? `${label} 已在列表中。`
+      : `已添加 ${label}。`)
     setStaged(current => withRecipient(current, recipient))
     setAddUsername('')
     peopleInputRef.current?.focus({ preventScroll: true })
@@ -725,7 +725,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
   }
 
   const removeStaged = (recipient: StagedRecipient) => {
-    setComposerNotice(`Removed ${recipientLabel(recipient)}.`)
+    setComposerNotice(`已移除 ${recipientLabel(recipient)}。`)
     setStaged(current => current.filter(entry => entry.id !== recipient.id))
     peopleInputRef.current?.focus({ preventScroll: true })
   }
@@ -787,10 +787,10 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
           const { reason } = outcome
           failed.push({
             ...recipient,
-            error: reason instanceof Error ? reason.message : 'Failed to add collaborator.',
+            error: reason instanceof Error ? reason.message : '添加协作者失败。',
           })
         } else if (outcome.value === null) {
-          failed.push({ ...recipient, error: 'No account found for that username or email.' })
+          failed.push({ ...recipient, error: '未找到此用户名或邮箱对应的账号。' })
         } else {
           added.push(outcome.value.profile)
         }
@@ -811,7 +811,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
         await loadData()
         showLandedRow('person', added.map(profile => profile.id))
         toasts.add({
-          title: `Added ${NAME_LIST.format(names)} as ${names.length === 1 ? 'a collaborator' : 'collaborators'}.`,
+          title: `已将 ${NAME_LIST.format(names)} 添加为协作者。`,
           variant: 'success',
         })
       }
@@ -838,7 +838,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
       showLandedRow('shareLink', [linkId])
     } catch (err: any) {
       // Keep the composer and its values open so the user can retry without re-entering them.
-      toasts.add({ title: err.message || 'Failed to create share link.', variant: 'error' })
+      toasts.add({ title: err.message || '创建分享链接失败。', variant: 'error' })
     } finally {
       creatingLinkRef.current = false
       setCreatingLink(false)
@@ -861,7 +861,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
       }
       const copied = await copyToClipboard(url)
       if (!copied) {
-        toasts.add({ title: 'Could not copy share link.', variant: 'error' })
+        toasts.add({ title: '无法复制分享链接。', variant: 'error' })
         return
       }
       setCopiedLinkId(linkId)
@@ -871,9 +871,9 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
         setCopiedLinkId(current => (current === linkId ? null : current))
         copiedTimerRef.current = null
       }, 2000)
-      toasts.add({ title: 'Link copied to clipboard.', variant: 'success' })
+      toasts.add({ title: '链接已复制到剪贴板。', variant: 'success' })
     } catch (err: any) {
-      toasts.add({ title: err.message || 'Failed to copy share link.', variant: 'error' })
+      toasts.add({ title: err.message || '复制分享链接失败。', variant: 'error' })
     } finally {
       copyingLinkRef.current = false
       setCopyingLinkId(null)
@@ -889,7 +889,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
         : current)
     } catch (err: any) {
       setConfirmationTarget(current => current?.kind === 'remove' && current.profileId === profileId ? null : current)
-      toasts.add({ title: err.message || 'Failed to preview collaborator removal.', variant: 'error' })
+      toasts.add({ title: err.message || '无法预览移除协作者的影响。', variant: 'error' })
     }
   }
 
@@ -901,13 +901,13 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
       setConfirmationTarget(null)
       toasts.add({
         title: removed.length > 0
-          ? 'Collaborator removed.'
-          : 'Your direct grant was removed. This collaborator still has access through another source.',
+          ? '协作者已移除。'
+          : '已移除你直接授予的权限。此协作者仍可通过其他来源访问。',
         variant: 'success',
       })
       await loadData()
     } catch (err: any) {
-      toasts.add({ title: err.message || 'Failed to remove collaborator.', variant: 'error' })
+      toasts.add({ title: err.message || '移除协作者失败。', variant: 'error' })
     } finally {
       setConfirmationBusy(false)
     }
@@ -940,9 +940,9 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
       cancelRenameShareLink()
       await loadData()
       showLandedRow('shareLink', [linkId])
-      toasts.add({ title: 'Share link renamed.', variant: 'success' })
+      toasts.add({ title: '分享链接已重命名。', variant: 'success' })
     } catch (err: any) {
-      toasts.add({ title: err.message || 'Failed to rename share link.', variant: 'error' })
+      toasts.add({ title: err.message || '重命名分享链接失败。', variant: 'error' })
     } finally {
       savingShareLinkNoteRef.current = false
       setSavingShareLinkNote(false)
@@ -959,7 +959,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
         : current)
     } catch (err: any) {
       setConfirmationTarget(current => current?.kind === 'revoke' && current.linkId === linkId ? null : current)
-      toasts.add({ title: err.message || 'Failed to preview share-link revocation.', variant: 'error' })
+      toasts.add({ title: err.message || '无法预览撤销分享链接的影响。', variant: 'error' })
     }
   }
 
@@ -975,10 +975,10 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
         setNewShareLinkCopied(false)
         setShowLinkComposer(false)
       }
-      toasts.add({ title: 'Share link revoked.', variant: 'success' })
+      toasts.add({ title: '分享链接已撤销。', variant: 'success' })
       await loadData()
     } catch (err: any) {
-      toasts.add({ title: err.message || 'Failed to revoke share link.', variant: 'error' })
+      toasts.add({ title: err.message || '撤销分享链接失败。', variant: 'error' })
     } finally {
       setConfirmationBusy(false)
     }
@@ -993,17 +993,17 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
         <div className="flex shrink-0 items-start justify-between gap-4 overflow-hidden px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
           <div className="min-w-0">
             <Dialog.Title className="truncate text-[18px] leading-6 font-medium tracking-[-0.4px] text-kumo-default">
-              Share “{metadata.title}”
+              分享“{metadata.title}”
             </Dialog.Title>
             <Dialog.Description className="mt-1 text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-subtle">
               {canUseShareLinks
-                ? 'Invite people or share a link.'
-                : canInvite ? 'Invite people.' : 'Manage access.'}
+                ? '邀请用户或分享链接。'
+                : canInvite ? '邀请用户。' : '管理访问权限。'}
             </Dialog.Description>
           </div>
           <Dialog.Close
             render={(props) => (
-              <WorkshopIconButton {...props} aria-label="Close">
+              <WorkshopIconButton {...props} aria-label="关闭">
                 <X size={18} />
               </WorkshopIconButton>
             )}
@@ -1021,16 +1021,11 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
               </div>
               {ownerInvitesOnly ? (
                 <p className="text-[12px] leading-[18px] tracking-[-0.1px] text-kumo-default">
-                  This workspace has read data from a connection that doesn’t allow share links, so
-                  only the owner can add people. People the owner invites are asked to verify their
-                  own access to the connections it uses at their access level — some may be unable to
-                  open it. Anything the workspace has already saved is visible to everyone who can.
+                  此工作区读取过不允许分享链接的连接中的数据，因此只有所有者可以添加用户。受邀者需要验证自己的账号是否具有相应访问权限，部分用户可能无法打开。能够打开工作区的人都可以看到其中已保存的内容。
                 </p>
               ) : (
                 <p className="text-[12px] leading-[18px] tracking-[-0.1px] text-kumo-default">
-                  This workspace has read sensitive data. People you invite are asked to verify their
-                  own access to the connections it uses at their access level — some may be unable to
-                  open it. Anything the workspace has already saved is visible to everyone who can.
+                  此工作区读取过敏感数据。受邀者需要验证自己的账号是否具有相应访问权限，部分用户可能无法打开。能够打开工作区的人都可以看到其中已保存的内容。
                 </p>
               )}
             </div>
@@ -1066,7 +1061,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                   )}
                   <button
                     type="button"
-                    aria-label={`Remove ${recipientLabel(recipient)}`}
+                    aria-label={`移除 ${recipientLabel(recipient)}`}
                     onClick={() => removeStaged(recipient)}
                     disabled={adding}
                     className="grid h-4 w-4 shrink-0 cursor-pointer place-items-center rounded-full opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100 disabled:cursor-not-allowed"
@@ -1079,8 +1074,8 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                 ref={peopleInputRef}
                 type="search"
                 role={userSearchEnabled ? 'combobox' : undefined}
-                placeholder={userSearchEnabled ? 'Search by name or email' : 'Username or email'}
-                aria-label={userSearchEnabled ? 'Search people' : 'Username or email'}
+                placeholder={userSearchEnabled ? '按姓名或邮箱搜索' : '用户名或邮箱'}
+                aria-label={userSearchEnabled ? '搜索用户' : '用户名或邮箱'}
                 aria-autocomplete={userSearchEnabled ? 'list' : undefined}
                 aria-expanded={userSearchEnabled ? directoryOpen : undefined}
                 aria-controls={directoryOpen ? directoryListboxId : undefined}
@@ -1107,7 +1102,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
               />
             </div>
             <RoleMenu
-              ariaLabel="Access to grant"
+              ariaLabel="授予的权限"
               value={addRole}
               onValueChange={setAddRole}
               container={menuContainer}
@@ -1122,14 +1117,14 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
               onClick={() => void handleInvite(typedRecipient)}
               disabled={!canSubmitInvite || adding}
             >
-              {adding ? 'Inviting…' : inviteCount > 1 ? `Invite ${inviteCount} people` : 'Invite'}
+              {adding ? '正在邀请…' : inviteCount > 1 ? `邀请 ${inviteCount} 人` : '邀请'}
             </WorkshopButton>
             {directoryOpen && directoryPortalContainer && createPortal(
               <div
                 ref={directoryListboxRef}
                 id={directoryListboxId}
                 role="listbox"
-                aria-label="Matching people"
+                aria-label="匹配的用户"
                 aria-busy={directory.status === 'loading'}
                 // Pressing anywhere in the popover (an option, its padding, the scrollbar) must not
                 // blur the combobox, which would dismiss the popover before the click lands.
@@ -1137,13 +1132,13 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                 className="chat-panel themed-floating-shadow-lg pointer-events-auto absolute overscroll-contain overflow-y-auto rounded-xl border border-kumo-line/70 bg-kumo-base p-2"
               >
                 {directory.status === 'loading' ? (
-                  <p role="status" className="px-3 py-2 text-[12px] text-kumo-subtle">Searching…</p>
+                  <p role="status" className="px-3 py-2 text-[12px] text-kumo-subtle">正在搜索…</p>
                 ) : directory.status === 'failed' ? (
                   <p role="status" className="px-3 py-2 text-[12px] text-kumo-danger">
-                    User search is temporarily unavailable.
+                    暂时无法搜索用户。
                   </p>
                 ) : directory.results.length === 0 ? (
-                  <p role="status" className="px-3 py-2 text-[12px] text-kumo-subtle">No users found.</p>
+                  <p role="status" className="px-3 py-2 text-[12px] text-kumo-subtle">未找到用户。</p>
                 ) : (
                   <>
                     {directory.results.map((user, index) => (
@@ -1190,10 +1185,10 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                       <UserPlus size={15} className="shrink-0 text-kumo-subtle" />
                       <span className="min-w-0">
                         <span className="block truncate text-[13px] font-medium text-kumo-default">
-                          Add &ldquo;{directoryQuery}&rdquo; exactly
+                          准确添加 &ldquo;{directoryQuery}&rdquo;
                         </span>
                         <span className="block text-[11px] text-kumo-subtle">
-                          Use the text as a username or email
+                          将输入内容用作用户名或邮箱
                         </span>
                       </span>
                     </button>
@@ -1222,20 +1217,20 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
               <div className="min-w-[160px] flex-1">
                 <div className="flex items-baseline gap-1.5">
                   <p className="text-[13px] leading-[18px] font-medium text-kumo-default">
-                    Added {NAME_LIST.format(invitedNames)}
+                    已添加 {NAME_LIST.format(invitedNames)}
                   </p>
                   <span className="text-[11px] leading-4 text-kumo-inactive">
-                    {invitedLinkCopied ? 'Link copied to your clipboard' : 'Send them this link to open it'}
+                    {invitedLinkCopied ? '链接已复制到剪贴板' : '将链接发给他们以打开工作区'}
                   </span>
                 </div>
                 <p className="truncate font-mono text-[11px] leading-4 text-kumo-subtle">{workspaceUrl}</p>
               </div>
               <WorkshopButton tone="primary" onClick={copyWorkspaceUrl} className="gap-1.5 !rounded-xl">
                 {invitedLinkCopied ? <Check size={13} weight="bold" /> : <Copy size={13} />}
-                {invitedLinkCopied ? 'Copied' : 'Copy link'}
+                {invitedLinkCopied ? '已复制' : '复制链接'}
               </WorkshopButton>
               <WorkshopIconButton
-                aria-label="Dismiss added collaborator"
+                aria-label="关闭已添加协作者提示"
                 onClick={() => { setInvitedNames([]); setInvitedLinkCopied(false) }}
               >
                 <X size={14} />
@@ -1254,20 +1249,20 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                     <div className="min-w-[160px] flex-1">
                       <div className="flex items-baseline gap-1.5">
                         <p className="text-[13px] leading-[18px] font-medium text-kumo-default">
-                          {newShareLinkCopied ? 'Link copied' : 'Link ready'}
+                          {newShareLinkCopied ? '链接已复制' : '链接已就绪'}
                         </p>
                         <span className="text-[11px] leading-4 text-kumo-inactive">
-                          You can copy it again anytime from Share links
+                          你可以随时在分享链接中再次复制
                         </span>
                       </div>
                       <p className="truncate font-mono text-[11px] leading-4 text-kumo-subtle">{newShareLink}</p>
                     </div>
                     <WorkshopButton tone="primary" onClick={copyNewLink} className="w-[78px] gap-1.5 !rounded-xl">
                       {newShareLinkCopied ? <Check size={13} weight="bold" /> : <Copy size={13} />}
-                      {newShareLinkCopied ? 'Copied' : 'Copy'}
+                      {newShareLinkCopied ? '已复制' : '复制'}
                     </WorkshopButton>
                     <WorkshopIconButton
-                      aria-label="Dismiss created link"
+                      aria-label="关闭已创建链接提示"
                       onClick={() => { setNewShareLink(null); setNewShareLinkId(null); setNewShareLinkCopied(false); setShowLinkComposer(false) }}
                     >
                       <X size={14} />
@@ -1283,22 +1278,22 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                       value={newLinkNote}
                       onChange={(e) => setNewLinkNote(e.target.value)}
                       onKeyDown={(e) => { if (!isImeComposing(e) && e.key === 'Enter') handleCreateShareLink() }}
-                      placeholder="Name this link (optional)…"
-                      aria-label="Share link name (optional)"
+                      placeholder="为链接命名（可选）…"
+                      aria-label="分享链接名称（可选）"
                       className="h-9 min-w-0 flex-1 border-0 bg-transparent p-0 text-[14px] leading-5 tracking-[-0.25px] text-kumo-default outline-none placeholder:text-kumo-inactive"
                       disabled={creatingLink}
                     />
                     <RoleMenu
-                      ariaLabel="Access granted by link"
+                      ariaLabel="链接授予的权限"
                       value={newLinkRole}
                       onValueChange={setNewLinkRole}
                       disabled={creatingLink}
                       container={menuContainer}
                     />
                     <WorkshopButton tone="primary" className="shrink-0 !rounded-xl" onClick={handleCreateShareLink} disabled={creatingLink}>
-                      {creatingLink ? 'Creating…' : 'Create link'}
+                      {creatingLink ? '正在创建…' : '创建链接'}
                     </WorkshopButton>
-                    <WorkshopIconButton aria-label="Cancel creating link" onClick={() => setShowLinkComposer(false)}>
+                    <WorkshopIconButton aria-label="取消创建链接" onClick={() => setShowLinkComposer(false)}>
                       <X size={14} />
                     </WorkshopIconButton>
                 </div>
@@ -1309,7 +1304,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                 onClick={() => setShowLinkComposer(true)}
                 className="themed-compact-shadow flex h-12 w-full cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-kumo-line/80 bg-kumo-base px-3 text-[13px] font-medium text-kumo-subtle transition-[background-color,color,transform] duration-150 ease-out hover:bg-kumo-elevated/60 hover:text-kumo-default active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Link size={14} /> Create a share link
+                <Link size={14} /> 创建分享链接
               </button>
             )}
           </div>
@@ -1322,7 +1317,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
           <section aria-labelledby="people-heading" className="mt-4">
             <div className="mb-2 px-1">
               <h3 id="people-heading" className="text-[12px] leading-4 font-medium tracking-[-0.15px] text-kumo-subtle">
-                People with access
+                有访问权限的人
               </h3>
             </div>
             <div className="overflow-hidden rounded-2xl border border-kumo-line/80 bg-kumo-base">
@@ -1339,19 +1334,19 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                       <PersonAvatar api={authenticatedApi} userId={profile.id} name={profile.name} size={32} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] leading-[17px] font-medium tracking-[-0.25px] text-kumo-default">
-                          {profile.name}{profile.id === currentUser?.id ? ' (you)' : ''}
+                          {profile.name}{profile.id === currentUser?.id ? '（你）' : ''}
                         </p>
                         <p className="truncate text-[12px] leading-[15px] tracking-[-0.15px] text-kumo-subtle">
                           {row.kind === 'owner' ? profile.id : describeAccess(row.info)}
                         </p>
                       </div>
                       {row.kind === 'owner' ? (
-                        <span className="px-2 text-[12px] text-kumo-subtle">Owner</span>
+                        <span className="px-2 text-[12px] text-kumo-subtle">所有者</span>
                       ) : isRemoving ? (
                         <InlineConfirm
-                          label="Remove"
+                          label="移除"
                           busy={removeTarget.previewing || confirmationBusy}
-                          busyLabel={removeTarget.previewing ? 'Checking…' : undefined}
+                          busyLabel={removeTarget.previewing ? '正在检查…' : undefined}
                           onConfirm={handleConfirmRemoveCollaborator}
                           onCancel={() => setConfirmationTarget(null)}
                         />
@@ -1362,7 +1357,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                             danger
                             className="!h-7 !w-7 opacity-35 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                             onClick={() => handleStartRemoveCollaborator(row.info.profile.id)}
-                            aria-label={`Remove ${profile.name}`}
+                            aria-label={`移除 ${profile.name}`}
                             disabled={confirmationBusy}
                           >
                             <Trash size={13} />
@@ -1373,7 +1368,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                     {isRemoving && downstreamDependents.length > 0 && (
                       <div className="mt-2.5 share-expand-in">
                         <p className="mb-1.5 text-[12px] leading-4 text-kumo-subtle">
-                          {downstreamDependents.length} other {downstreamDependents.length === 1 ? 'person loses' : 'people lose'} access through {profile.name}. Keep anyone?
+                          另有 {downstreamDependents.length} 人将失去通过 {profile.name} 获得的访问权限。要保留哪些人的权限？
                         </p>
                         <DependentKeepList
                           dependents={downstreamDependents}
@@ -1396,7 +1391,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
           <section aria-labelledby="links-heading" className="mt-4">
             <div className="mb-2 px-1">
               <h3 id="links-heading" className="text-[12px] leading-4 font-medium tracking-[-0.15px] text-kumo-subtle">
-                Share links
+                分享链接
               </h3>
             </div>
 
@@ -1421,19 +1416,19 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                                 if (e.key === 'Enter') handleSaveShareLinkNote()
                                 if (e.key === 'Escape') cancelRenameShareLink()
                               }}
-                              placeholder="Name this link…"
-                              aria-label="Share link name"
+                              placeholder="为链接命名…"
+                              aria-label="分享链接名称"
                               className="block w-full border-0 bg-transparent p-0 text-[13px] leading-[17px] font-medium tracking-[-0.25px] text-kumo-default outline-none shadow-[inset_0_-1px_0_0_var(--color-kumo-line)] transition-shadow placeholder:font-normal placeholder:text-kumo-inactive focus:shadow-[inset_0_-1px_0_0_var(--color-kumo-fill)]"
                               disabled={savingShareLinkNote}
                             />
                           ) : (
-                            <p className="truncate text-[13px] leading-[17px] font-medium tracking-[-0.25px] text-kumo-default">{sk.note || 'Untitled link'}</p>
+                            <p className="truncate text-[13px] leading-[17px] font-medium tracking-[-0.25px] text-kumo-default">{sk.note || '未命名链接'}</p>
                           )}
-                          <p className="truncate text-[12px] leading-[15px] tracking-[-0.15px] text-kumo-subtle">Created by {sk.createdBy.name} · {formatRelativeTime(sk.created)}</p>
+                          <p className="truncate text-[12px] leading-[15px] tracking-[-0.15px] text-kumo-subtle">创建者 {sk.createdBy.name} · {formatRelativeTime(sk.created)}</p>
                         </div>
                         {isRenaming ? (
                           <InlineConfirm
-                            label="Save"
+                            label="保存"
                             tone="brand"
                             busy={savingShareLinkNote}
                             onConfirm={handleSaveShareLinkNote}
@@ -1441,9 +1436,9 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                           />
                         ) : isRevoking ? (
                           <InlineConfirm
-                            label="Revoke"
+                            label="撤销"
                             busy={revokeTarget.previewing || confirmationBusy}
-                            busyLabel={revokeTarget.previewing ? 'Checking…' : undefined}
+                            busyLabel={revokeTarget.previewing ? '正在检查…' : undefined}
                             onConfirm={handleConfirmRevokeShareLink}
                             onCancel={() => setConfirmationTarget(null)}
                           />
@@ -1454,7 +1449,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                               <WorkshopIconButton
                                 className="!h-7 !w-7"
                                 onClick={() => handleCopyShareLink(sk.linkId)}
-                                aria-label={`Copy ${sk.note || 'share link'}`}
+                                aria-label={`复制 ${sk.note || '分享链接'}`}
                                 disabled={confirmationBusy || copyingLinkId === sk.linkId}
                               >
                                 {copiedLinkId === sk.linkId ? <Check size={13} weight="bold" /> : <Copy size={13} />}
@@ -1463,7 +1458,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                             <WorkshopIconButton
                               className="!h-7 !w-7 opacity-35 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                               onClick={() => startRenameShareLink(sk)}
-                              aria-label={`Rename ${sk.note || 'share link'}`}
+                              aria-label={`重命名 ${sk.note || '分享链接'}`}
                               disabled={confirmationBusy}
                             >
                               <PencilSimple size={13} />
@@ -1472,7 +1467,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                               danger
                               className="!h-7 !w-7 opacity-35 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                               onClick={() => handleStartRevokeShareLink(sk.linkId)}
-                              aria-label={`Revoke ${sk.note || 'share link'}`}
+                              aria-label={`撤销 ${sk.note || '分享链接'}`}
                               disabled={confirmationBusy}
                             >
                               <Trash size={13} />
@@ -1483,7 +1478,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, currentU
                       {isRevoking && revokeTarget.dependents.length > 0 && (
                         <div className="mt-2.5 share-expand-in">
                           <p className="mb-1.5 text-[12px] leading-4 text-kumo-subtle">
-                            {revokeTarget.dependents.length} {revokeTarget.dependents.length === 1 ? 'person loses' : 'people lose'} access through this link. Keep anyone?
+                            有 {revokeTarget.dependents.length} 人将失去通过此链接获得的访问权限。要保留哪些人的权限？
                           </p>
                           <DependentKeepList
                             dependents={revokeTarget.dependents}

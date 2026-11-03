@@ -240,7 +240,7 @@ describe('UserSearchCombobox', () => {
     expect(search).toHaveBeenCalledWith('dormant@example.com')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     await act(async () => pending.reject(new Error('offline')))
-    expect(container.textContent).toContain('User search is temporarily unavailable.')
+    expect(container.textContent).toContain('暂时无法搜索用户。')
     expect(onSearchStateChange).toHaveBeenLastCalledWith({
       status: 'failed', query: 'dormant@example.com', resultCount: 0,
     })
@@ -269,8 +269,8 @@ describe('UserSearchCombobox', () => {
 
   it('labels exact identifier input and never calls the directory when search is disabled', async () => {
     const { input, search, onSubmit, onSelect } = await render({ searchEnabled: false })
-    expect(input.getAttribute('aria-label')).toBe('Username or email')
-    expect(input.placeholder).toBe('Username or email')
+    expect(input.getAttribute('aria-label')).toBe('用户名或邮箱')
+    expect(input.placeholder).toBe('用户名或邮箱')
     expect(input.getAttribute('role')).toBeNull()
     expect(input.getAttribute('aria-autocomplete')).toBeNull()
     expect(input.getAttribute('aria-expanded')).toBeNull()
@@ -298,7 +298,7 @@ describe('UserSearchCombobox', () => {
     expect(search).toHaveBeenCalledTimes(1)
     await update({ searchEnabled: false })
     expect(input.value).toBe('ada')
-    expect(input.getAttribute('aria-label')).toBe('Username or email')
+    expect(input.getAttribute('aria-label')).toBe('用户名或邮箱')
     expect(container.querySelector('[role="listbox"]')).toBeNull()
     await act(async () => pending.resolve([ADA]))
     expect(container.querySelector('[role="option"]')).toBeNull()

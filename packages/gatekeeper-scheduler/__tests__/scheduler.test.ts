@@ -328,7 +328,7 @@ describe("Scheduler account", () => {
   it("advertises the generic Scheduled management app", () => {
     expect(describeScheduleAccount()).toMatchObject({
       singleton: { tsType: "ScheduleSession" },
-      providesUi: { title: "Scheduled" },
+      providesUi: { title: "定时任务" },
     });
   });
 });

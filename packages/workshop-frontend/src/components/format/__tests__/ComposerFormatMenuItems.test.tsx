@@ -56,12 +56,12 @@ describe('ComposerFormatMenuItems', () => {
       )
     })
 
-    expect(document.body.textContent).toContain('选择剧作方向 (START WITH)')
+    expect(document.body.textContent).toContain('选择剧作方向')
     expect(document.body.textContent).toContain('剧目资料与口碑研报 (全网搜索)')
     expect(document.body.textContent).toContain('爆款拆解与重构 (A+C)')
     expect(document.body.textContent).toContain('纯原创漫剧创作 (B+C)')
-    expect(document.body.textContent).toContain('好莱坞分场剧本 (Script)')
-    expect(document.body.textContent).toContain('故事节拍大纲 (Beat Sheet)')
+    expect(document.body.textContent).toContain('好莱坞分场剧本')
+    expect(document.body.textContent).toContain('故事节拍大纲')
     expect(document.body.textContent).toContain('人物小传与弧光设计')
   })
 

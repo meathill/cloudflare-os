@@ -64,8 +64,8 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, busy, 
     <form noValidate onSubmit={save} className="grid content-start gap-2 sm:col-span-2">
       <Input
         ref={ref}
-        label={<>Allowed models<span className="sr-only"> for {modelName}</span></>}
-        placeholder="Every model of the providers that are on"
+        label={<>允许的模型<span className="sr-only">（{modelName}）</span></>}
+        placeholder="所有已启用服务商的模型"
         value={text}
         disabled={busy}
         onChange={(event) => edit(event.target.value)}
@@ -76,22 +76,20 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, busy, 
       <p id={facts} className="text-sm leading-snug text-kumo-subtle">
         {providers.length > 0 ? (
           <>
-            Left blank, Auto picks from every model of the providers that are on (
-            {providers.map((provider) => PROVIDER_LABELS[provider]).join(', ')}) in{' '}
+            留空时，自动模式从已启用的服务商（
+            {providers.map((provider) => PROVIDER_LABELS[provider]).join(', ')}）的{' '}
             <a href={POOL_DOCS} target="_blank" rel="noreferrer" className="underline">
-              Cloudflare’s model pool
+              Cloudflare 模型池
             </a>
             .
           </>
         ) : (
-          <>No provider is on for Auto to pick from: turn one on above.</>
+          <>没有可供自动选择的已启用服务商，请在上方启用。</>
         )}{' '}
-        To narrow it, list models by their gateway names, separated by commas:{' '}
+        如需缩小范围，请用逗号分隔模型的网关名称：{' '}
         <span className="font-mono">anthropic/claude-sonnet-5.5</span>,{' '}
-        <span className="font-mono">anthropic/*</span> or{' '}
-        <span className="font-mono">@cf/*/*</span>. Disabling a model above doesn’t take it out
-        of the pool; listing does. After saving, press Test: a name the gateway doesn’t know
-        fails every request.
+        <span className="font-mono">anthropic/*</span> 或{' '}
+        <span className="font-mono">@cf/*/*</span>. 在上方禁用模型不会将其从模型池中移除；在此列出模型才会限制范围。保存后请点击测试：网关不认识的模型名称会导致每次请求失败。
       </p>
       {alert.alert}
       <div className="flex gap-2">
@@ -100,9 +98,9 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, busy, 
           variant="secondary"
           size="sm"
           disabled={busy}
-          aria-label={`Save the allowed models of ${modelName}`}
+          aria-label={`保存 ${modelName} 的允许模型`}
         >
-          Save
+          保存
         </Button>
         {allowedModels !== undefined && (
           <Button
@@ -110,10 +108,10 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, busy, 
             variant="ghost"
             size="sm"
             disabled={busy}
-            aria-label={`Reset the allowed models of ${modelName}`}
+            aria-label={`重置 ${modelName} 的允许模型`}
             onClick={reset}
           >
-            Reset
+            重置
           </Button>
         )}
       </div>

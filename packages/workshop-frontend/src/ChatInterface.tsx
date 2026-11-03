@@ -242,11 +242,11 @@ type CreatedWorkpieceCardInfo = {
 // The card's caption: what the workpiece is and what clicking does. A worktree has no app to
 // preview; opening it lands on its code.
 function describeCreatedWorkpiece(created: CreatedWorkpieceCardInfo): string {
-  if (created.type === "worktree") return "Worktree · Click to open its code";
+  if (created.type === "worktree") return "工作树 · 点击打开代码";
   const noun = formatOf(created.output).noun;
   return created.isPending
-    ? `New ${noun.toLowerCase()} · Click to preview`
-    : `${noun} · Click to open`;
+    ? `新建${noun} · 点击预览`
+    : `${noun} · 点击打开`;
 }
 
 function CreatedWorkpieceChatCard({
@@ -284,7 +284,7 @@ function CreatedWorkpieceChatCard({
             <span className="mt-0.5 flex items-center gap-1.5 text-[12px] text-kumo-subtle">
               {created.type === "gadget" && created.isPending && (
                 <span className="rounded-full bg-kumo-fill px-1.5 py-0.5 text-[10px] font-medium leading-none">
-                  Draft
+                  草稿
                 </span>
               )}
               <span>{describeCreatedWorkpiece(created)}</span>
@@ -325,9 +325,9 @@ type ChatChangeRowBuffer = {
 type ChatListScope = "direct" | "agents" | "all";
 
 const CHAT_LIST_SCOPE_LABELS: Record<ChatListScope, string> = {
-  all: "All",
-  direct: "Started by people",
-  agents: "Started by agents",
+  all: "全部",
+  direct: "由用户发起",
+  agents: "由智能体发起",
 };
 
 const SHOW_THINKING_TRACES_KEY = "showThinkingTraces";
@@ -606,42 +606,42 @@ function getToolCallSummary(
 ): { verb: string; target?: string } {
   switch (tc.toolName) {
     case "readFile":
-      return { verb: "Read", target: tc.input.filename };
+      return { verb: "已读取", target: tc.input.filename };
     case "writeFile":
-      return { verb: "Wrote", target: tc.input.filename };
+      return { verb: "已写入", target: tc.input.filename };
     case "editFile":
-      return { verb: "Edited", target: tc.input.filename };
+      return { verb: "已编辑", target: tc.input.filename };
     case "grep":
-      return { verb: "Searched", target: tc.input.path ?? tc.input.workpiece };
+      return { verb: "已搜索", target: tc.input.path ?? tc.input.workpiece };
     case "describeBinding":
       return {
-        verb: "Inspected",
+        verb: "已检查",
         target: tc.input.gadget === undefined
-          ? `${String(tc.input.name)} binding`
-          : `${String(tc.input.name)} binding of ${tc.input.gadget}`,
+          ? `${String(tc.input.name)} 绑定`
+          : `${tc.input.gadget} 的 ${String(tc.input.name)} 绑定`,
       };
     case "setBindingHook":
       return {
-        verb: "Connected",
+        verb: "已连接",
         target: tc.input.entrypoint
           ? `${tc.input.bindingName} → ${tc.input.entrypoint}`
           : tc.input.bindingName,
       };
     case "setGadgetBinding":
       return {
-        verb: "Wired up",
+        verb: "已关联",
         target: formatGadgetBindingTarget(tc.input.gadget, tc.input.name ?? tc.input.source),
       };
     // Obsolete predecessor of `setGadgetBinding`; appears only in old chat logs.
     case "saveCapsuleAsBinding":
-      return { verb: "Saved resource", target: tc.input.bindingName };
+      return { verb: "已保存资源", target: tc.input.bindingName };
     case "createGadget": {
 
       const output = outputOf?.(tc);
-      return { verb: `Created ${output?.noun ?? "gadget"}`, target: tc.input.title };
+      return { verb: `已创建${output?.noun ?? "应用"}`, target: tc.input.title };
     }
     case "createWorktree":
-      return { verb: "Created worktree", target: tc.input.title };
+      return { verb: "已创建工作树", target: tc.input.title };
     case "executeCode": {
       // Prefer the first non-empty line as a preview. `code` may be absent while the tool call's
       // input is still streaming in, so guard against undefined.
@@ -650,7 +650,7 @@ function getToolCallSummary(
         .map((line) => line.trim())
         .find((line) => line.length > 0);
       return {
-        verb: "Ran code",
+        verb: "已运行代码",
         target: firstLine
           ? firstLine.length > 60
             ? `${firstLine.slice(0, 57)}…`
@@ -659,7 +659,7 @@ function getToolCallSummary(
       };
     }
     case "giveUp":
-      return { verb: "Stopped" };
+      return { verb: "已停止" };
     case "webFetch": {
       let target = tc.input.url;
       try {
@@ -667,20 +667,20 @@ function getToolCallSummary(
       } catch {
         // Leave as the raw URL.
       }
-      return { verb: "Fetched", target };
+      return { verb: "已获取", target };
     }
     case "webSearch":
-      return { verb: "Searched", target: tc.input.query };
+      return { verb: "已搜索", target: tc.input.query };
     case "observeUserChanges":
-      return { verb: "Observed user changes" };
+      return { verb: "已观察用户更改" };
     case "listBlueprints":
-      return { verb: "Listed blueprints" };
+      return { verb: "已列出蓝图" };
     case "listConnectableResources":
-      return { verb: "Listed connectable resources", target: tc.input.vendorId };
+      return { verb: "已列出可连接资源", target: tc.input.vendorId };
     case "requestConnection":
-      return { verb: "Requested connection", target: tc.input.vendorId };
+      return { verb: "已请求连接", target: tc.input.vendorId };
     case "createExternalResource":
-      return { verb: "Created", target: tc.input.title };
+      return { verb: "已创建", target: tc.input.title };
   }
   // Compile-time exhaustiveness check.
   const _exhaustive: never = tc;
@@ -732,58 +732,50 @@ function lowerFirst(text: string): string {
   return text ? text[0].toLowerCase() + text.slice(1) : text;
 }
 
-function pluralize(count: number, singular: string, plural = `${singular}s`): string {
-  return `${count} ${count === 1 ? singular : plural}`;
-}
-
-function formatTimes(count: number): string {
-  return pluralize(count, "time");
-}
-
 function describeObservationCount(count: number): string {
-  return count === 1 ? "Read 1 resource" : `${count} resource reads`;
+  return count === 1 ? "已读取 1 个资源" : `已读取 ${count} 个资源`;
 }
 
 function describeToolCallCount(toolName: AiToolCall["toolName"], count: number): string {
   switch (toolName) {
     case "readFile":
-      return `Read ${pluralize(count, "file")}`;
+      return `已读取 ${count} 个文件`;
     case "writeFile":
-      return `Wrote ${pluralize(count, "file")}`;
+      return `已写入 ${count} 个文件`;
     case "editFile":
-      return count === 1 ? "Made 1 edit" : `Made ${count} edits`;
+      return count === 1 ? "已编辑 1 次" : `已编辑 ${count} 次`;
     case "grep":
-      return count === 1 ? "Searched files" : `Searched files ${formatTimes(count)}`;
+      return count === 1 ? "已搜索文件" : `已搜索文件 ${count} 次`;
     case "webFetch":
-      return `Fetched ${pluralize(count, "page")}`;
+      return `已获取 ${count} 个网页`;
     case "webSearch":
-      return `Searched ${pluralize(count, "query", "queries")}`;
+      return `已搜索 ${count} 次查询`;
     case "executeCode":
-      return count === 1 ? "Ran code" : `Ran code ${formatTimes(count)}`;
+      return count === 1 ? "已运行代码" : `已运行代码 ${count} 次`;
     case "describeBinding":
-      return `Inspected ${pluralize(count, "binding")}`;
+      return `已检查 ${count} 个绑定`;
     case "setBindingHook":
-      return `Connected ${pluralize(count, "binding")}`;
+      return `已连接 ${count} 个绑定`;
     case "setGadgetBinding":
-      return `Wired up ${pluralize(count, "binding")}`;
+      return `已关联 ${count} 个绑定`;
     case "saveCapsuleAsBinding":
-      return `Saved ${pluralize(count, "resource")}`;
+      return `已保存 ${count} 个资源`;
     case "createGadget":
-      return `Created ${pluralize(count, "gadget")}`;
+      return `已创建 ${count} 个应用`;
     case "createWorktree":
-      return `Created ${pluralize(count, "worktree")}`;
+      return `已创建 ${count} 个工作树`;
     case "observeUserChanges":
-      return `Observed ${pluralize(count, "change set")}`;
+      return `已观察 ${count} 组更改`;
     case "giveUp":
-      return count === 1 ? "Stopped" : `Stopped ${count} times`;
+      return count === 1 ? "已停止" : `已停止 ${count} 次`;
     case "listBlueprints":
-      return `Listed blueprints`;
+      return `已列出蓝图`;
     case "listConnectableResources":
-      return `Listed connectable resources`;
+      return `已列出可连接资源`;
     case "requestConnection":
-      return count === 1 ? "Requested a connection" : `Requested ${count} connections`;
+      return count === 1 ? "已请求连接" : `已请求 ${count} 个连接`;
     case "createExternalResource":
-      return `Created ${pluralize(count, "external resource")}`;
+      return `已创建 ${count} 个外部资源`;
   }
   const _exhaustive: never = toolName;
   return _exhaustive;
@@ -834,37 +826,37 @@ const userBubbleClassName = `themed-user-bubble-shadow w-fit max-w-[min(680px,78
 function getProvisionalToolLabel(toolName: AiToolCall["toolName"] | null | undefined) {
   switch (toolName) {
     case "readFile":
-      return "Reading file";
+      return "正在读取文件";
     case "writeFile":
-      return "Writing file";
+      return "正在写入文件";
     case "editFile":
-      return "Editing file";
+      return "正在编辑文件";
     case "grep":
-      return "Searching files";
+      return "正在搜索文件";
     case "describeBinding":
-      return "Inspecting binding";
+      return "正在检查绑定";
     case "setBindingHook":
-      return "Connecting binding";
+      return "正在连接绑定";
     case "setGadgetBinding":
-      return "Wiring up binding";
+      return "正在关联绑定";
     case "saveCapsuleAsBinding":
-      return "Saving resource";
+      return "正在保存资源";
     case "createGadget":
-      return "Creating gadget";
+      return "正在创建应用";
     case "createWorktree":
-      return "Creating worktree";
+      return "正在创建工作树";
     case "executeCode":
-      return "Running code";
+      return "正在运行代码";
     case "webFetch":
-      return "Fetching web page";
+      return "正在获取网页";
     case "webSearch":
-      return "Searching the web";
+      return "正在搜索网页";
     case "observeUserChanges":
-      return "Observing user changes";
+      return "正在观察用户更改";
     case "giveUp":
-      return "Stopping";
+      return "正在停止";
     default:
-      return "Using tool";
+      return "正在使用工具";
   }
 }
 
@@ -875,25 +867,25 @@ function getToolTarget(tc: AiToolCall): string | undefined {
 // Present-tense verb for an in-progress tool call.
 function getProvisionalToolVerb(toolName: AiToolCall["toolName"]): string {
   switch (toolName) {
-    case "readFile": return "Reading";
-    case "writeFile": return "Writing";
-    case "editFile": return "Editing";
-    case "grep": return "Searching";
-    case "describeBinding": return "Inspecting";
-    case "setBindingHook": return "Connecting";
-    case "setGadgetBinding": return "Wiring up";
-    case "saveCapsuleAsBinding": return "Saving";
-    case "createGadget": return "Creating gadget";
-    case "createWorktree": return "Creating worktree";
-    case "executeCode": return "Running code";
-    case "webFetch": return "Fetching";
-    case "webSearch": return "Searching";
-    case "observeUserChanges": return "Observing user changes";
-    case "giveUp": return "Stopping";
-    case "listBlueprints": return "Listing blueprints";
-    case "listConnectableResources": return "Listing connectable resources";
-    case "requestConnection": return "Requesting a connection";
-    case "createExternalResource": return "Creating external resource";
+    case "readFile": return "正在读取";
+    case "writeFile": return "正在写入";
+    case "editFile": return "正在编辑";
+    case "grep": return "正在搜索";
+    case "describeBinding": return "正在检查";
+    case "setBindingHook": return "正在连接";
+    case "setGadgetBinding": return "正在关联";
+    case "saveCapsuleAsBinding": return "正在保存";
+    case "createGadget": return "正在创建应用";
+    case "createWorktree": return "正在创建工作树";
+    case "executeCode": return "正在运行代码";
+    case "webFetch": return "正在获取";
+    case "webSearch": return "正在搜索";
+    case "observeUserChanges": return "正在观察用户更改";
+    case "giveUp": return "正在停止";
+    case "listBlueprints": return "正在列出蓝图";
+    case "listConnectableResources": return "正在列出可连接资源";
+    case "requestConnection": return "正在请求连接";
+    case "createExternalResource": return "正在创建外部资源";
   }
   const _exhaustive: never = toolName;
   return _exhaustive;
@@ -903,25 +895,25 @@ function getProvisionalToolVerb(toolName: AiToolCall["toolName"]): string {
 function describeProvisionalToolCount(toolName: AiToolCall["toolName"], count: number): string {
   if (count <= 1) return getProvisionalToolLabel(toolName);
   switch (toolName) {
-    case "readFile": return `Reading ${pluralize(count, "file")}`;
-    case "writeFile": return `Writing ${pluralize(count, "file")}`;
-    case "editFile": return `Making ${count} edits`;
-    case "grep": return `Searching files ${formatTimes(count)}`;
-    case "webFetch": return `Fetching ${pluralize(count, "page")}`;
-    case "webSearch": return `Searching ${pluralize(count, "query", "queries")}`;
-    case "executeCode": return count === 1 ? "Running code" : `Running code ${formatTimes(count)}`;
-    case "describeBinding": return `Inspecting ${pluralize(count, "binding")}`;
-    case "setBindingHook": return `Connecting ${pluralize(count, "binding")}`;
-    case "setGadgetBinding": return `Wiring up ${pluralize(count, "binding")}`;
-    case "saveCapsuleAsBinding": return `Saving ${pluralize(count, "resource")}`;
-    case "createGadget": return `Creating ${pluralize(count, "gadget")}`;
-    case "createWorktree": return `Creating ${pluralize(count, "worktree")}`;
-    case "observeUserChanges": return `Observing ${pluralize(count, "change set")}`;
-    case "giveUp": return "Stopping";
-    case "listBlueprints": return "Listing blueprints";
-    case "listConnectableResources": return "Listing connectable resources";
-    case "requestConnection": return `Requesting ${pluralize(count, "connection")}`;
-    case "createExternalResource": return `Creating ${pluralize(count, "external resource")}`;
+    case "readFile": return `正在读取 ${count} 个文件`;
+    case "writeFile": return `正在写入 ${count} 个文件`;
+    case "editFile": return `正在编辑 ${count} 次`;
+    case "grep": return `正在搜索文件 ${count} 次`;
+    case "webFetch": return `正在获取 ${count} 个网页`;
+    case "webSearch": return `正在搜索 ${count} 次查询`;
+    case "executeCode": return count === 1 ? "正在运行代码" : `正在运行代码 ${count} 次`;
+    case "describeBinding": return `正在检查 ${count} 个绑定`;
+    case "setBindingHook": return `正在连接 ${count} 个绑定`;
+    case "setGadgetBinding": return `正在关联 ${count} 个绑定`;
+    case "saveCapsuleAsBinding": return `正在保存 ${count} 个资源`;
+    case "createGadget": return `正在创建 ${count} 个应用`;
+    case "createWorktree": return `正在创建 ${count} 个工作树`;
+    case "observeUserChanges": return `正在观察 ${count} 组更改`;
+    case "giveUp": return "正在停止";
+    case "listBlueprints": return "正在列出蓝图";
+    case "listConnectableResources": return "正在列出可连接资源";
+    case "requestConnection": return `正在请求 ${count} 个连接`;
+    case "createExternalResource": return `正在创建 ${count} 个外部资源`;
   }
   const _exhaustive: never = toolName;
   return _exhaustive;
@@ -933,7 +925,7 @@ function buildProvisionalToolSummary(
 ): { label: string; detailLines: string[] } {
 
   if (calls.length === 1 && calls[0].outputFormat) {
-    return { label: `Creating ${calls[0].outputFormat.noun}`, detailLines: [] };
+    return { label: `正在创建${calls[0].outputFormat.noun}`, detailLines: [] };
   }
   const toolNames = Array.from(
     new Set(calls.map((c) => c.toolName).filter((n): n is AiToolCall["toolName"] => !!n)),
@@ -943,7 +935,7 @@ function buildProvisionalToolSummary(
   );
 
   if (toolNames.length === 0) {
-    return { label: "Using tool", detailLines: [] };
+    return { label: "正在使用工具", detailLines: [] };
   }
 
   if (toolNames.length > 1) {
@@ -1185,8 +1177,8 @@ function CodeBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
         type="button"
         className={styles.codeCopyButton}
         onClick={() => void copyToClipboard(code)}
-        aria-label="Copy code"
-        title="Copy code"
+        aria-label="复制代码"
+        title="复制代码"
       >
         <ClipboardIcon size={16} />
       </button>
@@ -1356,7 +1348,7 @@ const AttachmentPreviewModal = memo(function AttachmentPreviewModal(
   if (!attachment) return null;
 
   const sizeLabel = formatAttachmentSize(attachment.size);
-  const title = attachment.name ?? "Attached file";
+  const title = attachment.name ?? "附件";
   const modalWidthClass = isImage
     ? "w-[min(1120px,calc(100vw-32px))]"
     : "w-[min(520px,calc(100vw-32px))]";
@@ -1368,7 +1360,7 @@ const AttachmentPreviewModal = memo(function AttachmentPreviewModal(
       className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/45 p-4 backdrop-blur-[1px]"
       role="dialog"
       aria-modal="true"
-      aria-label={`Preview ${title}`}
+      aria-label={`预览 ${title}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -1378,7 +1370,7 @@ const AttachmentPreviewModal = memo(function AttachmentPreviewModal(
           type="button"
           onClick={onClose}
           className="absolute right-3 top-3 z-10 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-kumo-line bg-kumo-base/90 text-kumo-subtle shadow-[0_1px_2px_rgba(0,0,0,0.05)] backdrop-blur-sm transition-[background-color,color,transform] duration-150 ease-out hover:bg-kumo-base hover:text-kumo-default active:scale-[0.96]"
-          aria-label="Close preview"
+          aria-label="关闭预览"
         >
           <X size={18} />
         </button>
@@ -1398,16 +1390,16 @@ const AttachmentPreviewModal = memo(function AttachmentPreviewModal(
                 </div>
                 <div className="text-[14px] font-medium text-kumo-default">{title}</div>
                 <div className="text-[12px] leading-5 text-kumo-subtle">
-                  {attachment.mimeType || "Unknown file type"}{sizeLabel ? ` · ${sizeLabel}` : ""}
+                  {attachment.mimeType || "未知文件类型"}{sizeLabel ? ` · ${sizeLabel}` : ""}
                 </div>
-                <div className="text-[12px] leading-5 text-kumo-inactive">This file can’t be previewed here.</div>
+                <div className="text-[12px] leading-5 text-kumo-inactive">无法在此预览此文件。</div>
                 {onDownload && (
                   <button
                     type="button"
                     onClick={() => onDownload(attachment)}
                     className="mt-1 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-kumo-line/70 bg-kumo-base px-3 py-1.5 text-[12px] font-medium text-kumo-default transition-colors hover:bg-kumo-tint/40"
                   >
-                    Download
+                    下载
                   </button>
                 )}
               </div>
@@ -1439,27 +1431,27 @@ const ChatAttachmentThumbnail = memo(function ChatAttachmentThumbnail(
       type="button"
       onClick={() => onPreview(attachment.id)}
       className="relative h-28 w-36 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-kumo-line/70 bg-kumo-elevated text-left transition-[border-color,background-color,transform] duration-150 ease-out hover:border-kumo-line hover:bg-kumo-tint/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-brand/40 active:scale-[0.98]"
-      aria-label={`Preview ${attachment.name ?? "attached file"}`}
+      aria-label={`预览 ${attachment.name ?? "附件"}`}
     >
       {isImage && objectUrl && imageState !== "error" ? (
         <>
           {/* Kept in layout (not display:none) so lazy-loading actually triggers. */}
           <img
             src={objectUrl}
-            alt={attachment.name ?? "Attached image"}
+            alt={attachment.name ?? "附加图片"}
             loading="lazy"
             className="block h-full w-full object-cover"
             onLoad={() => setImageState("loaded")}
             onError={() => setImageState("error")}
           />
           {imageState !== "loaded" && (
-            <div className="absolute inset-0 grid place-items-center bg-kumo-elevated text-[11px] text-kumo-inactive">Loading image…</div>
+            <div className="absolute inset-0 grid place-items-center bg-kumo-elevated text-[11px] text-kumo-inactive">正在加载图片…</div>
           )}
         </>
       ) : (
         <div className="flex h-full w-full min-w-0 items-center justify-center gap-2 p-3 text-[12px] leading-4 text-kumo-subtle">
           <FileIcon size={20} className="shrink-0 text-kumo-inactive" />
-          <span className="min-w-0 truncate">{attachment.name ?? "Attached file"}</span>
+          <span className="min-w-0 truncate">{attachment.name ?? "附件"}</span>
         </div>
       )}
     </button>
@@ -1517,7 +1509,7 @@ const ToolCallDetails = memo(function ToolCallDetails(
       {tc.toolName === "executeCode" ? (
         <>
           <span className="font-mono text-[11px] leading-4 text-kumo-inactive uppercase tracking-[0.08em]">
-            Code
+            代码
           </span>
           <pre className="max-h-56 overflow-auto rounded-xl border border-kumo-line/70 bg-kumo-base p-3 font-mono text-[12px] leading-[18px] text-kumo-subtle whitespace-pre-wrap">
             {tc.input.code}
@@ -1525,7 +1517,7 @@ const ToolCallDetails = memo(function ToolCallDetails(
           {tc.output && (
             <>
               <span className="font-mono text-[11px] leading-4 text-kumo-inactive uppercase tracking-[0.08em]">
-                Output
+                输出
               </span>
               <pre className="max-h-56 overflow-auto rounded-xl border border-kumo-line/70 bg-kumo-base p-3 font-mono text-[12px] leading-[18px] text-kumo-subtle whitespace-pre-wrap">
                 {tc.output}
@@ -1619,7 +1611,7 @@ const NestedToolCallRow = memo(function NestedToolCallRow({
           <span className="min-w-0 truncate">{label}</span>
           {tc.error && (
             <span className="flex-shrink-0 rounded-full bg-kumo-danger-tint px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-kumo-danger">
-              Error
+              错误
             </span>
           )}
           <CaretRight
@@ -1649,7 +1641,7 @@ const NestedObservationRow = memo(function NestedObservationRow({
 }) {
   const key = `observation-${observation.chatId}-${observation.sequence}`;
   const log = observation.actionLog;
-  const label = `Read ${log.description.title || log.resourceTitle || "resource"}`;
+  const label = `已读取 ${log.description.title || log.resourceTitle || "资源"}`;
 
   return (
     <div className="group/nested">
@@ -1738,7 +1730,7 @@ const ToolGroupRow = memo(function ToolGroupRow({
             <span className="min-w-0 truncate">{group.label}</span>
             {group.hasError && (
               <span className="flex-shrink-0 rounded-full bg-kumo-danger-tint px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-kumo-danger">
-                Error
+                错误
               </span>
             )}
             <CaretRight
@@ -1806,7 +1798,7 @@ const ToolGroupRow = memo(function ToolGroupRow({
           </Tooltip>
           <Tooltip content={formatFullTimestamp(footerTimestamp)} asChild>
             <span className="px-1 font-mono text-[11px] leading-4 text-kumo-inactive">
-              {footerTimestamp.toLocaleTimeString([], {
+              {footerTimestamp.toLocaleTimeString("zh-CN", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -1960,7 +1952,7 @@ function appendWorkParts(target: WorkMessageParts, source: WorkMessageParts) {
 function describeCreatedWorkpieceDeletion(created: CreatedWorkpieceName[] | undefined): string {
   if (!created || created.length === 0) return "";
   const titles = created.map((c) => `“${c.title}”`);
-  return ` (deletes ${titles.length === 1 ? "gadget" : "gadgets"} ${titles.join(", ")})`;
+  return `（将删除应用 ${titles.join("、")}）`;
 }
 
 // Label for the per-turn discard-changes button.
@@ -1969,8 +1961,8 @@ function getDiscardLabel(
   createdWorkpieces?: CreatedWorkpieceName[],
 ): string {
   const base = isTrailing
-    ? "Discard changes from this response"
-    : "Discard changes from this response and later responses";
+    ? "放弃此回复的更改"
+    : "放弃此回复及后续回复的更改";
   return base + describeCreatedWorkpieceDeletion(createdWorkpieces);
 }
 
@@ -1979,8 +1971,8 @@ function getSavedEditsDiscardLabel(
   createdWorkpieces?: CreatedWorkpieceName[],
 ): string {
   const base = isTrailing
-    ? "Discard saved edits"
-    : "Discard saved edits and later changes";
+    ? "放弃已保存的编辑"
+    : "放弃已保存的编辑及后续更改";
   return base + describeCreatedWorkpieceDeletion(createdWorkpieces);
 }
 
@@ -2006,7 +1998,7 @@ function DiscardPendingChangesPopover({
             disabled={disabled}
             className="inline-flex h-[30px] cursor-pointer items-center justify-center rounded-md border border-kumo-fill bg-kumo-base px-2.5 text-[12px] font-medium leading-[18px] tracking-[-0.25px] text-kumo-default transition-colors enabled:hover:bg-kumo-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Discard…
+            放弃…
           </button>
         }
       />
@@ -2019,14 +2011,13 @@ function DiscardPendingChangesPopover({
       >
         <div className="px-3.5 pb-2.5 pt-3">
           <Popover.Title className="text-[13px] font-medium leading-[18px] tracking-[-0.25px] text-kumo-default">
-            Discard all pending changes?
+            放弃所有待处理更改？
           </Popover.Title>
           <p className="mt-0.5 text-[11.5px] leading-4 tracking-[-0.15px] text-kumo-subtle">
-            Return to the last accepted version. Any gadgets or worktrees created by these
-            changes will be permanently deleted. Pending changes can&apos;t be restored.
+            返回上一个已接受的版本。这些更改创建的应用和工作树将被永久删除，待处理更改无法恢复。
           </p>
           <p className="mt-2 border-t border-kumo-line pt-2 text-[11px] leading-[15px] tracking-[-0.1px] text-kumo-inactive">
-            Use the <ArrowUUpLeft size={12} className="mx-0.5 inline-block align-[-2px]" aria-hidden="true" /><span className="sr-only">undo arrow</span> under any agent response to discard from that turn onward.
+            使用智能体回复下方的 <ArrowUUpLeft size={12} className="mx-0.5 inline-block align-[-2px]" aria-hidden="true" /><span className="sr-only">撤销箭头</span> ，放弃从该轮开始的更改。
           </p>
         </div>
         <div className="flex items-center justify-end gap-0.5 border-t border-kumo-line px-2 py-1.5">
@@ -2036,7 +2027,7 @@ function DiscardPendingChangesPopover({
             onClick={() => onOpenChange(false)}
             className="flex h-6 cursor-pointer items-center rounded-md px-2 text-[12px] font-medium tracking-[-0.15px] text-kumo-inactive transition-colors enabled:hover:bg-kumo-tint enabled:hover:text-kumo-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Cancel
+            取消
           </button>
           <button
             type="button"
@@ -2044,7 +2035,7 @@ function DiscardPendingChangesPopover({
             onClick={onConfirm}
             className="flex h-6 cursor-pointer items-center rounded-md px-2 text-[12px] font-medium tracking-[-0.15px] text-kumo-default transition-colors enabled:hover:bg-kumo-tint enabled:hover:text-kumo-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {isDiscarding ? "Discarding..." : "Discard changes"}
+            {isDiscarding ? "正在放弃…" : "放弃更改"}
           </button>
         </div>
       </Popover.Content>
@@ -2557,10 +2548,10 @@ function chatHasProposedChanges(meta: AiChatMetadata): boolean {
 type ChatTimeBucket = "today" | "yesterday" | "thisWeek" | "earlier";
 
 const CHAT_TIME_BUCKET_LABELS: Record<ChatTimeBucket, string> = {
-  today: "Today",
-  yesterday: "Yesterday",
-  thisWeek: "Earlier this week",
-  earlier: "Earlier",
+  today: "今天",
+  yesterday: "昨天",
+  thisWeek: "本周早些时候",
+  earlier: "更早",
 };
 const CHAT_TIME_BUCKET_ORDER: ChatTimeBucket[] = [
   "today",
@@ -2589,17 +2580,17 @@ function getChatTimeBucket(date: Date, now: Date): ChatTimeBucket {
 // own the "date" half of the label (via the section header), so rows only show
 // what the header doesn't.
 function formatChatRowTime(date: Date, bucket: ChatTimeBucket, now: Date): string {
-  const time = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const time = date.toLocaleTimeString("zh-CN", { hour: "numeric", minute: "2-digit" });
   if (bucket === "today" || bucket === "yesterday") {
     return time;
   }
   if (bucket === "thisWeek") {
-    const day = date.toLocaleDateString([], { weekday: "short" });
+    const day = date.toLocaleDateString("zh-CN", { weekday: "short" });
     return `${day} ${time}`;
   }
   const sameYear = date.getFullYear() === now.getFullYear();
   return date.toLocaleDateString(
-    [],
+    "zh-CN",
     sameYear
       ? { month: "short", day: "numeric" }
       : { month: "short", day: "numeric", year: "numeric" },
@@ -3211,7 +3202,7 @@ function ChatInterface({
       }
     } catch (err: any) {
       console.error("Failed to download chat attachment:", err);
-      toasts.add({ title: err?.message || "Failed to download attachment", variant: "error" });
+      toasts.add({ title: err?.message || "下载附件失败", variant: "error" });
     }
   }, [overseer, toasts]);
 
@@ -3710,7 +3701,7 @@ function ChatInterface({
           provisional.compacting = false;
           if (event.nothingToCompact) {
             toastsRef.current.add({
-              title: "Nothing to compact — there are no earlier messages to summarize.",
+              title: "无需压缩：没有更早的消息可供总结。",
             });
           }
           break;
@@ -3878,7 +3869,7 @@ function ChatInterface({
       } catch (err) {
         if (!logRpcFailure("Failed to subscribe to chats:", err)) {
           reportIssue('chat.subscription-load', err)
-          toasts.add({ title: "Unable to load conversations", variant: "error" });
+          toasts.add({ title: "无法加载对话", variant: "error" });
         }
       }
     };
@@ -4039,7 +4030,7 @@ function ChatInterface({
       forceUpdate();
     } catch (err) {
       console.error("Failed to load earlier messages:", err);
-      toasts.add({ title: "Failed to load earlier messages", variant: "error" });
+      toasts.add({ title: "加载更早的消息失败", variant: "error" });
     } finally {
       setIsLoadingEarlier(false);
     }
@@ -4081,7 +4072,7 @@ function ChatInterface({
     } catch (err) {
       if (!logRpcFailure("Failed to send message:", err, { reportSite: "chat.send" })) {
         toasts.add({
-          title: "Failed to send message",
+          title: "发送消息失败",
           description: rpcFailureDescription(err),
           variant: "error",
         });
@@ -4108,7 +4099,7 @@ function ChatInterface({
     } catch (err) {
       if (!logRpcFailure("Failed to create new chat:", err, { reportSite: "chat.new" })) {
         toasts.add({
-          title: "Failed to start conversation",
+          title: "开始对话失败",
           description: rpcFailureDescription(err),
           variant: "error",
         });
@@ -4131,7 +4122,7 @@ function ChatInterface({
       await overseer.stopAgent(selectedChatId);
     } catch (err) {
       console.error("Failed to stop agent:", err);
-      toasts.add({ title: "Failed to stop agent", variant: "error" });
+      toasts.add({ title: "停止智能体失败", variant: "error" });
       throw err;
     }
   };
@@ -4156,10 +4147,10 @@ function ChatInterface({
       }
 
       setIsEditingTitle(false);
-      toasts.add({ title: "Chat title updated successfully", variant: "success" });
+      toasts.add({ title: "对话标题已更新", variant: "success" });
     } catch (err) {
       console.error("Failed to update chat title:", err);
-      toasts.add({ title: "Failed to update chat title", variant: "error" });
+      toasts.add({ title: "更新对话标题失败", variant: "error" });
     }
   };
 
@@ -4183,10 +4174,10 @@ function ChatInterface({
     setIsDeleting(true);
     try {
       await overseer.deleteChat(deleteTarget.id);
-      toasts.add({ title: "Chat deleted successfully", variant: "success" });
+      toasts.add({ title: "对话已删除", variant: "success" });
     } catch (err) {
       console.error("Failed to delete chat:", err);
-      toasts.add({ title: "Failed to delete chat", variant: "error" });
+      toasts.add({ title: "删除对话失败", variant: "error" });
     }
     setIsDeleting(false);
     setDeleteTarget(null);
@@ -4225,10 +4216,10 @@ function ChatInterface({
         bumpChatListVersion();
         forceUpdate();
       }
-      toasts.add({ title: "Chat title updated successfully", variant: "success" });
+      toasts.add({ title: "对话标题已更新", variant: "success" });
     } catch (err) {
       console.error("Failed to update chat title:", err);
-      toasts.add({ title: "Failed to update chat title", variant: "error" });
+      toasts.add({ title: "更新对话标题失败", variant: "error" });
     }
   };
 
@@ -4246,11 +4237,11 @@ function ChatInterface({
         setStaleAcceptChatId(selectedChatId);
         return;
       }
-      toasts.add({ title: "Changes accepted", variant: "success" });
+      toasts.add({ title: "已接受更改", variant: "success" });
     } catch (err) {
       console.error("Failed to accept changes:", err);
       toasts.add({
-        title: "Failed to accept changes",
+        title: "接受更改失败",
         description: rpcFailureDescription(err),
         variant: "error",
       });
@@ -4278,7 +4269,7 @@ function ChatInterface({
       // one that removed the last marker.
       if (conflicted.length > 0 && reader.hasLocalEdits()) {
         toasts.add({
-          title: "Your latest edits are still being saved. Try accepting again in a moment.",
+          title: "最新编辑仍在保存，请稍后再接受更改。",
         });
         return;
       }
@@ -4291,7 +4282,7 @@ function ChatInterface({
           (commitId, paths) => commitFileStore.readFiles(overseerFileReader, commitId, paths));
       } catch (err) {
         console.error("Failed to check for merge conflicts:", err);
-        toasts.add({ title: "Failed to check the changes for merge conflicts", variant: "error" });
+        toasts.add({ title: "检查合并冲突失败", variant: "error" });
         return;
       }
       if (selectedChatIdRef.current !== chatId) return;
@@ -4316,14 +4307,13 @@ function ChatInterface({
       setStaleAcceptChatId(null);
       if (conflictPaths.length > 0) {
         toasts.add({
-          title: `Updated this draft with the gadget's latest changes. ` +
-            `${conflictPaths.length} ${conflictPaths.length === 1 ? "file has" : "files have"} ` +
-            `conflicts marked in the code -- resolve them (or ask the agent to), then accept again.`,
+          title: `已将应用的最新更改引入此草稿。` +
+            `${conflictPaths.length} 个文件的冲突已在代码中标记，请自行或让智能体解决后再次接受。`,
           variant: "warning",
         });
       } else {
         toasts.add({
-          title: "Updated this draft with the gadget's latest changes. Review and accept again.",
+          title: "已将应用的最新更改引入此草稿，请检查后再次接受。",
           variant: "success",
         });
       }
@@ -4333,7 +4323,7 @@ function ChatInterface({
       console.error("Failed to update from mainline:", err);
       toasts.add({
         title: err instanceof Error && err.message
-          ? err.message : "Failed to bring in the latest changes",
+          ? err.message : "引入最新更改失败",
         variant: "error",
       });
     } finally {
@@ -4346,10 +4336,10 @@ function ChatInterface({
 
     try {
       await overseer.finalizeChatDraft(selectedChatId);
-      toasts.add({ title: "Changes saved", variant: "success" });
+      toasts.add({ title: "更改已保存", variant: "success" });
     } catch (err) {
       console.error("Failed to save changes:", err);
-      toasts.add({ title: "Failed to save changes", variant: "error" });
+      toasts.add({ title: "保存更改失败", variant: "error" });
     }
   };
 
@@ -4360,10 +4350,10 @@ function ChatInterface({
       // The destructive generation bump this causes prunes the buffered rows when its
       // metadata arrives (see the metadata handler).
       await overseer.discardChatDraftChanges(selectedChatId);
-      toasts.add({ title: "Changes discarded", variant: "success" });
+      toasts.add({ title: "更改已放弃", variant: "success" });
     } catch (err) {
       console.error("Failed to discard changes:", err);
-      toasts.add({ title: "Failed to discard changes", variant: "error" });
+      toasts.add({ title: "放弃更改失败", variant: "error" });
     }
   };
 
@@ -4380,13 +4370,13 @@ function ChatInterface({
       setDiscardChangesTarget((current) =>
         current?.chatId === target.chatId ? null : current,
       );
-      toasts.add({ title: "Pending changes discarded", variant: "success" });
+      toasts.add({ title: "待处理更改已放弃", variant: "success" });
     } catch (err) {
       console.error("Failed to discard pending changes:", err);
       // See handleRevertChanges: the server's refusals are instructive, so surface them.
       toasts.add({
         title: err instanceof Error && err.message
-          ? err.message : "Failed to discard pending changes",
+          ? err.message : "放弃待处理更改失败",
         variant: "error",
       });
     } finally {
@@ -4485,13 +4475,13 @@ function ChatInterface({
 
     try {
       await overseer.revertChanges(selectedChatId, revertFrom);
-      toasts.add({ title: "Draft rewound", variant: "success" });
+      toasts.add({ title: "草稿已回退", variant: "success" });
     } catch (err) {
       console.error("Failed to rewind draft:", err);
       // The server's refusals here are instructive (e.g. a still-proposed update-from-mainline
       // batch can't be reverted), so surface them rather than a generic failure.
       toasts.add({
-        title: err instanceof Error && err.message ? err.message : "Failed to rewind draft",
+        title: err instanceof Error && err.message ? err.message : "回退草稿失败",
         variant: "error",
       });
     }
@@ -4567,7 +4557,7 @@ function ChatInterface({
       setConnectionAccept(null);
     } catch (err) {
       console.error("Failed to finalize connection:", err);
-      toasts.add({ title: "Failed to add connection", variant: "error" });
+      toasts.add({ title: "添加连接失败", variant: "error" });
     } finally {
       gk[Symbol.dispose]();
       setProcessingConnections((prev) => {
@@ -4588,7 +4578,7 @@ function ChatInterface({
       }
     } catch (err) {
       console.error("Failed to deny connection:", err);
-      toasts.add({ title: "Failed to deny connection", variant: "error" });
+      toasts.add({ title: "拒绝连接失败", variant: "error" });
     } finally {
       setProcessingConnections((prev) => {
         const next = new Set(prev);
@@ -4669,7 +4659,7 @@ function ChatInterface({
     } catch (err) {
       console.error("Failed to retry agent:", err);
       toasts.add({
-        title: "Failed to retry agent",
+        title: "重试智能体失败",
         description: rpcFailureDescription(err),
         variant: "error",
       });
@@ -4679,7 +4669,7 @@ function ChatInterface({
   const handleCopyMessage = useCallback(async (message: string) => {
     const ok = await copyToClipboard(message);
     toasts.add({
-      title: ok ? "Copied message" : "Unable to copy message",
+      title: ok ? "消息已复制" : "无法复制消息",
       variant: ok ? "success" : "error",
     });
   }, [toasts]);
@@ -4921,7 +4911,7 @@ function ChatInterface({
     const isDenied = msg.state === "denied";
     const isProc = processingConnections.has(msg.requestId);
 
-    const stateLabel = isAccepted ? "Connected" : isDenied ? "Denied" : null;
+    const stateLabel = isAccepted ? "已连接" : isDenied ? "已拒绝" : null;
     const stateLabelCls = isDenied ? "text-kumo-danger" : "text-kumo-success";
     const scope = msg.resourceTitle ?? msg.resourceUrl;
 
@@ -4937,7 +4927,7 @@ function ChatInterface({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span className="font-medium text-kumo-default">
-                  Connect {msg.vendorName}
+                  连接 {msg.vendorName}
                 </span>
                 {scope && (
                   <span className="rounded-full bg-kumo-tint px-2 py-0.5 text-[11px] leading-4 text-kumo-subtle">
@@ -4964,7 +4954,7 @@ function ChatInterface({
                   disabled={isProc}
                   className="cursor-pointer rounded-md px-2 py-1 font-medium text-kumo-inactive transition-colors duration-150 ease-out hover:text-kumo-danger focus-visible:text-kumo-danger focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Deny
+                  拒绝
                 </button>
                 <button
                   type="button"
@@ -4972,7 +4962,7 @@ function ChatInterface({
                   disabled={isProc}
                   className="cursor-pointer rounded-md bg-kumo-brand px-3 py-1 font-medium text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 focus-visible:outline-none active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Set up
+                  设置
                 </button>
               </div>
             )}
@@ -4995,10 +4985,10 @@ function ChatInterface({
     if (log.type === "bindHook") {
       const isDeleted = log.hookId === undefined;
       const stateLabel = isDeleted
-        ? "Deleted"
+        ? "已删除"
         : log.enabled
-          ? "Enabled"
-          : "Disabled";
+          ? "已启用"
+          : "已停用";
       const stateLabelCls = isDeleted
         ? "text-kumo-inactive"
         : log.enabled
@@ -5016,7 +5006,7 @@ function ChatInterface({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span className="font-medium text-kumo-default">
-                    Hook: {log.description.title}
+                    钩子： {log.description.title}
                   </span>
                   <span className={`text-[12px] font-medium ${stateLabelCls}`}>
                     {stateLabel}
@@ -5115,9 +5105,9 @@ function ChatInterface({
     const showDescription = isPending || open;
     const metadata = log.resourceTitle;
     const stateLabel = isApproved
-      ? "Approved"
+      ? "已批准"
       : isRejected
-        ? "Denied"
+        ? "已拒绝"
         : null;
     const stateLabelCls = isRejected
       ? "text-kumo-danger"
@@ -5163,7 +5153,7 @@ function ChatInterface({
       <>
         {autoApproveTarget &&
           !isTagAutoApproved(autoApproveTarget.gatekeeperId, autoApproveTarget.actionKind.tag) && (
-          <Tooltip content="Always approve this type of action on this connection, without future prompts." asChild>
+          <Tooltip content="始终批准此连接上的此类操作，不再提示。" asChild>
             <span className="flex">
               <AlwaysApproveButton
                 onClick={() => setAutoApproveConfirm(autoApproveTarget)}
@@ -5325,7 +5315,7 @@ function ChatInterface({
               <button
                 type="button"
                 className="group flex h-8 -ml-1.5 cursor-pointer items-center gap-1.5 rounded-md px-1.5 text-left transition-colors duration-150 ease-out hover:bg-kumo-tint/60 focus-visible:bg-kumo-tint/60 focus-visible:outline-none data-[popup-open]:bg-kumo-tint/60"
-                aria-label="Filter conversations"
+                aria-label="筛选对话"
               >
                 <span className="text-[13px] leading-[18px] font-medium tracking-[-0.25px] text-kumo-default">
                   {CHAT_LIST_SCOPE_LABELS[chatListScope]}
@@ -5368,7 +5358,7 @@ function ChatInterface({
           </div>
         ) : chatList.length === 0 ? (
           <p className="text-sm text-kumo-inactive text-center py-8">
-            No conversations yet
+            暂无对话
           </p>
         ) : (
           <div className="flex flex-col gap-1">
@@ -5377,14 +5367,14 @@ function ChatInterface({
               // the all-empty case is handled by the outer chatList.length check.
               <div className="py-8 text-center">
                 <p className="text-[13px] leading-[18px] text-kumo-inactive">
-                  No conversations started by {chatListScope === "agents" ? "agents" : "people"} yet
+                  还没有由 {chatListScope === "agents" ? "智能体" : "用户"} 发起的对话
                 </p>
                 <button
                   type="button"
                   onClick={() => setChatListScope("all")}
                   className="mt-2 cursor-pointer rounded-md px-2 py-1 text-[12px] leading-4 font-medium text-kumo-subtle transition-colors duration-150 ease-out hover:text-kumo-default focus-visible:text-kumo-default focus-visible:outline-none"
                 >
-                  Show all
+                  显示全部
                 </button>
               </div>
             ) : (
@@ -5432,7 +5422,7 @@ function ChatInterface({
                             spellCheck={false}
                             autoCapitalize="off"
                             autoCorrect="off"
-                            aria-label={`Rename ${chat.title}`}
+                            aria-label={`重命名 ${chat.title}`}
                             className="min-w-0 flex-1 bg-transparent text-[13px] leading-[18px] font-medium tracking-[-0.25px] text-kumo-default outline-none placeholder:text-kumo-inactive"
                           />
                         ) : (
@@ -5452,13 +5442,13 @@ function ChatInterface({
                         {!isRenaming && chat.activeAgent ? (
                           <span className="inline-flex flex-shrink-0 cursor-pointer items-center gap-1 text-[11px] leading-4 font-medium text-kumo-brand">
                             <span className="h-1.5 w-1.5 rounded-full bg-kumo-brand animate-pulse" />
-                            Working
+                            工作中
                           </span>
                         ) : !isRenaming && chatHasProposedChanges(chat) ? (
-                          <Tooltip content="This conversation has pending changes" asChild>
+                          <Tooltip content="此对话有待处理的更改" asChild>
                             <span className="inline-flex flex-shrink-0 cursor-pointer items-center gap-1 text-[11px] leading-4 font-medium text-kumo-warning">
                               <span className="h-1.5 w-1.5 rounded-full bg-kumo-warning" />
-                              Pending changes
+                              待处理更改
                             </span>
                           </Tooltip>
                         ) : null}
@@ -5466,7 +5456,7 @@ function ChatInterface({
                       <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] leading-4 text-kumo-inactive">
                         {chat.spawnerName && (
                           <>
-                            <span className="truncate">Agent · {chat.spawnerName}</span>
+                            <span className="truncate">智能体 · {chat.spawnerName}</span>
                             <span className="flex-shrink-0" aria-hidden="true">·</span>
                           </>
                         )}
@@ -5488,7 +5478,7 @@ function ChatInterface({
                         <DropdownMenu.Trigger
                           render={
                             <WorkshopIconButton
-                              aria-label={`Actions for ${chat.title}`}
+                              aria-label={`${chat.title}的操作`}
                               onClick={(e) => e.stopPropagation()}
                               className="!h-9 !w-9 flex-shrink-0 text-kumo-inactive opacity-100 focus:opacity-100 group-hover:opacity-100 data-[popup-open]:opacity-100 sm:!h-7 sm:!w-7 sm:opacity-0"
                             >
@@ -5505,7 +5495,7 @@ function ChatInterface({
                             onClick={() => startListRename(chat.id, chat.title)}
                             className="!h-auto rounded-md !px-2.5 !py-1.5 text-[12px] leading-4 tracking-[-0.2px] text-kumo-default transition-colors data-highlighted:bg-kumo-tint"
                           >
-                            Rename
+                            重命名
                           </DropdownMenu.Item>
                           <DropdownMenu.Item
                             icon={<Trash className="size-3" />}
@@ -5513,7 +5503,7 @@ function ChatInterface({
                             onClick={() => handleDeleteChat(chat.id, chat.title)}
                             className="!h-auto rounded-md !px-2.5 !py-1.5 text-[12px] leading-4 tracking-[-0.2px] transition-colors data-highlighted:bg-kumo-danger-tint"
                           >
-                            Delete
+                            删除
                           </DropdownMenu.Item>
                         </DropdownMenu.Content>
                       </DropdownMenu>
@@ -5607,7 +5597,7 @@ function ChatInterface({
                     : "font-normal text-kumo-subtle hover:text-kumo-default"
                 }`}
               >
-                Chat
+                对话
               </button>
               <button
                 type="button"
@@ -5618,7 +5608,7 @@ function ChatInterface({
                     : "font-normal text-kumo-subtle hover:text-kumo-default"
                 }`}
               >
-                Connections
+                连接
               </button>
             </div>
           )}
@@ -5639,8 +5629,8 @@ function ChatInterface({
                   <WorkshopIconButton
                     onClick={() => onNavigateToChat(null)}
                     className="!h-8 !w-8 flex-shrink-0"
-                    title="Back to conversations"
-                    aria-label="Back to conversations"
+                    title="返回对话列表"
+                    aria-label="返回对话列表"
                   >
                     <CaretLeft size={14} />
                   </WorkshopIconButton>
@@ -5663,14 +5653,14 @@ function ChatInterface({
                         onClick={handleSaveChatTitle}
                         disabled={!titleInput.trim()}
                         className="!h-8 !w-8 hover:text-kumo-brand disabled:opacity-30"
-                        aria-label="Save chat title"
+                        aria-label="保存对话标题"
                       >
                         <Check size={13} />
                       </WorkshopIconButton>
                       <WorkshopIconButton
                         onClick={handleCancelTitleEdit}
                         className="!h-8 !w-8"
-                        aria-label="Cancel title edit"
+                        aria-label="取消编辑标题"
                       >
                         <X size={13} />
                       </WorkshopIconButton>
@@ -5678,13 +5668,13 @@ function ChatInterface({
                   ) : (
                     <>
                       <span className="min-w-0 flex-1 truncate text-[13px] leading-[18px] font-medium tracking-[-0.25px] text-kumo-default">
-                        {currentChatMetadata?.title || "Chat"}
+                        {currentChatMetadata?.title || "对话"}
                       </span>
                       <WorkshopIconButton
                         onClick={() => setIsEditingTitle(true)}
                         className="!h-8 !w-8 flex-shrink-0 text-kumo-inactive hover:text-kumo-subtle"
-                        title="Rename chat"
-                        aria-label="Rename chat"
+                        title="重命名对话"
+                        aria-label="重命名对话"
                       >
                         <Pencil size={11} />
                       </WorkshopIconButton>
@@ -5695,8 +5685,8 @@ function ChatInterface({
                     onClick={() => handleDeleteChat()}
                     danger
                     className="!h-8 !w-8 flex-shrink-0 text-kumo-inactive"
-                    title="Delete chat"
-                    aria-label="Delete chat"
+                    title="删除对话"
+                    aria-label="删除对话"
                   >
                     <Trash size={14} />
                   </WorkshopIconButton>
@@ -5719,7 +5709,7 @@ function ChatInterface({
                   >
                     {isLoadingEarlier && (
                       <div className="mx-auto mb-6 text-[12px] leading-4 font-medium text-kumo-inactive">
-                        Loading earlier messages…
+                        正在加载更早的消息…
                       </div>
                     )}
 
@@ -5734,7 +5724,7 @@ function ChatInterface({
                             <div className="flex items-center gap-3" role="separator">
                               <span className="h-px flex-1 bg-kumo-line/60" aria-hidden="true" />
                               <span className="flex-shrink-0 text-[11px] leading-4 font-medium tracking-[0.6px] text-kumo-inactive uppercase">
-                                Kept in full from here
+                                从此处起完整保留
                               </span>
                               <span className="h-px flex-1 bg-kumo-line/60" aria-hidden="true" />
                             </div>
@@ -5751,10 +5741,10 @@ function ChatInterface({
                               // Says what the agent traded away and what it still has, since the
                               // marker sits at the request rather than at the cut it describes.
                               <p className="mb-3 text-[12px] leading-[17px] text-kumo-subtle">
-                                The agent reads this in place of everything earlier in the chat.{" "}
+                                智能体将阅读此内容，以代替对话中此前的全部内容。{" "}
                                 {kept === 0
-                                  ? "Nothing after it was kept."
-                                  : `The ${kept === 1 ? "message" : `${kept} messages`} after the cut ${kept === 1 ? "was" : "were"} kept in full.`}
+                                  ? "此后没有保留的消息。"
+                                  : `截断后的 ${kept} 条消息已完整保留。`}
                               </p>
                             )}
                             <div className={`min-w-0 text-[13px] leading-[19px] ${styles.markdownContent}`}>
@@ -5779,7 +5769,7 @@ function ChatInterface({
                                   <Brain size={16} />
                                 </span>
                                 <span className="font-medium">
-                                  {entry.requestedBy.name} compacted the context
+                                  {entry.requestedBy.name} 压缩了上下文
                                 </span>
                                 <CaretRight
                                   size={11}
@@ -5794,7 +5784,7 @@ function ChatInterface({
 
                         return (
                           <div key={entry.key} className={`${entryTopClass} mb-4 max-w-[860px]`}>
-                            <div className="flex items-center gap-3" role="separator" aria-label="Context compacted">
+                            <div className="flex items-center gap-3" role="separator" aria-label="上下文已压缩">
                               <span className="h-px flex-1 bg-kumo-line" aria-hidden="true" />
                               <button
                                 type="button"
@@ -5803,7 +5793,7 @@ function ChatInterface({
                                 className="flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-1 py-0.5 text-[11px] leading-4 font-medium tracking-[0.6px] text-kumo-inactive uppercase transition-colors duration-150 ease-out hover:text-kumo-default focus-visible:text-kumo-default focus-visible:outline-none"
                               >
                                 <Brain size={13} aria-hidden="true" />
-                                Context compacted
+                                上下文已压缩
                                 <CaretRight
                                   size={11}
                                   weight="bold"
@@ -5825,7 +5815,7 @@ function ChatInterface({
                                 <Swap size={16} />
                               </span>
                               <span className="min-w-0 truncate">
-                                Switched to {entry.author.name}
+                                已切换至 {entry.author.name}
                               </span>
                             </div>
                           </div>
@@ -5834,7 +5824,7 @@ function ChatInterface({
 
                       if (entry.type === "savedChanges") {
                         const isOwnChange = entry.message.author.id === currentUser?.id;
-                        const actor = isOwnChange ? "You" : entry.message.author.name;
+                        const actor = isOwnChange ? "你" : entry.message.author.name;
                         // A user-authored creation is recorded as a "changes" message carrying
                         // createdGadgets over a no-op update, so label it as a creation rather
                         // than as saved edits.
@@ -5845,14 +5835,14 @@ function ChatInterface({
                         const mainlineMerge = entry.message.mainlineMerge;
                         const conflictCount = mainlineMerge?.conflictPaths.length ?? 0;
                         const label = mainlineMerge
-                          ? `${actor} brought the gadget's latest changes into this draft${
+                          ? `${actor} 将应用的最新更改引入了此草稿${
                               conflictCount > 0
-                                ? ` — ${conflictCount} ${conflictCount === 1 ? "file has" : "files have"} conflicts marked in the code`
+                                ? `，${conflictCount} 个文件的冲突已在代码中标记`
                                 : ""}`
                           : createdGadgets.length > 0
-                          ? `${actor} created ${createdGadgets.length === 1 ? "gadget" : "gadgets"} ${
+                          ? `${actor} 创建了应用 ${
                               createdGadgets.map((g) => `“${g.title}”`).join(", ")}`
-                          : `${actor} saved edits`;
+                          : `${actor} 保存了编辑`;
                         // A mainline merge recorded before merges were commits can't be
                         // reverted while still proposed: it advanced the chat's pins with no
                         // record of where they were, and erasing it would let a later accept
@@ -5861,11 +5851,11 @@ function ChatInterface({
                         const irrevocableMerge =
                           mainlineMerge !== undefined && mainlineMerge.gadgets === undefined;
                         const discardLabel = irrevocableMerge
-                          ? "This update can't be discarded: it brought in changes already accepted elsewhere. Edit the files instead."
+                          ? "无法放弃此更新：它引入了其他地方已接受的更改。请直接编辑文件。"
                           : mainlineMerge
                           ? entry.message.sequence === lastDurablePendingChange?.sequence
-                            ? "Discard this update"
-                            : "Discard this update and later changes"
+                            ? "放弃此次更新"
+                            : "放弃此次更新及后续更改"
                           : getSavedEditsDiscardLabel(
                               entry.message.sequence === lastDurablePendingChange?.sequence,
                               createdWorkpiecesOf(entry.message),
@@ -5898,7 +5888,7 @@ function ChatInterface({
                                 )}
                                 <Tooltip content={formatFullTimestamp(entry.message.timestamp)} asChild>
                                   <span className="px-1 font-mono text-[11px] leading-4 text-kumo-inactive">
-                                    {entry.message.timestamp.toLocaleTimeString([], {
+                                    {entry.message.timestamp.toLocaleTimeString("zh-CN", {
                                       hour: "2-digit",
                                       minute: "2-digit",
                                     })}
@@ -6002,7 +5992,7 @@ function ChatInterface({
                                 )}
                                 <Tooltip content={formatFullTimestamp(msg.timestamp)} asChild>
                                   <span className="font-mono">
-                                    {msg.timestamp.toLocaleTimeString([], {
+                                    {msg.timestamp.toLocaleTimeString("zh-CN", {
                                       hour: "2-digit",
                                       minute: "2-digit",
                                     })}
@@ -6052,7 +6042,7 @@ function ChatInterface({
                                   )}
                                   <Tooltip content={formatFullTimestamp(msg.timestamp)} asChild>
                                     <span className="font-mono">
-                                      {msg.timestamp.toLocaleTimeString([], {
+                                      {msg.timestamp.toLocaleTimeString("zh-CN", {
                                         hour: "2-digit",
                                         minute: "2-digit",
                                       })}
@@ -6108,12 +6098,12 @@ function ChatInterface({
                                     : "opacity-100 sm:opacity-0 sm:group-hover/agentMessage:opacity-100 sm:group-focus-within/agentMessage:opacity-100"
                                 }`}>
                                   {hasMessageText && (
-                                    <Tooltip content="Copy message" asChild>
+                                    <Tooltip content="复制消息" asChild>
                                       <button
                                         type="button"
                                         onClick={() => handleCopyMessage(msg.message)}
                                         className="flex cursor-pointer items-center rounded-md p-1 text-kumo-inactive transition-[color,transform] duration-150 ease-out hover:text-kumo-default focus-visible:text-kumo-default focus-visible:outline-none active:scale-[0.96]"
-                                        aria-label="Copy message"
+                                        aria-label="复制消息"
                                       >
                                         <Copy size={15} />
                                       </button>
@@ -6140,7 +6130,7 @@ function ChatInterface({
                                   })()}
                                   <Tooltip content={formatFullTimestamp(msg.timestamp)} asChild>
                                     <span className="px-1 font-mono text-[11px] leading-4 text-kumo-inactive">
-                                      {msg.timestamp.toLocaleTimeString([], {
+                                      {msg.timestamp.toLocaleTimeString("zh-CN", {
                                         hour: "2-digit",
                                         minute: "2-digit",
                                       })}
@@ -6210,8 +6200,8 @@ function ChatInterface({
                                 <Tooltip
                                   content={
                                     isMerge
-                                      ? `Accepted draft changes${ts ? ` through ${formatFullTimestamp(ts)}` : ""}.`
-                                      : `Returned to the gadget state before the prompt sent ${ts ? `at ${ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "earlier"}.`
+                                      ? `已接受草稿更改${ts ? `，截至 ${formatFullTimestamp(ts)}` : ""}。`
+                                      : `已恢复至${ts ? `${ts.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}发送提示` : "之前提示"}前的应用状态。`
                                   }
                                   asChild
                                 >
@@ -6222,8 +6212,8 @@ function ChatInterface({
                                     <span className="font-medium">
                                       {msg.author.name}{" "}
                                       {isMerge
-                                        ? "accepted changes"
-                                        : "discarded changes"}
+                                        ? "已接受更改"
+                                        : "已放弃更改"}
                                     </span>
                                   </span>
                                 </Tooltip>
@@ -6237,12 +6227,12 @@ function ChatInterface({
 
                         {msg.type === "useGadget" && (
                           <div className="max-w-[860px] text-[14px] leading-5 tracking-[-0.25px] text-kumo-subtle">
-                            <Tooltip content={`Used the gadget at ${formatFullTimestamp(msg.timestamp)}`} asChild>
+                            <Tooltip content={`使用应用于 ${formatFullTimestamp(msg.timestamp)}`} asChild>
                               <span className="inline-flex items-center gap-3 px-1.5 py-1">
                                 <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-kumo-inactive" aria-hidden="true">
                                   <Plug size={16} />
                                 </span>
-                                <span>Used the gadget</span>
+                                <span>使用了应用</span>
                               </span>
                             </Tooltip>
                           </div>
@@ -6271,7 +6261,7 @@ function ChatInterface({
                                         </span>
                                         <span className="flex min-w-0 flex-1 items-center gap-1">
                                           <span className="min-w-0 truncate">
-                                            <span className="font-medium text-kumo-danger">Error: </span>
+                                            <span className="font-medium text-kumo-danger">错误： </span>
                                             <span className="text-kumo-subtle">{msg.message}</span>
                                           </span>
                                           <CaretRight
@@ -6284,19 +6274,19 @@ function ChatInterface({
                                     </Tooltip>
                                   </button>
                                   {isLast && msg.code === "usage_limit" && (
-                                    <Tooltip content="Add credits to continue." asChild>
+                                    <Tooltip content="添加额度后继续。" asChild>
                                       <button
                                         type="button"
                                         onClick={() => setUsageModalOpen(true)}
                                         className="flex flex-shrink-0 cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 text-[13px] leading-4 font-medium text-kumo-default transition-[color,opacity,transform] duration-150 ease-out hover:text-kumo-default-hover focus-visible:text-kumo-default-hover focus-visible:outline-none active:scale-[0.98]"
                                       >
                                         <Lightning size={12} weight="bold" />
-                                        Continue
+                                        继续
                                       </button>
                                     </Tooltip>
                                   )}
                                   {isLast && msg.code !== "usage_limit" && (
-                                    <Tooltip content="Retry the last action." asChild>
+                                    <Tooltip content="重试上一个操作。" asChild>
                                       <button
                                         type="button"
                                         onClick={() => handleRetry()}
@@ -6304,7 +6294,7 @@ function ChatInterface({
                                         className="flex flex-shrink-0 cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 text-[13px] leading-4 font-medium text-kumo-default transition-[color,opacity,transform] duration-150 ease-out hover:text-kumo-default-hover focus-visible:text-kumo-default-hover focus-visible:outline-none active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
                                       >
                                         <ArrowsClockwise size={12} weight="bold" />
-                                        Retry
+                                        重试
                                       </button>
                                     </Tooltip>
                                   )}
@@ -6322,7 +6312,7 @@ function ChatInterface({
 
                         {msg.type === "agentCallback" && (
                           <div className="max-w-[860px] text-[14px] leading-5 tracking-[-0.25px] text-kumo-subtle">
-                            <Tooltip content={`Call received at ${formatFullTimestamp(msg.timestamp)}`} asChild>
+                            <Tooltip content={`接收调用于 ${formatFullTimestamp(msg.timestamp)}`} asChild>
                               <div className="flex items-center gap-3 px-1.5 py-1">
                                 <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-kumo-inactive" aria-hidden="true">
                                   <Code size={16} />
@@ -6367,32 +6357,32 @@ function ChatInterface({
                               <Pencil size={16} />
                             </span>
                             <Tooltip
-                              content={`Your edits are still a live draft.${lastEditedAt !== null ? ` Last edited ${formatFullTimestamp(lastEditedAt)}` : ''}`}
+                              content={`你的编辑仍是实时草稿。${lastEditedAt !== null ? `最后编辑于 ${formatFullTimestamp(lastEditedAt)}` : ''}`}
                               asChild
                             >
                               <span className="font-medium text-kumo-subtle">
-                                Draft changes pending
+                                草稿更改待处理
                               </span>
                             </Tooltip>
                             <div className="flex flex-wrap items-center gap-2 text-[13px] leading-4">
-                              <Tooltip content="Throw away these draft edits." asChild>
+                              <Tooltip content="放弃这些草稿编辑。" asChild>
                                 <button
                                   type="button"
                                   disabled={isAgentActive}
                                   onClick={handleDiscardDraftChanges}
                                   className="cursor-pointer rounded-md px-1 py-0.5 font-medium text-kumo-inactive transition-colors duration-150 ease-out hover:text-kumo-danger focus-visible:text-kumo-danger focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
                                 >
-                                  Discard
+                                  放弃
                                 </button>
                               </Tooltip>
-                              <Tooltip content="Save these edits as a draft version. They won't affect the gadget until you accept changes." asChild>
+                              <Tooltip content="将编辑保存为草稿版本。接受更改后才会影响应用。" asChild>
                                 <button
                                   type="button"
                                   disabled={isAgentActive}
                                   onClick={handleFinalizeDraftChanges}
                                   className="cursor-pointer rounded-md px-1 py-0.5 font-medium text-kumo-default transition-[color,opacity,transform] duration-150 ease-out hover:text-kumo-default-hover focus-visible:text-kumo-default-hover focus-visible:outline-none active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
                                 >
-                                  Save draft
+                                  保存草稿
                                 </button>
                               </Tooltip>
                             </div>
@@ -6442,13 +6432,13 @@ function ChatInterface({
                         <div className={`group/agent min-w-0 w-full max-w-[860px] space-y-2 ${provisionalTopClass}`}>
                           {isCompacting && (
                             <div className={`inline-flex px-1.5 py-1 text-[14px] leading-5 tracking-[-0.25px] ${styles.thinkingShimmer}`}>
-                              Compacting…
+                              正在压缩…
                             </div>
                           )}
 
                           {showThinking && (
                             <div className={`inline-flex px-1.5 py-1 text-[14px] leading-5 tracking-[-0.25px] ${styles.thinkingShimmer}`}>
-                              Thinking
+                              思考中
                             </div>
                           )}
 
@@ -6508,7 +6498,7 @@ function ChatInterface({
                                         >
                                           {toolCall.code && (
                                             <>
-                                              <span className="font-mono text-[11px] leading-4 text-kumo-inactive uppercase tracking-[0.08em]">Code</span>
+                                              <span className="font-mono text-[11px] leading-4 text-kumo-inactive uppercase tracking-[0.08em]">代码</span>
                                               <pre className="max-h-56 overflow-auto rounded-xl border border-kumo-line/70 bg-kumo-base p-3 font-mono text-[12px] leading-[18px] text-kumo-subtle whitespace-pre-wrap">
                                                 {toolCall.code}
                                               </pre>
@@ -6516,7 +6506,7 @@ function ChatInterface({
                                           )}
                                           {toolCall.output && (
                                             <>
-                                              <span className="font-mono text-[11px] leading-4 text-kumo-inactive uppercase tracking-[0.08em]">Output</span>
+                                              <span className="font-mono text-[11px] leading-4 text-kumo-inactive uppercase tracking-[0.08em]">输出</span>
                                               <pre className="max-h-56 overflow-auto rounded-xl border border-kumo-line/70 bg-kumo-base p-3 font-mono text-[12px] leading-[18px] text-kumo-subtle whitespace-pre-wrap">
                                                 {toolCall.output}
                                               </pre>
@@ -6546,7 +6536,7 @@ function ChatInterface({
                               {!(hideOwnUserName && steer.author.id === currentUser?.id) && (
                                 <span className="font-medium">{steer.author.name}</span>
                               )}
-                              {!next && <span>Not read yet</span>}
+                              {!next && <span>尚未读取</span>}
                             </div>
                           )}
                         </div>
@@ -6592,9 +6582,9 @@ function ChatInterface({
                       : undefined}
                     blockedReason={
                       hasPendingConnectionRequest
-                        ? "Set up or deny the connection request above to continue."
+                        ? "请设置或拒绝上方的连接请求后继续。"
                         : hasPendingAwaitedAction
-                          ? "Approve or reject the pending action above to continue."
+                          ? "请批准或拒绝上方待处理的操作后继续。"
                           : undefined
                     }
                     draftUpdateBanner={(() => {
@@ -6614,7 +6604,7 @@ function ChatInterface({
                         <div className="themed-surface-inset relative flex items-center gap-2 overflow-hidden rounded-t-[calc(1rem-1px)] border-b border-kumo-line bg-kumo-elevated px-3.5 py-2">
                           <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-kumo-brand/40 to-transparent" aria-hidden="true" />
                           <span className="min-w-0 flex-1 truncate text-[12px] font-medium leading-4 tracking-[-0.2px] text-kumo-default">
-                            Pending changes
+                            待处理更改
                           </span>
                           <DiscardPendingChangesPopover
                             open={discardChangesTarget?.chatId === currentChatMetadata.id}
@@ -6629,10 +6619,10 @@ function ChatInterface({
                             onConfirm={handleDiscardPendingChanges}
                           />
                           <Tooltip content={isAgentActive
-                            ? "Wait for the agent to finish before accepting changes."
+                            ? "请等待智能体完成后再接受更改。"
                             : isDiscardingChanges
-                              ? "Wait for pending changes to finish discarding."
-                              : "Keep this draft and make it the gadget's current version."} asChild>
+                              ? "请等待待处理更改放弃完成。"
+                              : "保留此草稿并将其设为应用的当前版本。"} asChild>
                             <WorkshopButton
                               disabled={changesActionsDisabled}
                               onClick={() => { void handleAcceptChanges(); }}
@@ -6640,7 +6630,7 @@ function ChatInterface({
                               className="!h-7 !cursor-pointer !rounded-md !border-transparent !shadow-none gap-1 text-[12px]"
                             >
                               <Check size={11} weight="bold" />
-                              Accept changes
+                              接受更改
                             </WorkshopButton>
                           </Tooltip>
                         </div>
@@ -6652,7 +6642,7 @@ function ChatInterface({
                   <div className="-mt-1 flex min-h-[1.25rem] items-start justify-end gap-4 px-4 pb-1 font-mono text-[11px] leading-4 text-kumo-inactive">
                     {currentChatMetadata?.totalTokens != null && (
                       <span>
-                        {currentChatMetadata.totalTokens.toLocaleString()} tokens
+                        {currentChatMetadata.totalTokens.toLocaleString()} 个 token
                       </span>
                     )}
                     {currentChatMetadata?.totalCost != null && (
@@ -6681,13 +6671,10 @@ function ChatInterface({
           <div className="flex items-start justify-between gap-4 border-b border-kumo-line px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="text-[15px] leading-5 font-medium tracking-[-0.3px] text-kumo-default">
-                The gadget changed since this draft started
+                创建此草稿后应用发生了更改
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-[12px] leading-4 font-normal tracking-[-0.2px] text-kumo-subtle">
-                Someone else&apos;s changes were accepted in the meantime, so this draft&apos;s
-                changes can&apos;t be applied as-is. Bring the latest changes into this draft
-                first; any conflicts will be marked in the code for you (or the agent) to resolve
-                before accepting again.
+                期间其他人的更改已被接受，因此无法直接应用此草稿。请先将最新更改引入草稿，冲突会在代码中标记，供你或智能体解决后再次接受。
               </Dialog.Description>
             </div>
             <Dialog.Close
@@ -6696,7 +6683,7 @@ function ChatInterface({
                   {...props}
                   className="!h-7 !w-7"
                   disabled={isUpdatingFromMainline}
-                  aria-label="Close"
+                  aria-label="关闭"
                 >
                   <X size={16} />
                 </WorkshopIconButton>
@@ -6712,7 +6699,7 @@ function ChatInterface({
                   className="!h-9"
                   disabled={isUpdatingFromMainline}
                 >
-                  Not now
+                  暂不
                 </WorkshopButton>
               )}
             />
@@ -6722,7 +6709,7 @@ function ChatInterface({
               disabled={isUpdatingFromMainline}
               className="!h-9 min-w-[64px]"
             >
-              {isUpdatingFromMainline ? "Updating..." : "Bring in latest changes"}
+              {isUpdatingFromMainline ? "正在更新…" : "引入最新更改"}
             </WorkshopButton>
           </div>
         </Dialog>
@@ -6741,8 +6728,8 @@ function ChatInterface({
 
       <DeleteConfirmationDialog
         open={deleteTarget !== null}
-        title="Delete conversation?"
-        description={<>This removes <span className="font-medium text-kumo-default">{deleteTarget?.title}</span>. You can&apos;t undo this.</>}
+        title="删除对话？"
+        description={<>这将删除 <span className="font-medium text-kumo-default">{deleteTarget?.title}</span>。此操作无法撤销。</>}
         isDeleting={isDeleting}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);

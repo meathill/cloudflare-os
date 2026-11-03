@@ -42,26 +42,26 @@ function deferred<T = void>() {
   return { promise, resolve, reject }
 }
 
-const CHECKS_LABEL = 'Check for updates automatically'
-const CHECK_INTERVAL_LABEL = 'Check for updates every (minutes)'
-const MINIMUM_AGE_LABEL = 'Minimum release age (hours)'
-const SNOOZE_LABEL = 'Hide a closed notice for (hours)'
+const CHECKS_LABEL = '自动检查更新'
+const CHECK_INTERVAL_LABEL = '检查更新间隔（分钟）'
+const MINIMUM_AGE_LABEL = '版本发布后的最短等待时间（小时）'
+const SNOOZE_LABEL = '关闭通知后隐藏时长（小时）'
 
 // Each duration field, with the setter that saves it, the status field that reports it, its unit
 // and the range the server accepts, and part of what its help says.
 const DURATION_FIELDS = [
   {
     label: CHECK_INTERVAL_LABEL, setter: 'setUpdateCheckIntervalMinutes', reported: 'checkIntervalMinutes',
-    unit: 'minutes', min: 1, max: MAX_UPDATE_CHECK_INTERVAL_MINUTES, means: 'never on a schedule',
+    unit: 'minutes', min: 1, max: MAX_UPDATE_CHECK_INTERVAL_MINUTES, means: '不按计划执行',
   },
   {
     label: MINIMUM_AGE_LABEL, setter: 'setUpdateMinimumAgeHours', reported: 'minimumAgeHours',
-    unit: 'hours', min: 0, max: MAX_UPDATE_HOURS, means: 'Update always installs the newest release',
+    unit: 'hours', min: 0, max: MAX_UPDATE_HOURS, means: '更新始终安装最新版本',
   },
   {
     label: SNOOZE_LABEL, setter: 'setUpdateNoticeSnoozeHours', reported: 'noticeSnoozeHours',
     unit: 'hours', min: 0, max: MAX_UPDATE_HOURS,
-    means: '0 means a closed notice comes back on the next visit to Home',
+    means: '设为 0 时，下次访问首页会再次显示',
   },
 ] as const
 
@@ -117,12 +117,12 @@ describe('AdminUpdatesPanel', () => {
   }
 
   const updateLink = () =>
-    [...container.querySelectorAll('a')].find(link => link.textContent?.trim() === 'Update')
+    [...container.querySelectorAll('a')].find(link => link.textContent?.trim() === '更新')
 
   // The outermost element whose text begins with the notice's title: the notice itself.
   const unfinishedNotice = () =>
     [...container.querySelectorAll('div')]
-      .find(element => element.textContent?.startsWith('An update did not finish'))
+      .find(element => element.textContent?.startsWith('更新未完成'))
 
   const button = (name: string) => {
     const element = [...container.querySelectorAll('button')]
@@ -154,7 +154,7 @@ describe('AdminUpdatesPanel', () => {
     return element
   }
 
-  const saveButton = (label: string) => button(`Save “${label}”`)
+  const saveButton = (label: string) => button(`保存“${label}”`)
 
   beforeEach(() => {
     container = document.createElement('div')
@@ -180,10 +180,10 @@ describe('AdminUpdatesPanel', () => {
         checkedAt,
       }))
 
-      expect(field('Running release')).toBe('r100-aaaaaaa')
-      expect(field('Newest release')).toBe('r101-bbbbbbb')
-      expect(field('Last checked')).toBe(formatFullTimestamp(checkedAt))
-      expect(field('Update available')).toBe('Yes')
+      expect(field('当前版本')).toBe('r100-aaaaaaa')
+      expect(field('最新版本')).toBe('r101-bbbbbbb')
+      expect(field('上次检查')).toBe(formatFullTimestamp(checkedAt))
+      expect(field('有可用更新')).toBe('是')
     })
 
     it('says when the deployment already runs the newest release', async () => {
@@ -194,7 +194,7 @@ describe('AdminUpdatesPanel', () => {
         notify: false,
       }))
 
-      expect(field('Update available')).toBe('No')
+      expect(field('有可用更新')).toBe('否')
     })
 
     it('says that nothing is known before a check has succeeded', async () => {
@@ -206,10 +206,10 @@ describe('AdminUpdatesPanel', () => {
         checkedAt: undefined,
       }))
 
-      expect(field('Running release')).toBe('r100-aaaaaaa')
-      expect(field('Newest release')).toBe('No check has succeeded yet')
-      expect(field('Last checked')).toBe('Never')
-      expect(field('Update available')).toBe('Not known until a check succeeds')
+      expect(field('当前版本')).toBe('r100-aaaaaaa')
+      expect(field('最新版本')).toBe('尚无成功的检查')
+      expect(field('上次检查')).toBe('从未')
+      expect(field('有可用更新')).toBe('检查成功后才能确定')
     })
 
     it('links Update to the deploy flow in a new tab', async () => {
@@ -251,10 +251,10 @@ describe('AdminUpdatesPanel', () => {
       }))
 
       const alert = container.querySelector('[role="alert"]')
-      expect(alert?.textContent).toContain('This deployment was changed outside the deploy flow')
+      expect(alert?.textContent).toContain('此部署在部署流程外发生了更改')
       expect(alert?.textContent)
-        .toContain('Not running what the deploy flow installed: the backend, the “google2” gatekeeper, and the router.')
-      expect(alert?.textContent).toContain('refuse to upgrade')
+        .toContain('以下组件运行的版本与部署流程安装的版本不一致：后端、“google2”连接服务和路由器。')
+      expect(alert?.textContent).toContain('拒绝升级')
       // Still offered: the deploy flow explains the refusal itself.
       expect(updateLink()).toBeDefined()
     })
@@ -264,8 +264,8 @@ describe('AdminUpdatesPanel', () => {
 
       const notice = unfinishedNotice()
       expect(notice?.textContent)
-        .toContain('Still running another release of this deployment: the “github” gatekeeper and the router.')
-      expect(notice?.textContent).toContain('The deploy flow can finish the update.')
+        .toContain('以下组件仍在运行此部署的其他版本：“github”连接服务和路由器。')
+      expect(notice?.textContent).toContain('可通过部署流程完成更新。')
       expect(notice?.getAttribute('role')).not.toBe('alert')
       expect(container.querySelector('[role="alert"]')).toBeNull()
       expect(updateLink()).toBeDefined()
@@ -280,12 +280,12 @@ describe('AdminUpdatesPanel', () => {
       }))
 
       expect(container.querySelector('[role="alert"]')?.textContent)
-        .toContain('Not running what the deploy flow installed: the backend.')
+        .toContain('以下组件运行的版本与部署流程安装的版本不一致：后端。')
       const notice = unfinishedNotice()?.textContent
-      expect(notice).toContain('Still running another release of this deployment: the router.')
+      expect(notice).toContain('以下组件仍在运行此部署的其他版本：路由器。')
       expect(notice)
-        .toContain('The deploy flow can finish the update once the Workers changed outside it are restored.')
-      expect(notice).not.toContain('The deploy flow can finish the update.')
+        .toContain('恢复在部署流程外更改的 Worker 后，即可通过部署流程完成更新。')
+      expect(notice).not.toContain('路由器。可通过部署流程完成更新。')
     })
 
     it('shows neither a warning nor an unfinished update for a deployment that runs what was installed', async () => {
@@ -293,7 +293,7 @@ describe('AdminUpdatesPanel', () => {
 
       expect(container.querySelector('[role="alert"]')).toBeNull()
       expect(unfinishedNotice()).toBeUndefined()
-      expect(container.textContent).not.toContain('Still running another release')
+      expect(container.textContent).not.toContain('仍在运行此部署的其他版本')
     })
   })
 
@@ -301,7 +301,7 @@ describe('AdminUpdatesPanel', () => {
     it('asks for the newest release, then re-reads the status', async () => {
       const { checkForUpdates, onChanged } = await render()
 
-      await click(button('Check now'))
+      await click(button('立即检查'))
 
       expect(checkForUpdates).toHaveBeenCalledOnce()
       expect(onChanged).toHaveBeenCalledOnce()
@@ -314,7 +314,7 @@ describe('AdminUpdatesPanel', () => {
       probeRouterTag.mockClear()
       const { checkForUpdates } = await render()
 
-      await click(button('Check now'))
+      await click(button('立即检查'))
 
       expect(probeRouterTag).toHaveBeenCalledOnce()
       expect(probeRouterTag.mock.invocationCallOrder[0])
@@ -330,10 +330,10 @@ describe('AdminUpdatesPanel', () => {
       }))
       checkForUpdates.mockResolvedValueOnce(testUpdateStatus({ latestReleaseId: 'r102-ccccccc' }))
 
-      await click(button('Check now'))
+      await click(button('立即检查'))
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
-        title: 'Update available: release r102-ccccccc',
+        title: '有可用更新：版本 r102-ccccccc',
         variant: 'success',
       })
     })
@@ -347,10 +347,10 @@ describe('AdminUpdatesPanel', () => {
         notify: false,
       }))
 
-      await click(button('Check now'))
+      await click(button('立即检查'))
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
-        title: 'No update available: this deployment runs the newest release',
+        title: '没有可用更新：此部署运行的是最新版本',
         variant: 'success',
       })
     })
@@ -360,7 +360,7 @@ describe('AdminUpdatesPanel', () => {
       const { checkForUpdates, onChanged } = await render()
       checkForUpdates.mockResolvedValueOnce(null)
 
-      await click(button('Check now'))
+      await click(button('立即检查'))
 
       expect(addToast).not.toHaveBeenCalled()
       expect(onChanged).toHaveBeenCalledOnce()
@@ -370,7 +370,7 @@ describe('AdminUpdatesPanel', () => {
     it('asks while automatic checks are off', async () => {
       const { checkForUpdates } = await render(testUpdateStatus({ checksEnabled: false, notify: false }))
 
-      await click(button('Check now'))
+      await click(button('立即检查'))
 
       expect(checkForUpdates).toHaveBeenCalledOnce()
     })
@@ -380,41 +380,41 @@ describe('AdminUpdatesPanel', () => {
       const call = deferred<DeploymentUpdateStatus | null>()
       checkForUpdates.mockReturnValueOnce(call.promise)
 
-      await click(button('Check now'))
+      await click(button('立即检查'))
 
-      expect(button('Check now').disabled).toBe(true)
-      await click(button('Check now'))
+      expect(button('立即检查').disabled).toBe(true)
+      await click(button('立即检查'))
       expect(checkForUpdates).toHaveBeenCalledOnce()
 
       await act(async () => call.resolve(testUpdateStatus()))
 
-      expect(button('Check now').disabled).toBe(false)
+      expect(button('立即检查').disabled).toBe(false)
     })
 
     it('reports a failed check with the server’s message and re-reads nothing', async () => {
       const { checkForUpdates, onChanged } = await render()
       checkForUpdates.mockRejectedValueOnce(new Error('The update check answered 503.'))
 
-      await click(button('Check now'))
+      await click(button('立即检查'))
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
-        title: 'Couldn’t check for updates',
+        title: '无法检查更新',
         description: 'The update check answered 503.',
         variant: 'error',
       })
       expect(onChanged).not.toHaveBeenCalled()
-      expect(button('Check now').disabled).toBe(false)
+      expect(button('立即检查').disabled).toBe(false)
     })
 
     it('reports a failed re-read after a check that went through', async () => {
       const { onChanged } = await render()
       onChanged.mockRejectedValueOnce(new Error('Admin settings are unavailable.'))
 
-      await click(button('Check now'))
+      await click(button('立即检查'))
 
       expect(addToast).toHaveBeenCalledTimes(2)
       expect(addToast).toHaveBeenLastCalledWith(expect.objectContaining({
-        title: 'Couldn’t reload the update status',
+        title: '无法重新加载更新状态',
         variant: 'error',
       }))
     })
@@ -426,7 +426,7 @@ describe('AdminUpdatesPanel', () => {
 
       expect(checksSwitch().getAttribute('aria-checked')).toBe(String(enabled))
       const meaning = document.getElementById(checksSwitch().getAttribute('aria-describedby')!)
-      expect(meaning?.textContent).toContain('it asks only when an admin chooses Check now')
+      expect(meaning?.textContent).toContain('仅在管理员点击“立即检查”时检查')
     })
 
     it.each([true, false])('sets the opposite of %s, then re-reads the status', async (enabled) => {
@@ -465,7 +465,7 @@ describe('AdminUpdatesPanel', () => {
       await click(checksCheckbox())
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
-        title: `Couldn’t update “${CHECKS_LABEL}”`,
+        title: `无法更新“${CHECKS_LABEL}”`,
         description: 'Admin settings are unavailable.',
         variant: 'error',
       })
@@ -482,7 +482,7 @@ describe('AdminUpdatesPanel', () => {
       await click(checksCheckbox())
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-        title: 'Couldn’t reload the update status',
+        title: '无法重新加载更新状态',
       }))
       expect(checksSwitch().getAttribute('aria-checked')).toBe('true')
 
@@ -545,7 +545,7 @@ describe('AdminUpdatesPanel', () => {
       await click(saveButton(label))
 
       expect(admin[setter]).not.toHaveBeenCalled()
-      expect(container.textContent).toContain(`Enter a whole number of ${unit} from ${min} to ${max}`)
+      expect(container.textContent).toContain(`请输入 ${min} 到 ${max} 之间的整数（${unit === 'hours' ? '小时' : '分钟'}）`)
     })
 
     it('reports a refused save with the server’s message and keeps what was typed', async () => {
@@ -556,7 +556,7 @@ describe('AdminUpdatesPanel', () => {
       await click(saveButton(label))
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
-        title: `Couldn’t update “${label}”`,
+        title: `无法更新“${label}”`,
         description: 'Admin settings are unavailable.',
         variant: 'error',
       })
@@ -574,7 +574,7 @@ describe('AdminUpdatesPanel', () => {
       await click(saveButton(label))
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-        title: 'Couldn’t reload the update status',
+        title: '无法重新加载更新状态',
         variant: 'error',
       }))
       expect(labeledInput(label).value).toBe('48')
@@ -610,15 +610,15 @@ describe('AdminUpdatesPanel', () => {
       const call = deferred<DeploymentUpdateStatus | null>()
       checkForUpdates.mockReturnValueOnce(call.promise)
 
-      await focus(button('Check now'))
-      await click(button('Check now'))
+      await focus(button('立即检查'))
+      await click(button('立即检查'))
       await dropFocus()
-      expect(button('Check now').disabled).toBe(true)
+      expect(button('立即检查').disabled).toBe(true)
       expect(document.activeElement).toBe(document.body)
 
       await act(async () => call.reject(new Error('The update check answered 503.')))
 
-      expect(document.activeElement).toBe(button('Check now'))
+      expect(document.activeElement).toBe(button('立即检查'))
     })
 
     it('returns to the Save button of an hour field', async () => {

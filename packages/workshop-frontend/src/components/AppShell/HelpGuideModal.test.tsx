@@ -55,9 +55,9 @@ describe('HelpGuideModal', () => {
     })
 
     // Verify writer-friendly terminology
-    expect(document.body.textContent).toContain('Workspace（剧本工作区 / 项目工作目录）')
-    expect(document.body.textContent).toContain('Blueprint（剧作蓝图 / 工业流模版）')
-    expect(document.body.textContent).toContain('Output（最终剧本成果 / 交付件）')
+    expect(document.body.textContent).toContain('工作区（剧本工作区 / 项目工作目录）')
+    expect(document.body.textContent).toContain('蓝图（剧作蓝图 / 工业流模板）')
+    expect(document.body.textContent).toContain('成果（最终剧本成果 / 交付件）')
     expect(document.body.textContent).toContain('一部剧 = 一个工作区')
     expect(document.body.textContent).toContain('彻底定稿打包的作品')
   })

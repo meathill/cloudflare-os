@@ -15,12 +15,12 @@ export default function AppPreview() {
         {/* App header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <Text variant="heading2" as="h1">Channel Summarizer</Text>
+            <Text variant="heading2" as="h1">频道摘要</Text>
             <p className="text-sm text-kumo-subtle mt-1">
-              Daily digest of your Slack channels, powered by Workers AI
+              由 Workers AI 驱动的 Slack 频道每日摘要
             </p>
           </div>
-          <Badge variant="success">Live</Badge>
+          <Badge variant="success">运行中</Badge>
         </div>
 
         {/* Channel cards */}
@@ -33,7 +33,7 @@ export default function AppPreview() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm font-semibold text-kumo-default">{row.channel}</span>
-                  <Badge variant="primary">{row.messages} msgs</Badge>
+                  <Badge variant="primary">{row.messages} 条消息</Badge>
                 </div>
                 <span className="text-xs text-kumo-subtle">{row.lastActive}</span>
               </div>
@@ -67,7 +67,7 @@ export default function AppPreview() {
         {/* Quiet channels */}
         <div className="mt-6">
           <div className="text-xs font-semibold text-kumo-subtle uppercase tracking-wider mb-3">
-            No new activity
+            暂无新活动
           </div>
           <div className="flex flex-wrap gap-2">
             {sampleDataRows.filter(r => !r.unread).map((row) => (

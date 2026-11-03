@@ -60,7 +60,7 @@ const bodyBox = () =>
 
 // The text a screen reader announces as the Approve button's description.
 function approveDescribedBy(): string | null {
-  const approve = [...document.querySelectorAll('button')].find(b => b.textContent === 'Approve')
+  const approve = [...document.querySelectorAll('button')].find(b => b.textContent === '批准')
   if (!approve) throw new Error('No Approve button rendered')
   const ids = approve.getAttribute('aria-describedby')
   if (ids === null) return null
@@ -75,7 +75,7 @@ describe('Activity review request fields', () => {
   it('shows the fields in full, named by the approve button, while restricted', async () => {
     await renderReview(true)
     expect(document.body.textContent).toContain('Full body text')
-    expect(document.body.textContent).not.toContain('2 fields')
+    expect(document.body.textContent).not.toContain('2 个字段')
     const described = approveDescribedBy()
     expect(described).toContain('a@example.com')
     expect(described).toContain('Full body text')
@@ -89,7 +89,7 @@ describe('Activity review request fields', () => {
 
   it('collapses the fields to a count until expanded when not restricted', async () => {
     await renderReview(false)
-    expect(document.body.textContent).toContain('2 fields')
+    expect(document.body.textContent).toContain('2 个字段')
     expect(document.body.textContent).not.toContain('Full body text')
     expect(document.querySelector('[aria-expanded="false"]')).not.toBeNull()
   })
@@ -129,14 +129,14 @@ describe('Activity creation approval', () => {
     flushFrames()
 
     await act(async () =>
-      [...document.querySelectorAll('button')].find(b => b.textContent === 'Approve')!.click())
+      [...document.querySelectorAll('button')].find(b => b.textContent === '批准')!.click())
     const dialog = document.querySelector('[role="dialog"]')!
     expect(dialog.textContent).toContain('work')
     expect(dialog.textContent).not.toContain('elsewhere')
     await act(async () =>
       [...dialog.querySelectorAll('button')].find(b => b.textContent?.startsWith('home'))!.click())
     await act(async () =>
-      [...dialog.querySelectorAll('button')].find(b => b.textContent === 'Approve')!.click())
+      [...dialog.querySelectorAll('button')].find(b => b.textContent === '批准')!.click())
 
     expect(approveAction).toHaveBeenCalledWith(1, { accountId: 2 })
   })
@@ -155,10 +155,10 @@ describe('Activity creation approval', () => {
     flushFrames()
 
     await act(async () =>
-      [...document.querySelectorAll('button')].find(b => b.textContent === 'Approve')!.click())
+      [...document.querySelectorAll('button')].find(b => b.textContent === '批准')!.click())
 
     expect(addToast).toHaveBeenCalledWith(
-      { title: 'Failed to approve action', description: message, variant: 'error' })
+      { title: '批准操作失败', description: message, variant: 'error' })
   })
 })
 
@@ -229,7 +229,7 @@ describe('Activity hook toggles', () => {
       await clickHookSwitch(TITLE)
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
-        title: `Failed to ${done === 'enabled' ? 'enable' : 'disable'} hook`, description, variant: 'error',
+        title: `${done === 'enabled' ? '启用' : '禁用'}钩子失败`, description, variant: 'error',
       })
       expect(isOn()).toBe(enabled)
     })

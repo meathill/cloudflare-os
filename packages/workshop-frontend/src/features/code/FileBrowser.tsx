@@ -153,11 +153,11 @@ export default function FileBrowser({
   const handleCreateFile = () => {
     const path = newFileName.trim()
     if (!path) {
-      toasts.add({ title: 'Filename cannot be empty', variant: 'error' })
+      toasts.add({ title: '文件名不能为空', variant: 'error' })
       return
     }
     if (tree.leaves.has(path)) {
-      toasts.add({ title: 'A file with this name already exists', variant: 'error' })
+      toasts.add({ title: '同名文件已存在', variant: 'error' })
       return
     }
     onFileCreate(path)
@@ -175,7 +175,7 @@ export default function FileBrowser({
     }
     const nextPath = resolveRenamePath(path, trimmed)
     if (nextPath === null) {
-      toasts.add({ title: 'Invalid file path', variant: 'error' })
+      toasts.add({ title: '文件路径无效', variant: 'error' })
       return
     }
     if (nextPath === path) {
@@ -183,7 +183,7 @@ export default function FileBrowser({
       return
     }
     if (tree.leaves.has(nextPath)) {
-      toasts.add({ title: 'A file with this name already exists', variant: 'error' })
+      toasts.add({ title: '同名文件已存在', variant: 'error' })
       return
     }
     onFileRename(path, nextPath)
@@ -192,7 +192,7 @@ export default function FileBrowser({
 
   const startDelete = (path: string) => {
     if (tree.leaves.size <= 1) {
-      toasts.add({ title: 'Cannot delete the last remaining file', variant: 'error' })
+      toasts.add({ title: '无法删除最后一个文件', variant: 'error' })
       return
     }
     setDeletingFile(path)
@@ -260,14 +260,14 @@ export default function FileBrowser({
     <div className={`flex h-full w-[260px] flex-col border-r border-kumo-line bg-kumo-base ${className}`}>
       <div className="flex h-9 shrink-0 items-center justify-between gap-2 px-3 pt-3 pb-2">
         <span className={SECTION_HEADER_CLASS}>
-          {showChanges ? `Changes (${changes.length})` : 'Files'}
+          {showChanges ? `更改（${changes.length}）` : '文件'}
         </span>
         <div className="flex items-center gap-1">
           <WorkshopIconButton
             onClick={() => setIsCreateModalOpen(true)}
             disabled={editLocked}
-            aria-label="New file"
-            title={lockedHint ?? 'New file'}
+            aria-label="新建文件"
+            title={lockedHint ?? '新建文件'}
             className="!h-8 !w-8 text-kumo-subtle hover:bg-kumo-tint hover:text-kumo-default md:!h-6 md:!w-6"
           >
             <Plus size={14} weight="bold" />
@@ -275,7 +275,7 @@ export default function FileBrowser({
           {onRequestClose && (
             <WorkshopIconButton
               onClick={onRequestClose}
-              aria-label="Close files"
+              aria-label="关闭文件列表"
               className="!h-8 !w-8 md:!hidden"
             >
               <X size={16} />
@@ -305,7 +305,7 @@ export default function FileBrowser({
               })}
             </div>
             <div className="mb-1 flex h-6 items-center px-1">
-              <span className={SECTION_HEADER_CLASS}>Files</span>
+              <span className={SECTION_HEADER_CLASS}>文件</span>
             </div>
           </>
         )}
@@ -330,10 +330,10 @@ export default function FileBrowser({
           <div className="flex items-start justify-between gap-4 border-b border-kumo-line px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="text-[15px] leading-5 font-medium tracking-[-0.3px] text-kumo-default">
-                New file
+                新建文件
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-[12px] leading-4 font-normal tracking-[-0.2px] text-kumo-subtle">
-                Create a new file in this {workpieceNoun}. Include a directory to place it there.
+                在此 {workpieceNoun}中新建文件。可指定目录。
               </Dialog.Description>
             </div>
             <Dialog.Close
@@ -341,7 +341,7 @@ export default function FileBrowser({
                 <WorkshopIconButton
                   {...props}
                   className="!h-7 !w-7"
-                  aria-label="Close"
+                  aria-label="关闭"
                 >
                   <X size={16} />
                 </WorkshopIconButton>
@@ -353,7 +353,7 @@ export default function FileBrowser({
             <WorkshopInput
               autoFocus
               placeholder="src/filename.ts"
-              aria-label="Filename"
+              aria-label="文件名"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
               onKeyDown={(e) => {
@@ -377,7 +377,7 @@ export default function FileBrowser({
                   {...props}
                   className="!h-9"
                 >
-                  Cancel
+                  取消
                 </WorkshopButton>
               )}
             />
@@ -386,7 +386,7 @@ export default function FileBrowser({
               onClick={handleCreateFile}
               disabled={!newFileName.trim()}
             >
-              Create file
+              创建文件
             </WorkshopButton>
           </div>
         </Dialog>
@@ -397,8 +397,8 @@ export default function FileBrowser({
         onOpenChange={(o) => {
           if (!o) setDeletingFile(null)
         }}
-        title="Delete file?"
-        description={<>This removes <span className="font-mono text-kumo-default">{deletingFile}</span> from the {workpieceNoun}. You can&apos;t undo this.</>}
+        title="删除文件？"
+        description={<>这将删除 <span className="font-mono text-kumo-default">{deletingFile}</span> ，所属 {workpieceNoun}。此操作无法撤销。</>}
         onConfirm={confirmDelete}
       />
     </div>
@@ -414,9 +414,9 @@ const LEAF_ICONS: Record<LeafKind, Icon> = {
 
 const LEAF_KIND_LABELS: Record<LeafKind, string | undefined> = {
   file: undefined,
-  executable: 'Executable',
-  symlink: 'Symbolic link (not viewable)',
-  submodule: 'Submodule (not viewable)',
+  executable: '可执行文件',
+  symlink: '符号链接（无法查看）',
+  submodule: '子模块（无法查看）',
 }
 
 interface FileRowProps {
@@ -465,7 +465,7 @@ function FileRow({
   const isPending = status === 'pending'
   const dotClass = getStatusDotClass(status)
   const KindIcon = LEAF_ICONS[kind]
-  const kindLabel = isPending ? 'Loading this change\u2026' : LEAF_KIND_LABELS[kind]
+  const kindLabel = isPending ? '正在加载此更改…' : LEAF_KIND_LABELS[kind]
 
   useEffect(() => {
     if (!isRenaming) return
@@ -528,7 +528,7 @@ function FileRow({
           spellCheck={false}
           autoCapitalize="off"
           autoCorrect="off"
-          aria-label={`Rename ${path}`}
+          aria-label={`重命名 ${path}`}
           className="min-w-0 flex-1 bg-transparent text-[16px] leading-5 text-kumo-default outline-none placeholder:text-kumo-inactive md:text-[13px] md:leading-[18px]"
         />
       ) : openable ? (
@@ -550,8 +550,8 @@ function FileRow({
           {isStreamingActive && (
             <span
               className="h-1.5 w-1.5 shrink-0 rounded-full bg-kumo-success"
-              aria-label={`${path} is being edited`}
-              title="Agent is editing this file"
+              aria-label={`正在编辑 ${path}`}
+              title="智能体正在编辑此文件"
             />
           )}
         </button>
@@ -577,7 +577,7 @@ function FileRow({
           <DropdownMenu.Trigger
             render={(
               <WorkshopIconButton
-                aria-label={`Actions for ${path}`}
+                aria-label={`${path}的操作`}
                 onClick={(event) => event.stopPropagation()}
                 className="!h-8 !w-8 text-kumo-inactive opacity-100 hover:bg-kumo-tint hover:text-kumo-default focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 data-[popup-open]:opacity-100 md:!h-5 md:!w-5 md:opacity-0"
               >
@@ -594,7 +594,7 @@ function FileRow({
               onClick={onDownload}
               className="!h-auto rounded-md !px-2.5 !py-1.5 text-[12px] leading-4 tracking-[-0.2px] text-kumo-default transition-colors data-highlighted:bg-kumo-tint"
             >
-              Download
+              下载
             </DropdownMenu.Item>
             {!editLocked && (
               <>
@@ -604,7 +604,7 @@ function FileRow({
                     onClick={onRename}
                     className="!h-auto rounded-md !px-2.5 !py-1.5 text-[12px] leading-4 tracking-[-0.2px] text-kumo-default transition-colors data-highlighted:bg-kumo-tint"
                   >
-                    Rename
+                    重命名
                   </DropdownMenu.Item>
                 )}
                 <DropdownMenu.Item
@@ -613,7 +613,7 @@ function FileRow({
                   onClick={onDelete}
                   className="!h-auto rounded-md !px-2.5 !py-1.5 text-[12px] leading-4 tracking-[-0.2px] transition-colors data-highlighted:bg-kumo-danger-tint"
                 >
-                  Delete
+                  删除
                 </DropdownMenu.Item>
               </>
             )}

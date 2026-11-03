@@ -46,7 +46,7 @@ type AttachTarget =
   | { type: "position"; snapshot: ComposerDocumentSnapshot; position: number }
   | { type: "url"; source: ActiveResourceUrl };
 
-const PROMPT_CHANGED_MESSAGE = "The prompt changed before the resource could be added";
+const PROMPT_CHANGED_MESSAGE = "添加资源前提示内容已更改";
 
 type UseComposerResourcesOptions = {
   createCapsuleGatekeeper: (
@@ -234,7 +234,7 @@ export const useComposerResources = ({
       const gatekeeper = await createCapsuleGatekeeper(resolution.accountId, url);
       if (!gatekeeper) {
         if (operationRef.current !== operation) return;
-        onError("Failed to create resource connection", undefined, configure);
+        onError("创建资源连接失败", undefined, configure);
         return;
       }
       let inserted = false;
@@ -264,7 +264,7 @@ export const useComposerResources = ({
     } catch (error) {
       if (operationRef.current !== operation) return;
       console.error("Failed to create capsule:", error);
-      onError("Failed to add resource", rpcFailureDescription(error), configure);
+      onError("添加资源失败", rpcFailureDescription(error), configure);
     } finally {
       if (operationRef.current === operation) setIsCreatingResource(false);
     }

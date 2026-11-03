@@ -55,7 +55,7 @@ describe("ComposerAttachmentTray", () => {
       { onRemove },
     );
 
-    const button = view.querySelector<HTMLButtonElement>('button[aria-label="Remove two.pdf"]')!;
+    const button = view.querySelector<HTMLButtonElement>('button[aria-label="移除 two.pdf"]')!;
     act(() => button.click());
 
     expect(onRemove).toHaveBeenCalledExactlyOnceWith("two");
@@ -91,7 +91,7 @@ describe("ComposerAttachmentTray", () => {
     ]);
 
     expect(view.querySelector("img")).toBeNull();
-    expect(view.querySelector(".sr-only")?.textContent).toBe("Uploading photo.png");
+    expect(view.querySelector(".sr-only")?.textContent).toBe("正在上传 photo.png");
   });
 
   it("reports a failed upload next to the file name, replacing any image preview", () => {
@@ -100,7 +100,7 @@ describe("ComposerAttachmentTray", () => {
     ]);
 
     expect(view.querySelector("img")).toBeNull();
-    expect(view.textContent).toContain("Upload failed");
+    expect(view.textContent).toContain("上传失败");
     expect(view.textContent).toContain("photo.png");
   });
 });

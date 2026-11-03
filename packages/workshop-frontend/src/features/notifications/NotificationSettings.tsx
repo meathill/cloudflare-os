@@ -47,7 +47,7 @@ export const NotificationSettings = () => {
       }
     } catch (error) {
       logRpcFailure("Failed to update browser notifications:", error);
-      toasts.add({ title: "Failed to update browser notifications", variant: "error" });
+      toasts.add({ title: "更新浏览器通知失败", variant: "error" });
       setStatus(await readStatus(userId));
     } finally {
       setPending(false);
@@ -57,13 +57,13 @@ export const NotificationSettings = () => {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="px-1 text-[12px] font-medium uppercase tracking-[0.08em] text-kumo-inactive">
-        Notifications
+        通知
       </h2>
       <div className="rounded-xl border border-kumo-line bg-kumo-base p-5">
         {support === "supported" ? (
           <div className="flex flex-col gap-2">
             <Switch
-              label="Browser notifications"
+              label="浏览器通知"
               checked={status === "on"}
               disabled={status === "loading" || status === "denied" || pending}
               transitioning={pending}
@@ -71,17 +71,17 @@ export const NotificationSettings = () => {
             />
             <p className="text-sm text-kumo-subtle">
               {status === "on"
-                ? "This browser shows a notification when a task finishes or needs your permission while no Workshop tab is in view."
+                ? "没有打开的工作台标签页处于前台时，任务完成或需要许可会在此浏览器中显示通知。"
                 : status === "denied"
-                  ? "Notifications are blocked for this site in your browser's settings."
-                  : "Get a notification in this browser when a task finishes or needs your permission while no Workshop tab is in view."}
+                  ? "你的浏览器设置已屏蔽此站点的通知。"
+                  : "没有工作台标签页处于前台时，在任务完成或需要许可时通过此浏览器接收通知。"}
             </p>
           </div>
         ) : (
           <p className="text-sm text-kumo-subtle">
             {support === "appleMobile"
-              ? "On iPhone and iPad, notifications come from the Cloudflare OS app."
-              : "Browser notifications aren't available on Android yet."}
+              ? "在 iPhone 和 iPad 上，通知来自 Cloudflare OS 应用。"
+              : "Android 暂不支持浏览器通知。"}
           </p>
         )}
       </div>

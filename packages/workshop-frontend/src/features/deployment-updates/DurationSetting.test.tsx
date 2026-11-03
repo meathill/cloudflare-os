@@ -67,7 +67,7 @@ describe('DurationSetting', () => {
 
   const saveButton = () => {
     const element = [...container.querySelectorAll('button')]
-      .find((b) => b.getAttribute('aria-label') === `Save “${LABEL}”`)
+      .find((b) => b.getAttribute('aria-label') === `保存“${LABEL}”`)
     if (!element) throw new Error('no Save button')
     return element
   }
@@ -108,7 +108,7 @@ describe('DurationSetting', () => {
     await type(input(), hours)
 
     expect(input().getAttribute('aria-invalid')).toBe('true')
-    expect(container.textContent).toContain(`Enter a whole number of hours from 0 to ${MAX_UPDATE_HOURS}`)
+    expect(container.textContent).toContain(`请输入 0 到 ${MAX_UPDATE_HOURS} 之间的整数（小时）`)
 
     await click(saveButton())
 
@@ -124,7 +124,7 @@ describe('DurationSetting', () => {
 
     await type(input(), minutes)
 
-    expect(container.textContent).toContain('Enter a whole number of minutes from 1 to 60')
+    expect(container.textContent).toContain('请输入 1 到 60 之间的整数（分钟）')
     await click(saveButton())
     expect(onSave).not.toHaveBeenCalled()
   })

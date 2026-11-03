@@ -57,7 +57,7 @@ export const SCRIPT_DIRECTIONS: ScriptDirection[] = [
   },
   {
     id: 'standard-script',
-    name: '好莱坞分场剧本 (Script)',
+    name: '好莱坞分场剧本',
     description: '标准 Fountain 格式与潜台词对白',
     icon: FilmReelIcon,
     badgeColor: 'text-emerald-600 dark:text-emerald-400',
@@ -66,7 +66,7 @@ export const SCRIPT_DIRECTIONS: ScriptDirection[] = [
   },
   {
     id: 'beat-sheet',
-    name: '故事节拍大纲 (Beat Sheet)',
+    name: '故事节拍大纲',
     description: '救猫咪 15 节拍与情绪极性反转',
     icon: ListBulletsIcon,
     badgeColor: 'text-purple-600 dark:text-purple-400',
@@ -84,7 +84,7 @@ export const SCRIPT_DIRECTIONS: ScriptDirection[] = [
   },
   {
     id: 'interactive-game-script',
-    name: '互动影游与分支剧情 (Interactive Script)',
+    name: '互动影游与分支剧情',
     description: '分支选择树、节点反转与傲娇好感度反馈',
     icon: GameControllerIcon,
     badgeColor: 'text-indigo-600 dark:text-indigo-400',
@@ -121,7 +121,7 @@ export default function ComposerFormatMenuItems({
   return (
     <>
       <p className="px-2 pb-1 pt-1.5 text-[10px] font-medium uppercase leading-4 tracking-[0.06em] text-kumo-inactive">
-        选择剧作方向 (START WITH)
+        选择剧作方向
       </p>
       {SCRIPT_DIRECTIONS.map((direction) => {
         const IconComponent = direction.icon
@@ -169,7 +169,7 @@ export default function ComposerFormatMenuItems({
                 />
               </span>
               <span className="flex-1 truncate">
-                {creating === format.blueprintId ? 'Creating…' : format.output.noun}
+                {creating === format.blueprintId ? '正在创建…' : format.output.noun}
               </span>
             </DropdownMenu.Item>
           ))}

@@ -9,7 +9,7 @@ import { describeMute } from '../../features/notifications/notificationMute'
 import { isImeComposing } from '../../keyboardEvent'
 
 function initials(title: string | undefined): string {
-  const t = (title || 'Untitled').trim()
+  const t = (title || '未命名工作区').trim()
   if (!t) return 'UG'
   const parts = t.split(/\s+/).slice(0, 2)
   return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || t.slice(0, 2).toUpperCase()
@@ -67,7 +67,7 @@ export default function SidebarGadgetRow({
       onClick={(e) => {
         if (renaming) e.preventDefault()
       }}
-      title={collapsed ? gadget.title || 'Untitled workspace' : undefined}
+      title={collapsed ? gadget.title || '未命名工作区' : undefined}
     >
       <div
         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-kumo-fill text-[10px] font-medium text-kumo-subtle"
@@ -93,7 +93,7 @@ export default function SidebarGadgetRow({
               onClick={(e) => e.preventDefault()}
             />
           ) : (
-            <span className="min-w-0 flex-1 truncate">{gadget.title || 'Untitled workspace'}</span>
+            <span className="min-w-0 flex-1 truncate">{gadget.title || '未命名工作区'}</span>
           )}
           {muteDescription && (
             <BellSlash size={12} alt={muteDescription} className="shrink-0 text-kumo-inactive" />
@@ -107,7 +107,7 @@ export default function SidebarGadgetRow({
                 render={
                   <button
                     type="button"
-                    aria-label="Workspace actions"
+                    aria-label="工作区操作"
                     className="flex h-6 w-6 items-center justify-center rounded-md text-kumo-subtle opacity-0 transition-[opacity,color,background-color] group-hover:opacity-100 hover:bg-kumo-fill hover:text-kumo-default focus:opacity-100"
                   >
                     <DotsThree size={14} weight="bold" />
@@ -119,20 +119,20 @@ export default function SidebarGadgetRow({
                   onClick={startRename}
                   className={MENU_ITEM}
                 >
-                  <Pencil size={13} /> Rename
+                  <Pencil size={13} /> 重命名
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
                   onClick={() => onTogglePin(gadget)}
                   className={MENU_ITEM}
                 >
                   <Star size={13} weight={gadget.pinned ? 'fill' : 'regular'} />
-                  {gadget.pinned ? 'Unfavorite' : 'Favorite'}
+                  {gadget.pinned ? '取消收藏' : '收藏'}
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
                   onClick={() => onShare(gadget)}
                   className={MENU_ITEM}
                 >
-                  <ShareNetwork size={13} /> Share
+                  <ShareNetwork size={13} /> 分享
                 </DropdownMenu.Item>
                 <WorkspaceNotificationsMenu
                   workspaceId={gadget.id}
@@ -146,7 +146,7 @@ export default function SidebarGadgetRow({
                   className={MENU_ITEM_DANGER}
                 >
                   <Trash size={13} />
-                  {gadget.owner ? 'Dismiss' : 'Delete'}
+                  {gadget.owner ? '关闭' : '删除'}
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu>
@@ -155,7 +155,7 @@ export default function SidebarGadgetRow({
       )}
 
       {/* Collapsed rows show only the monogram (aria-hidden), so name the link for screen readers. */}
-      {collapsed && <span className="sr-only">{gadget.title || 'Untitled workspace'}</span>}
+      {collapsed && <span className="sr-only">{gadget.title || '未命名工作区'}</span>}
     </Link>
   )
 }

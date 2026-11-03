@@ -86,9 +86,9 @@ describe("MarkdownMessage line breaks", () => {
     await render("```ts\nconst answer = 42;\n```");
 
     const button = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Copy code"]',
+      'button[aria-label="复制代码"]',
     );
-    expect(button?.title).toBe("Copy code");
+    expect(button?.title).toBe("复制代码");
 
     await act(async () => button?.click());
 

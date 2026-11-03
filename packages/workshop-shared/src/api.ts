@@ -602,7 +602,7 @@ export interface AuthenticatedApi extends RpcTarget {
 
   /**
    * Set the model to use for simple quick tasks, like generating chat titles. Set null to
-   * disable quick model use (e.g. chats will be titled "New Chat").
+   * disable quick model use (e.g. chats will be titled "新对话").
    */
   setQuickModel(id: string | null): Promise<void>;
 
@@ -690,7 +690,7 @@ export interface AuthenticatedApi extends RpcTarget {
       configureObservers?: RpcStub<ObserverConfigCallback>): Promise<RpcStub<Overseer>>;
 
   /**
-   * Create a new workspace. It will start out titled "Untitled Workspace".
+   * Create a new workspace. It will start out titled "未命名工作区".
    *
    * Note: A workspace is considered "provisional" until it has some sort of activity, such as a
    *   chat message or code edit. Provisional workspaces do not appear on the home page and will be

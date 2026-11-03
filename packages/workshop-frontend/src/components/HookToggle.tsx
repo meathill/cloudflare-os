@@ -14,7 +14,7 @@ interface HookToggleProps {
 /** Enable/disable toggle for bound hooks. Used in the Connections tab, Activity log, and inline chat. */
 export function HookToggle({ hookTitle, enabled, pending = false, onToggle, size = 'sm' }: HookToggleProps) {
   return (
-    <Tooltip content={enabled ? 'Disable this hook.' : 'Enable this hook.'} asChild>
+    <Tooltip content={enabled ? '禁用此钩子。' : '启用此钩子。'} asChild>
       <span className="inline-flex items-center">
         <Switch
           checked={enabled}
@@ -27,7 +27,7 @@ export function HookToggle({ hookTitle, enabled, pending = false, onToggle, size
           onCheckedChange={(checked) => {
             if (!pending) onToggle(checked)
           }}
-          aria-label={`Hook: ${hookTitle}`}
+          aria-label={`钩子：${hookTitle}`}
         />
       </span>
     </Tooltip>
@@ -36,7 +36,7 @@ export function HookToggle({ hookTitle, enabled, pending = false, onToggle, size
 
 /** The toast for a hook that could not be enabled or disabled, saying why when the error does. */
 export const hookToggleFailureToast = (enabled: boolean, error: unknown) => ({
-  title: `Failed to ${enabled ? 'enable' : 'disable'} hook`,
+  title: `${enabled ? '启用' : '禁用'}钩子失败`,
   description: rpcFailureDescription(error),
   variant: 'error' as const,
 })

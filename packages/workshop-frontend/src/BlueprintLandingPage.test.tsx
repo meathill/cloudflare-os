@@ -228,10 +228,10 @@ describe('BlueprintLandingPage model configuration', () => {
     await act(async () => { await Promise.resolve() })
 
     const configure = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent === 'Configure')!
+      .find(button => button.textContent === '配置')!
     await act(async () => configure.click())
 
-    const trigger = document.body.querySelector<HTMLButtonElement>('[aria-label="Choose an AI model"]')!
+    const trigger = document.body.querySelector<HTMLButtonElement>('[aria-label="选择 AI 模型"]')!
     await act(async () => trigger.click())
     return trigger
   }
@@ -250,7 +250,7 @@ describe('BlueprintLandingPage model configuration', () => {
     expect(trigger.textContent).toContain('Model one')
 
     const save = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .find(button => button.textContent === 'Save connection')!
+      .find(button => button.textContent === '保存连接')!
     expect(save.disabled).toBe(false)
   })
 
@@ -378,18 +378,18 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
     'https://calendar.google.com/calendar/recipient%40example.com/?availability=thisCalendar'
 
   async function saveCalendarConnection() {
-    await act(async () => findButton('Configure')!.click())
-    await vi.waitFor(() => expect(findButton('Save connection')!.disabled).toBe(false))
-    await act(async () => findButton('Save connection')!.click())
-    await vi.waitFor(() => expect(findButton('Create Gadget')).toBeDefined())
+    await act(async () => findButton('配置')!.click())
+    await vi.waitFor(() => expect(findButton('保存连接')!.disabled).toBe(false))
+    await act(async () => findButton('保存连接')!.click())
+    await vi.waitFor(() => expect(findButton('创建应用')).toBeDefined())
   }
 
   it('shows the recommendation without prefilling it into the configurator', async () => {
     const harness = gatekeeperApi([CALENDAR_PATTERN])
     await render(harness)
-    expect(findButton('Configure 1 remaining connection')).toBeDefined()
+    expect(findButton('配置剩余的 1 个连接')).toBeDefined()
 
-    await act(async () => findButton('Configure')!.click())
+    await act(async () => findButton('配置')!.click())
     await vi.waitFor(() => expect(testState.configuratorMounts).toEqual([{
       initialResourceUrl: undefined,
       resourceUrlPattern: CALENDAR_PATTERN,
@@ -405,7 +405,7 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
     await saveCalendarConnection()
 
     testState.configuratorMounts = []
-    await act(async () => findButton('Change')!.click())
+    await act(async () => findButton('更换')!.click())
     await vi.waitFor(() => expect(testState.configuratorMounts).toEqual([{
       initialResourceUrl: RECIPIENT_CALENDAR_URL,
       resourceUrlPattern: CALENDAR_PATTERN,
@@ -418,7 +418,7 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
     await saveCalendarConnection()
 
     testState.selectionReady = resourceUrl => resourceUrl !== undefined
-    await act(async () => findButton('Change')!.click())
+    await act(async () => findButton('更换')!.click())
     const secondAccount = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
       .find(button => button.textContent?.includes('recipient-8@example.com'))!
     await act(async () => secondAccount.click())
@@ -426,7 +426,7 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
     await vi.waitFor(() => expect(
       testState.configuratorMounts.at(-1)?.initialResourceUrl,
     ).toBeUndefined())
-    expect(findButton('Save connection')!.disabled).toBe(true)
+    expect(findButton('保存连接')!.disabled).toBe(true)
   })
 
   it('invalidates a saved connection when its account disconnects', async () => {
@@ -436,8 +436,8 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
 
     await act(async () => harness.removeAccount(7))
 
-    await vi.waitFor(() => expect(findButton('Configure 1 remaining connection')).toBeDefined())
-    expect(findButton('Change')).toBeUndefined()
+    await vi.waitFor(() => expect(findButton('配置剩余的 1 个连接')).toBeDefined())
+    expect(findButton('更换')).toBeUndefined()
   })
 
   it('keeps a saved connection while a restarted subscription replays its accounts', async () => {
@@ -457,7 +457,7 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
       <BlueprintLandingPage rpcStub={publicApi(CALENDAR_BLUEPRINT)} />,
     ))
 
-    expect(findButton('Create Gadget')).toBeDefined()
+    expect(findButton('创建应用')).toBeDefined()
   })
 
   it('invalidates a saved connection when its account loses the required grant', async () => {
@@ -467,19 +467,19 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
 
     await act(async () => harness.updateGrants([GMAIL_PATTERN]))
 
-    await vi.waitFor(() => expect(findButton('Configure 1 remaining connection')).toBeDefined())
-    expect(findButton('Change')).toBeUndefined()
+    await vi.waitFor(() => expect(findButton('配置剩余的 1 个连接')).toBeDefined())
+    expect(findButton('更换')).toBeUndefined()
   })
 
   it('expands a Gmail-only account before starting the Calendar configurator', async () => {
     const harness = gatekeeperApi([GMAIL_PATTERN])
     await render(harness)
 
-    await act(async () => findButton('Configure')!.click())
-    await vi.waitFor(() => expect(findButton('Grant access')).toBeDefined())
+    await act(async () => findButton('配置')!.click())
+    await vi.waitFor(() => expect(findButton('授予访问权限')).toBeDefined())
     expect(harness.startResourceConfigurator).not.toHaveBeenCalled()
 
-    await act(async () => findButton('Grant access')!.click())
+    await act(async () => findButton('授予访问权限')!.click())
     expect(harness.ensureAccountResources).toHaveBeenCalledExactlyOnceWith(7, [CALENDAR_PATTERN])
     expect(harness.reconnectAccount).not.toHaveBeenCalled()
     expect(openConnectWindow).toHaveBeenCalledExactlyOnceWith({
@@ -500,9 +500,9 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
     const harness = gatekeeperApi(null)
     await render(harness)
 
-    await act(async () => findButton('Configure')!.click())
-    await vi.waitFor(() => expect(findButton('Connect Google')).toBeDefined())
-    await act(async () => findButton('Connect Google')!.click())
+    await act(async () => findButton('配置')!.click())
+    await vi.waitFor(() => expect(findButton('连接 Google')).toBeDefined())
+    await act(async () => findButton('连接 Google')!.click())
 
     expect(harness.connectAccount).toHaveBeenCalledExactlyOnceWith('google', [CALENDAR_PATTERN])
   })
@@ -513,8 +513,8 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
     // connected silently never appears.
     const harness = gatekeeperApi(null)
     await render(harness)
-    await act(async () => findButton('Configure')!.click())
-    await vi.waitFor(() => expect(findButton('Connect Google')).toBeDefined())
+    await act(async () => findButton('配置')!.click())
+    await vi.waitFor(() => expect(findButton('连接 Google')).toBeDefined())
 
     await act(async () => harness.addAccount(7, [GMAIL_PATTERN], [{
       urlPattern: GMAIL_PATTERN,
@@ -523,7 +523,7 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
       grantable: true,
     }]))
 
-    expect(document.body.textContent).toContain("Your connected Google account can't be used for Google Calendar")
+    expect(document.body.textContent).toContain("已连接的 Google 账号无法用于 Google Calendar")
     expect(harness.startResourceConfigurator).not.toHaveBeenCalled()
 
     await act(async () => harness.addAccount(8, [CALENDAR_PATTERN]))
@@ -538,16 +538,16 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
     harness.ensureAccountResources.mockResolvedValueOnce(null)
     await render(harness)
 
-    await act(async () => findButton('Configure')!.click())
-    await vi.waitFor(() => expect(findButton('Grant access')).toBeDefined())
-    await act(async () => findButton('Grant access')!.click())
+    await act(async () => findButton('配置')!.click())
+    await vi.waitFor(() => expect(findButton('授予访问权限')).toBeDefined())
+    await act(async () => findButton('授予访问权限')!.click())
 
     await vi.waitFor(() => expect(harness.startResourceConfigurator)
       .toHaveBeenCalledExactlyOnceWith(7, CALENDAR_PATTERN))
     expect(openConnectWindow).not.toHaveBeenCalled()
 
     await act(async () => harness.addAccount(8, [CALENDAR_PATTERN]))
-    expect(findButton('Grant access')).toBeUndefined()
+    expect(findButton('授予访问权限')).toBeUndefined()
     expect(document.body.querySelector('[data-testid="resource-configurator"]')).not.toBeNull()
   })
 
@@ -555,7 +555,7 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
     const harness = gatekeeperApi([GMAIL_PATTERN], [CALENDAR_PATTERN])
     await render(harness)
 
-    await act(async () => findButton('Configure')!.click())
+    await act(async () => findButton('配置')!.click())
 
     await vi.waitFor(() => expect(harness.startResourceConfigurator)
       .toHaveBeenCalledExactlyOnceWith(8, CALENDAR_PATTERN))
@@ -574,7 +574,7 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
       },
     })
 
-    await act(async () => findButton('Configure')!.click())
+    await act(async () => findButton('配置')!.click())
 
     await vi.waitFor(() => expect(harness.startResourceConfigurator)
       .toHaveBeenCalledExactlyOnceWith(7, CALENDAR_PATTERN))
@@ -595,9 +595,9 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
       },
     })
 
-    await act(async () => findButton('Configure')!.click())
-    await vi.waitFor(() => expect(findButton('Grant access')).toBeDefined())
-    await act(async () => findButton('Grant access')!.click())
+    await act(async () => findButton('配置')!.click())
+    await vi.waitFor(() => expect(findButton('授予访问权限')).toBeDefined())
+    await act(async () => findButton('授予访问权限')!.click())
 
     expect(harness.ensureAccountResources).toHaveBeenCalledExactlyOnceWith(8, [CALENDAR_PATTERN])
   })
@@ -608,15 +608,15 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
     harness.ensureAccountResources.mockReturnValueOnce(new Promise(resolve => { resolveGrant = resolve }))
     await render(harness)
 
-    await act(async () => findButton('Configure')!.click())
+    await act(async () => findButton('配置')!.click())
     let grantButtons = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .filter(candidate => candidate.textContent === 'Grant access')
+      .filter(candidate => candidate.textContent === '授予访问权限')
     expect(grantButtons).toHaveLength(2)
     act(() => grantButtons[0].click())
 
     await vi.waitFor(() => {
       grantButtons = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-        .filter(candidate => candidate.textContent === 'Grant access')
+        .filter(candidate => candidate.textContent === '授予访问权限')
       expect(grantButtons).toHaveLength(1)
       expect(grantButtons[0].disabled).toBe(true)
     })
@@ -701,7 +701,7 @@ describe('BlueprintLandingPage configurator access requests', () => {
     await act(async () => root!.render(<BlueprintLandingPage rpcStub={publicApi(GATEKEEPER_BLUEPRINT)} />))
     await act(async () => { await Promise.resolve() })
     const configure = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent === 'Configure')!
+      .find(button => button.textContent === '配置')!
     await act(async () => configure.click())
     await vi.waitFor(() => expect(testState.configurator?.frame.iframeHtml).toBe('frame-1'))
   }

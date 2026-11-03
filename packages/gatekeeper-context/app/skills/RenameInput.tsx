@@ -32,7 +32,7 @@ export const RenameInput = ({ initialValue, format, onCommit, onCancel }: Rename
       <input
         ref={inputRef}
         type="text"
-        aria-label={`Rename ${format}`}
+        aria-label={`重命名${format === "skill" ? "技能" : "知识集合"}`}
         value={value}
         onChange={(event) => {
           const singleLine = event.target.value.replace(/\n/g, "");

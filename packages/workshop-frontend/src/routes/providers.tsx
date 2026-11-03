@@ -59,7 +59,7 @@ function ModelRow({
           onSetQuick()
         }
       })}
-      title={onSetQuick && (isQuick ? 'Quick model. Click to clear' : 'Click to set as quick model')}
+      title={onSetQuick && (isQuick ? '快速模型，点击清除' : '点击设为快速模型')}
       className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors duration-150 ease-out hover:bg-kumo-tint ${onSetQuick ? 'cursor-pointer' : ''}`}
     >
       {/* Neutral monogram — matches the sidebar/workspaces treatment */}
@@ -75,13 +75,13 @@ function ModelRow({
           </span>
           {isBuiltIn && (
             <span className="shrink-0 rounded-full bg-kumo-tint px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.4px] text-kumo-subtle">
-              built-in
+              内置
             </span>
           )}
           {isQuick && (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(255,72,1,0.10)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.4px] text-kumo-brand">
               <Lightning size={9} weight="fill" />
-              quick
+              快速
             </span>
           )}
         </div>
@@ -96,7 +96,7 @@ function ModelRow({
           <DropdownMenu.Trigger
             render={
               <button
-                aria-label="Provider actions"
+                aria-label="服务商操作"
                 className="cursor-pointer rounded-md p-1.5 text-kumo-subtle transition-colors hover:bg-kumo-fill hover:text-kumo-default focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
               >
                 <DotsThreeVertical size={16} />
@@ -107,25 +107,25 @@ function ModelRow({
             {onSetQuick && (
               <DropdownMenu.Item onClick={onSetQuick} className={MENU_ITEM}>
                 <Lightning size={13} weight={isQuick ? 'fill' : 'regular'} />
-                {isQuick ? 'Clear quick model' : 'Set as quick model'}
+                {isQuick ? '清除快速模型' : '设为快速模型'}
               </DropdownMenu.Item>
             )}
             {!isBuiltIn && canEdit && (
               <>
                 <DropdownMenu.Item onClick={onEdit} className={MENU_ITEM}>
                   <PencilSimple size={13} />
-                  Edit provider
+                  编辑服务商
                 </DropdownMenu.Item>
                 <DropdownMenu.Item onClick={onClone} className={MENU_ITEM}>
                   <Copy size={13} />
-                  Clone provider
+                  复制服务商
                 </DropdownMenu.Item>
               </>
             )}
             {!isBuiltIn && (
               <DropdownMenu.Item variant="danger" onClick={onDelete} className={MENU_ITEM_DANGER}>
                 <Trash size={13} />
-                Delete provider
+                删除服务商
               </DropdownMenu.Item>
             )}
           </DropdownMenu.Content>
@@ -148,7 +148,7 @@ function Notice({ children }: { children: React.ReactNode }) {
 // ─── main page ────────────────────────────────────────────────────────────────
 
 function ProvidersPage() {
-  useDocumentTitle('AI Providers')
+  useDocumentTitle('AI 服务商')
 
   const { authenticatedApi } = useAuthenticatedApi()
   const toasts = useKumoToastManager()
@@ -219,7 +219,7 @@ function ProvidersPage() {
     } catch (err) {
       if (request !== openRequest.current) return
       console.error('Failed to load model configuration:', err)
-      toasts.add({ title: 'Failed to load provider configuration', variant: 'error' })
+      toasts.add({ title: '加载服务商配置失败', variant: 'error' })
     }
   }
 
@@ -231,7 +231,7 @@ function ProvidersPage() {
       await fetchAll()
     } catch (err) {
       console.error('Failed to delete model:', err)
-      toasts.add({ title: 'Failed to delete provider', variant: 'error' })
+      toasts.add({ title: '删除服务商失败', variant: 'error' })
     } finally {
       setDeletingId(null)
     }
@@ -250,7 +250,7 @@ function ProvidersPage() {
     } catch (err) {
       console.error('Failed to set quick model:', err)
       setQuickModel(quickModel) // revert
-      toasts.add({ title: 'Failed to update default model', variant: 'error' })
+      toasts.add({ title: '更新默认模型失败', variant: 'error' })
     } finally {
       quickInFlight.current = false
     }
@@ -266,7 +266,7 @@ function ProvidersPage() {
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col px-3 sm:px-10">
       <header className="flex flex-col items-stretch gap-4 px-3 pb-3 pt-6 sm:flex-row sm:items-end sm:justify-between sm:pt-10">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-kumo-default">AI providers</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-kumo-default">AI 服务商</h1>
           <p className="mt-1 text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-subtle">
             系统已统一配置并锁定主力模型为 Google Gemini 3.8 Flash，凭据由服务端统一托管。
           </p>
@@ -282,7 +282,7 @@ function ProvidersPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search providers…"
+              placeholder="搜索服务商…"
               className="h-9 w-full rounded-lg border border-kumo-line bg-kumo-base pl-9 pr-4 text-[13px] tracking-[-0.25px] text-kumo-default placeholder:text-kumo-inactive transition-[border-color,box-shadow] duration-150 ease-out focus:border-kumo-ring focus:outline-none focus:ring-[3px] focus:ring-kumo-ring/15"
             />
           </div>
@@ -297,7 +297,7 @@ function ProvidersPage() {
               <Notice>
                 <Lightning size={15} className="mt-px shrink-0 text-kumo-brand" />
                 <span>
-                  <strong className="font-medium text-kumo-default">AI Gateway mode:</strong>{' '}
+                  <strong className="font-medium text-kumo-default">AI Gateway 模式：</strong>{' '}
                   {canAddModels
                     ? 'built-in models are managed by your deployment. You can still add other ' +
                       'models from the enabled providers.'
@@ -311,11 +311,11 @@ function ProvidersPage() {
               <Notice>
                 <Lightning size={15} className="mt-px shrink-0 text-kumo-brand" />
                 <span>
-                  <strong className="font-medium text-kumo-default">Quick model:</strong>{' '}
+                  <strong className="font-medium text-kumo-default">快速模型：</strong>{' '}
                   {quickModel
                     ? `${models.find((m) => m.id === quickModel)?.name ?? quickModel}.`
-                    : 'none set.'}{' '}
-                  Used for fast tasks like generating chat titles. Click a model to set it.
+                    : '尚未设置。'}{' '}
+                  用于生成对话标题等快速任务。点击模型进行设置。
                 </span>
               </Notice>
             )}
@@ -331,9 +331,9 @@ function ProvidersPage() {
           </div>
         ) : loadError ? (
           <div className="py-12 text-center text-sm">
-            <p className="text-kumo-danger">Something went wrong loading your providers.</p>
+            <p className="text-kumo-danger">加载服务商时出错。</p>
             <button type="button" onClick={fetchAll} className="mt-1 cursor-pointer text-kumo-brand underline">
-              Try again
+              重试
             </button>
           </div>
         ) : models.length === 0 ? (
@@ -343,23 +343,23 @@ function ProvidersPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-kumo-default">
-                {canAddModels ? 'No AI providers yet' : 'No AI models available'}
+                {canAddModels ? '暂无 AI 服务商' : '没有可用的 AI 模型'}
               </p>
               <p className="mt-1 text-[13px] leading-[18px] text-kumo-subtle">
                 {canAddModels
-                  ? 'Add a provider to start building workspaces with AI.'
-                  : 'Your deployment’s administrator offers no models at the moment.'}
+                  ? '添加服务商，即可开始使用 AI 创建工作区。'
+                  : '此部署的管理员目前未提供模型。'}
               </p>
             </div>
             {canAddModels && (
               <button type="button" onClick={openAdd} className={PRIMARY_BTN}>
                 <Plus size={14} weight="bold" />
-                Add your first provider
+                添加第一个服务商
               </button>
             )}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center text-sm text-kumo-inactive">No providers found</div>
+          <div className="py-12 text-center text-sm text-kumo-inactive">未找到服务商</div>
         ) : (
           filtered.map((model) => (
             <div

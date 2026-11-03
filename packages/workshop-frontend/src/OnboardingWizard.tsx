@@ -66,7 +66,7 @@ export default function OnboardingWizard({
   const { resolvedThemeMode } = useTheme()
   const toasts = useKumoToastManager()
   const siteName = useSiteName()
-  useDocumentTitle('Setup')
+  useDocumentTitle('初始化设置')
 
   // Wizard state
   const [step, setStep] = useState(0) // 0 = avatar, 1 = model, 2 = connections
@@ -213,7 +213,7 @@ export default function OnboardingWizard({
 
   const handleFileSelect = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      toasts.add({ title: 'Please select an image file', variant: 'error' })
+      toasts.add({ title: '请选择图片文件', variant: 'error' })
       return
     }
     setAvatarProcessing(true)
@@ -224,7 +224,7 @@ export default function OnboardingWizard({
       setAvatarPreview(avatarBlobUrl(compressed))
     } catch (err) {
       console.error('Failed to process avatar:', err)
-      toasts.add({ title: 'Failed to process image', variant: 'error' })
+      toasts.add({ title: '处理图片失败', variant: 'error' })
     } finally {
       setAvatarProcessing(false)
     }
@@ -245,7 +245,7 @@ export default function OnboardingWizard({
     } catch (err) {
       if (err instanceof AuthPopupCancelledError) return
       console.error('Failed to start connection:', err)
-      toasts.add({ title: err instanceof Error ? err.message : 'Could not complete connection', variant: 'error' })
+      toasts.add({ title: err instanceof Error ? err.message : '无法完成连接', variant: 'error' })
     } finally {
       // Reset after a short delay — the subscription will update the UI when the connection completes
       setTimeout(() => setConnectingVendorId(null), 2000)
@@ -308,14 +308,14 @@ export default function OnboardingWizard({
         }
       }))
       if (failedNames.length > 0) {
-        toasts.add({ title: `Couldn't turn on ${failedNames.join(', ')}.`, variant: 'warning' })
+        toasts.add({ title: `无法启用 ${failedNames.join('、')}。`, variant: 'warning' })
       }
       if (ambientToProvision.length > failedNames.length) refreshGatekeeperApps(authenticatedApi)
       await authenticatedApi.completeOnboarding()
       onComplete()
     } catch (err) {
       console.error('Failed to complete onboarding:', err)
-      toasts.add({ title: 'Something went wrong. Please try again.', variant: 'error' })
+      toasts.add({ title: '出错了，请重试。', variant: 'error' })
       setFinishing(false)
     }
   }
@@ -371,14 +371,14 @@ export default function OnboardingWizard({
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
             }`}
           >
-            Let&apos;s set you up
+            开始设置
           </h1>
           <p
             className={`mt-2 text-sm text-kumo-subtle transition-all duration-500 delay-200 ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
             }`}
           >
-            Just a few things before you start building
+            开始创作前，请先完成几项设置
           </p>
         </div>
 
@@ -407,10 +407,10 @@ export default function OnboardingWizard({
             {/* ── Step 0: Profile ───────────────────────────────────────────── */}
             <div className="min-h-[320px] w-full flex-shrink-0 p-5 sm:min-h-[420px] sm:p-8">
               <h2 className="text-lg font-medium text-kumo-default mb-1">
-                Create your profile
+                创建个人资料
               </h2>
               <p className="text-sm text-kumo-subtle mb-12">
-                This is how you&apos;ll appear in conversations
+                这是你在对话中显示的名称
               </p>
 
               {/* Avatar + Display name side by side */}
@@ -436,7 +436,7 @@ export default function OnboardingWizard({
                       <>
                         <img
                           src={avatarPreview}
-                          alt="Avatar preview"
+                          alt="头像预览"
                           className="w-full h-full rounded-full object-cover"
                         />
                         <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -468,7 +468,7 @@ export default function OnboardingWizard({
                     }}
                   />
                   <p className="text-xs text-kumo-inactive mt-1.5">
-                    {avatarPreview ? 'Change' : 'Add photo'}
+                    {avatarPreview ? '更换' : '添加照片'}
                   </p>
                 </div>
 
@@ -478,14 +478,14 @@ export default function OnboardingWizard({
                     htmlFor="onboarding-display-name"
                     className="block text-xs font-medium text-kumo-subtle mb-1.5"
                   >
-                    Display name
+                    显示名称
                   </label>
                   <input
                     id="onboarding-display-name"
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="How should we call you?"
+                    placeholder="我们该如何称呼你？"
                     className="w-full rounded-lg border border-kumo-line bg-kumo-base px-3 py-2.5 text-[16px] text-kumo-default transition-colors placeholder:text-kumo-inactive focus:border-kumo-brand focus:outline-none sm:text-sm"
                   />
                 </div>
@@ -496,10 +496,10 @@ export default function OnboardingWizard({
             <div className={`w-full flex-shrink-0 p-8 min-h-[420px] ${showConnectionsStep ? '' : 'hidden'}`}>
               <div>
                 <h2 className="text-lg font-medium text-kumo-default mb-1">
-                  Connect your services
+                  连接服务
                 </h2>
                 <p className="text-sm text-kumo-subtle mb-6">
-                  Link your accounts so your gadgets can access them. You can always add more later.
+                  连接账号，让应用可以访问相关服务。之后也可以继续添加。
                 </p>
 
                 {connectionsLoading ? (
@@ -545,7 +545,7 @@ export default function OnboardingWizard({
                               {vendor.description.displayName}
                             </p>
                             <p className="text-xs text-kumo-subtle truncate">
-                              {isConnected ? 'Connected' : isConnecting ? 'Connecting...' : 'Not connected'}
+                              {isConnected ? '已连接' : isConnecting ? '正在连接…' : '未连接'}
                             </p>
                           </div>
                           {isConnected && (
@@ -573,7 +573,7 @@ export default function OnboardingWizard({
                 )}
 
                 <p className="text-xs text-kumo-inactive mt-4 text-center">
-                  Optional &middot; you can manage connections any time
+                  可选 · 随时可以管理连接
                 </p>
               </div>
             </div>
@@ -592,7 +592,7 @@ export default function OnboardingWizard({
                 onClick={goBack}
                 className="text-sm text-kumo-subtle hover:text-kumo-default transition-colors"
               >
-                Back
+                返回
               </button>
             ) : (
               <span />
@@ -613,7 +613,7 @@ export default function OnboardingWizard({
                     }
                   `}
                 >
-                  Next
+                  下一步
                   <ArrowRight size={14} weight="bold" />
                 </button>
               ) : (
@@ -632,11 +632,11 @@ export default function OnboardingWizard({
                   {finishing ? (
                     <>
                       <div className="w-4 h-4 border-2 border-kumo-inverse/30 border-t-kumo-inverse rounded-full animate-spin" />
-                      Setting up...
+                      正在设置…
                     </>
                   ) : (
                     <>
-                      Let&apos;s build
+                      开始创作
                       <ArrowRight size={14} weight="bold" />
                     </>
                   )}
@@ -664,9 +664,9 @@ const AmbientToolList = ({
   onToggle: (vendorId: string, on: boolean) => void
 }) => (
   <div className="mt-6">
-    <h3 className="text-sm font-medium text-kumo-default">Built-in tools</h3>
+    <h3 className="text-sm font-medium text-kumo-default">内置工具</h3>
     <p className="mb-3 mt-0.5 text-xs text-kumo-subtle">
-      These turn on in every workspace when you finish. You can turn them off on the Gatekeepers page.
+      完成设置后，这些工具将在每个工作区中启用。你可以在连接服务页面关闭它们。
     </p>
     <ul className="divide-y divide-kumo-line rounded-xl border border-kumo-line">
       {vendors.map(({ id, description }) => (
@@ -713,34 +713,34 @@ const SHOWCASE_FEATURES: ShowcaseFeature[] = [
     icon: Sparkle,
     iconColor: 'text-media-100',
     iconBg: 'bg-media-200',
-    title: 'Build gadgets or just chat',
+    title: '创建应用或直接对话',
     description:
-      'Create full web apps, or keep it simple with agent-only conversations. Your call.',
+      '创建完整的网页应用，或只与智能体对话，由你决定。',
   },
   {
     icon: UsersThree,
     iconColor: 'text-compute-100',
     iconBg: 'bg-compute-200',
-    title: 'Collaborate in real time',
+    title: '实时协作',
     description:
-      'Share a workspace with teammates and work on it together, live.',
+      '与团队成员分享工作区，实时协作。',
   },
   {
     icon: Key,
     iconColor: 'text-kumo-warning',
     iconBg: 'bg-kumo-warning-tint',
-    title: 'Bring your own models',
+    title: '使用自己的模型',
     description:
-      'Plug in personal API tokens from any provider to use the models you love.',
+      '使用服务商提供的个人 API 令牌，接入你喜欢的模型。',
     ownModels: true,
   },
   {
     icon: Plugs,
     iconColor: 'text-storage-100',
     iconBg: 'bg-storage-200',
-    title: 'AI meets your tools',
+    title: '让 AI 使用你的工具',
     description:
-      'Have AI review a Google Doc, summarize Slack threads, triage Jira tickets, and more.',
+      '让 AI 审阅 Google 文档、总结 Slack 讨论或整理 Jira 工单等。',
   },
 ]
 
@@ -763,10 +763,10 @@ function ShowcaseStep({ active, siteName }: {
     <div>
       <div className="text-center mb-6">
         <h2 className="text-lg font-medium text-kumo-default mb-1">
-          You&apos;re all set
+          设置完成
         </h2>
         <p className="text-sm text-kumo-subtle">
-          Here&apos;s a taste of what you can do with {siteName}
+          你可以使用以下功能： {siteName}
         </p>
       </div>
 

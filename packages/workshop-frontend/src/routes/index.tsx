@@ -79,7 +79,7 @@ export function HomePageContent({ prompt }: HomeSearch) {
         // Toast unless it's a connection error (reconnect refetches); a do-reset here already
         // survived the Worker's same-colo retry, so the user should hear about it.
         if (classifyRpcError(err) !== "connection") {
-          toasts.add({ title: "Couldn't load AI models", variant: "error" });
+          toasts.add({ title: "无法加载 AI 模型", variant: "error" });
         }
       });
     return () => {
@@ -140,7 +140,7 @@ export function HomePageContent({ prompt }: HomeSearch) {
         }
         if (!transient) {
           toasts.add({
-            title: "Failed to create workspace",
+            title: "创建工作区失败",
             description: rpcFailureDescription(err),
             variant: "error",
           });

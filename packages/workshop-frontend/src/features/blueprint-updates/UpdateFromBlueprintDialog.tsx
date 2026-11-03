@@ -58,10 +58,10 @@ type Outcome =
   | { kind: 'failed'; blueprint: BlueprintChoice; allowUnrelated: boolean; message: string }
 
 const REFERENCE_MESSAGES: Partial<Record<ReferenceLookup['status'], string>> = {
-  invalid: 'That is not a blueprint ID or link.',
-  loading: 'Looking up that blueprint…',
-  notFound: 'No blueprint was found with that ID.',
-  failed: 'That blueprint could not be looked up.',
+  invalid: '这不是有效的蓝图 ID 或链接。',
+  loading: '正在查找蓝图…',
+  notFound: '未找到该 ID 对应的蓝图。',
+  failed: '无法查找该蓝图。',
 }
 
 const DIALOG_CLASS =
@@ -71,19 +71,16 @@ const BODY_TEXT = 'm-0 text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-s
 
 // The merge is recorded as a minimal diff, which is slow to find between files that share little.
 const APPLYING_NOTE =
-  'Working out the update. This can take a few minutes for a blueprint that has little in ' +
-  'common with the gadget.'
+  '正在准备更新。蓝图与应用的共同内容较少时，可能需要几分钟。'
 
 // A merge is only as good as the base it is worked out from, which is the newest version the
 // gadget and the blueprint have in common. With none, the confirm step's warning applies.
 const SWITCH_NOTE =
-  'The new blueprint must be derived from the same base as this gadget, such as a remix of the ' +
-  'blueprint the gadget was made from. If the two share no history, you are warned before ' +
-  'anything is merged. Once you accept the update, the gadget follows the new blueprint.'
+  '新蓝图必须与此应用基于相同的版本，例如应用原蓝图的改编版本。如果两者没有共同历史，合并前会提示你。接受更新后，应用将跟随新蓝图。'
 
 const describeChoice = (choice: BlueprintChoice, status: string | null) => (
   <>
-    <span className="block">Version {choice.version}{status && ` · ${status}`}</span>
+    <span className="block">版本 {choice.version}{status && ` · ${status}`}</span>
     {choice.description && <span className="line-clamp-2">{choice.description}</span>}
   </>
 )
@@ -183,7 +180,7 @@ export const UpdateFromBlueprintDialog = ({
       // that the gadget changed while the update was being worked out, which trying again cures.
       const transient = logRpcFailure('Failed to apply a blueprint:', err)
       const message = transient || !(err instanceof Error) || !err.message
-        ? 'Something went wrong while preparing the update.'
+        ? '准备更新时出错。'
         : err.message
       setOutcome({ kind: 'failed', blueprint, allowUnrelated, message })
     } finally {
@@ -205,8 +202,8 @@ export const UpdateFromBlueprintDialog = ({
   const followedStatus =
     !followed || gadget.upstream?.commitId === undefined ||
       followed.metadata.commitId === undefined ? null
-      : hasNewerRelease(gadget.upstream, followed.metadata) ? 'Update available'
-        : 'Up to date'
+      : hasNewerRelease(gadget.upstream, followed.metadata) ? '有可用更新'
+        : '已是最新版本'
 
   const header = (title: string, description: string) => (
     <div className="flex shrink-0 items-start justify-between gap-4 border-b border-kumo-line px-4 py-5 sm:px-6">
@@ -220,7 +217,7 @@ export const UpdateFromBlueprintDialog = ({
       </div>
       <Dialog.Close
         render={props => (
-          <WorkshopIconButton {...props} disabled={applying} aria-label="Close">
+          <WorkshopIconButton {...props} disabled={applying} aria-label="关闭">
             <X size={18} />
           </WorkshopIconButton>
         )}
@@ -241,8 +238,8 @@ export const UpdateFromBlueprintDialog = ({
     <div className="space-y-2">
       <p className={BODY_TEXT}>{SWITCH_NOTE}</p>
       <WorkshopInput
-        aria-label="Blueprint ID or link"
-        placeholder="Paste a blueprint ID or link"
+        aria-label="蓝图 ID 或链接"
+        placeholder="粘贴蓝图 ID 或链接"
         value={reference.text}
         onChange={event => handleReferenceChange(event.target.value)}
         disabled={applying}
@@ -261,24 +258,23 @@ export const UpdateFromBlueprintDialog = ({
 
   const reviewerField = (models: readonly AiChatAuthorInfo[]) => (
     <Select
-      label="Reviewing agent"
+      label="审核智能体"
       description={
-        'If you’ve customized this gadget, this agent makes sure your customizations are ' +
-        'compatible with the new version. Choose “No agent” to check them yourself.'
+        '如果你自定义过此应用，智能体会确保这些更改与新版本兼容。选择“无智能体”可自行检查。'
       }
       className="w-full text-sm [&_button]:!h-9"
       container={selectContainer}
       value={toModelSelectValue(reviewerId)}
       onValueChange={value => pickReviewer(fromModelSelectValue(String(value)))}
       renderValue={value => value === NO_AGENT_OPTION_VALUE
-        ? 'No agent'
+        ? '无智能体'
         : models.find(model => model.id === value)?.name ?? String(value)}
       disabled={applying}
     >
       {models.map(model => (
         <Select.Option key={model.id} value={model.id}>{model.name}</Select.Option>
       ))}
-      <Select.Option value={NO_AGENT_OPTION_VALUE}>No agent</Select.Option>
+      <Select.Option value={NO_AGENT_OPTION_VALUE}>无智能体</Select.Option>
     </Select>
   )
 
@@ -288,8 +284,8 @@ export const UpdateFromBlueprintDialog = ({
         return (
           <Banner
             size="sm"
-            title="Already up to date"
-            description={`This gadget already has the latest version of ${outcome.blueprint.title}.`}
+            title="已是最新版本"
+            description={`此应用已使用 ${outcome.blueprint.title} 的最新版本。`}
           />
         )
       case 'baseUnavailable':
@@ -297,10 +293,9 @@ export const UpdateFromBlueprintDialog = ({
           <Banner
             variant="alert"
             size="sm"
-            title="This update can't be merged"
+            title="无法合并此更新"
             description={
-              `This gadget and ${outcome.blueprint.title} have an earlier version in common, but ` +
-              'its files are not available to merge against.'
+              `此应用与 ${outcome.blueprint.title} 有共同的早期版本，但无法获取该版本的文件来合并。`
             }
           />
         )
@@ -309,14 +304,14 @@ export const UpdateFromBlueprintDialog = ({
           <Banner
             variant="error"
             size="sm"
-            title="The update could not be prepared"
+            title="无法准备更新"
             description={outcome.message}
             action={
               <Banner.Action
                 onClick={() => apply(outcome.blueprint, outcome.allowUnrelated)}
                 disabled={applying}
               >
-                Try again
+                重试
               </Banner.Action>
             }
           />
@@ -333,25 +328,21 @@ export const UpdateFromBlueprintDialog = ({
       <Dialog className={DIALOG_CLASS} size="lg">
         {unrelated ? (
           <>
-            {header('Unrelated blueprint', `This gadget shares no history with ${unrelated.title}.`)}
+            {header('无关的蓝图', `此应用与 ${unrelated.title} 没有共同历史。`)}
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-5 sm:px-6">
               {/* Kumo's Banner announces nothing itself, and this replaces what was on screen. */}
               <div role="alert">
                 <Banner
                   variant="alert"
                   size="sm"
-                  title="Your own changes may be undone"
+                  title="你自己的更改可能会被撤销"
                   description={
-                    'With no version in common, the update has to be merged against a guess at ' +
-                    'what this gadget was built from. A change of yours that the guess happens ' +
-                    'to include looks like something the blueprint removed, and is undone ' +
-                    'without a conflict being reported.'
+                    '由于没有共同版本，系统只能猜测此应用的原始版本作为合并基准。你的更改如果恰好被包含在猜测版本中，可能会被误认为蓝图删除的内容并被撤销，且不会报告冲突。'
                   }
                 />
               </div>
               <p className={BODY_TEXT}>
-                The update opens in a new chat, where you can check the result before accepting
-                it. Nothing changes until you do.
+                更新将在新对话中打开，你可以在接受前检查结果。接受之前不会更改任何内容。
               </p>
             </div>
             <div className="shrink-0 border-t border-kumo-line px-4 py-4 sm:px-6">
@@ -364,10 +355,10 @@ export const UpdateFromBlueprintDialog = ({
                     // The button that led here is gone, and took the focus with it.
                     autoFocus
                   >
-                    Back
+                    返回
                   </WorkshopButton>
                   <WorkshopButton tone="primary" onClick={() => apply(unrelated, true)} disabled={applying}>
-                    {applying ? 'Preparing update…' : 'Update anyway'}
+                    {applying ? '正在准备更新…' : '仍然更新'}
                   </WorkshopButton>
                 </>
               ))}
@@ -376,9 +367,8 @@ export const UpdateFromBlueprintDialog = ({
         ) : (
           <>
             {header(
-              'Update from blueprint',
-              `Merge a blueprint's latest version into ${gadget.title}. The update opens in a ` +
-                'new chat, where you can try it before accepting it.',
+              '从蓝图更新',
+              `将蓝图的最新版本合并到 ${gadget.title}。更新会在新对话中打开，你可以在接受前试用。`,
             )}
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
               {load.status === 'loading' ? (
@@ -387,17 +377,15 @@ export const UpdateFromBlueprintDialog = ({
                 <Banner
                   variant="error"
                   size="sm"
-                  title="The blueprint could not be loaded"
-                  action={<Banner.Action onClick={retryLoad}>Try again</Banner.Action>}
+                  title="无法加载蓝图"
+                  action={<Banner.Action onClick={retryLoad}>重试</Banner.Action>}
                 />
               ) : !followedChoice ? (
                 <>
                   <p className={BODY_TEXT}>
                     {followedId === undefined
-                      ? 'The blueprint this gadget was made from is not known, so paste the ID ' +
-                        'or link of the one to update from.'
-                      : 'The blueprint this gadget follows is no longer available, but you can ' +
-                        'switch it to another.'}
+                      ? '无法确定此应用的原始蓝图，请粘贴用于更新的蓝图 ID 或链接。'
+                      : '此应用跟随的蓝图已不可用，你可以切换到其他蓝图。'}
                   </p>
                   {switchForm()}
                 </>
@@ -412,16 +400,16 @@ export const UpdateFromBlueprintDialog = ({
                     }}
                     disabled={applying}
                   >
-                    <Radio.Legend className="sr-only">Blueprint to update from</Radio.Legend>
+                    <Radio.Legend className="sr-only">用于更新的蓝图</Radio.Legend>
                     <Radio.Item
                       value="followed"
-                      label={`Update from ${followedChoice.title}`}
+                      label={`从 ${followedChoice.title} 更新`}
                       description={describeChoice(followedChoice, followedStatus)}
                     />
                     <Radio.Item
                       value="switch"
-                      label="Advanced: Switch blueprints"
-                      description="Update from a different blueprint, named by its ID or link."
+                      label="高级：切换蓝图"
+                      description="通过 ID 或链接指定其他蓝图来更新。"
                     />
                   </Radio.Group>
                   {source === 'switch' && switchForm()}
@@ -437,14 +425,14 @@ export const UpdateFromBlueprintDialog = ({
               {actions((
                 <>
                   <WorkshopButton className="!h-9" onClick={onClose} disabled={applying}>
-                    Cancel
+                    取消
                   </WorkshopButton>
                   <WorkshopButton
                     tone="primary"
                     onClick={() => { if (selected) void apply(selected, false) }}
                     disabled={applying || !selected}
                   >
-                    {applying ? 'Preparing update…' : 'Update'}
+                    {applying ? '正在准备更新…' : '更新'}
                   </WorkshopButton>
                 </>
               ))}

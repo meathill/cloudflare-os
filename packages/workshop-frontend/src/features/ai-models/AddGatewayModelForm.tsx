@@ -15,25 +15,20 @@ import type { ModelSuggestion } from './modelsDev'
 import { useFieldErrorAlert } from './useFieldErrorAlert'
 import { useGatewayTests } from './useGatewayTests'
 
-const TOKEN_LIMIT_ERROR = 'Enter a positive whole number of tokens'
+const TOKEN_LIMIT_ERROR = '请输入大于零的整数 token 数'
 const BEHAVES_LIKE_HELP =
-  'The model chosen here lends the new one its thinking format and, where they are not stated ' +
-  'here, its reasoning levels and its image input, until this version knows the new model ' +
-  'itself. From then on the choice is not used. The name, the limits and the cost are never ' +
-  'borrowed.'
+  '此处选择的模型为新模型提供思考格式，以及未在此指定的推理级别和图片输入能力，直到当前版本识别新模型为止。识别后不再使用此选择。名称、限制和费用不会继承。'
 // What a capability field shows while nothing is stated in it.
-const NOT_STATED = 'Not stated'
+const NOT_STATED = '未指定'
 const REASONING_LEVELS_HELP =
-  'The levels the model can be asked for. Pick only Off for a model that does no reasoning.'
+  '模型可使用的推理级别。对于不支持推理的模型，只选择“关闭”。'
 const MODEL_ID = {
-  label: 'Model ID',
+  label: '模型 ID',
   description:
-    'The model’s name in the provider’s API. Chats and preferences refer to the model by it.',
+    '模型在服务商 API 中的名称。对话和偏好设置通过此名称引用模型。',
 }
 const TEST_HELP =
-  'Test sends the model described here one request with no reasoning level set and one at each ' +
-  'reasoning level it would list once added. Each request can use up to 2,048 output tokens, ' +
-  'and nothing is added.'
+  '测试将按未设置推理级别和添加后列出的每个推理级别分别发送一次请求。每次请求最多使用 2,048 个输出 token，测试不会添加模型。'
 
 /**
  * The form an admin describes a new gateway model with. It checks only what the server would
@@ -105,12 +100,12 @@ export const AddGatewayModelForm = ({
   const contextWindowTokens = parseTokenLimit(contextWindow)
   const outputLimitTokens = parseTokenLimit(outputLimit)
   const fields = [
-    { ref: idRef, error: id.trim() ? undefined : 'Enter the model ID' },
-    { ref: nameRef, error: name.trim() ? undefined : 'Enter a display name' },
+    { ref: idRef, error: id.trim() ? undefined : '请输入模型 ID' },
+    { ref: nameRef, error: name.trim() ? undefined : '请输入显示名称' },
     { ref: contextWindowRef, error: contextWindowTokens ? undefined : TOKEN_LIMIT_ERROR },
     {
       ref: outputLimitRef,
-      error: outputLimitTokens === null ? `${TOKEN_LIMIT_ERROR}, or leave this blank` : undefined,
+      error: outputLimitTokens === null ? `${TOKEN_LIMIT_ERROR}，或留空` : undefined,
     },
   ]
   const [idError, nameError, contextWindowError, outputLimitError] =
@@ -189,7 +184,7 @@ export const AddGatewayModelForm = ({
       await onAdd(described)
     } catch (err) {
       console.error('Failed to add gateway model:', err)
-      setRefusal(err instanceof Error && err.message ? err.message : 'The model could not be added.')
+      setRefusal(err instanceof Error && err.message ? err.message : '无法添加模型。')
       return
     }
     clear()
@@ -198,7 +193,7 @@ export const AddGatewayModelForm = ({
   return (
     <form noValidate onSubmit={submit} className="grid items-start gap-4 sm:grid-cols-2">
       <Select<AiModelProvider>
-        label="Provider"
+        label="服务商"
         className="w-full"
         disabled={disabled}
         value={provider}
@@ -271,7 +266,7 @@ export const AddGatewayModelForm = ({
           </Autocomplete>
           {suggestions.unavailable && (
             <p role="status" className="text-sm leading-snug text-kumo-subtle">
-              Suggestions from models.dev couldn’t be loaded. Enter the model’s details by hand.
+              无法加载 models.dev 的建议，请手动输入模型详情。
             </p>
           )}
         </div>
@@ -289,8 +284,8 @@ export const AddGatewayModelForm = ({
       )}
       <Input
         ref={nameRef}
-        label="Display name"
-        description="Shown wherever the model is listed."
+        label="显示名称"
+        description="显示在模型列表中。"
         value={name}
         disabled={disabled}
         onChange={edit(setName)}
@@ -299,9 +294,9 @@ export const AddGatewayModelForm = ({
       />
       <Input
         ref={contextWindowRef}
-        label="Context window"
+        label="上下文窗口"
         inputMode="numeric"
-        description="The maximum tokens one request may total."
+        description="单次请求允许的最大 token 数。"
         value={contextWindow}
         disabled={disabled}
         onChange={edit(setContextWindow)}
@@ -310,10 +305,10 @@ export const AddGatewayModelForm = ({
       />
       <Input
         ref={outputLimitRef}
-        label="Output limit"
+        label="输出上限"
         required={false}
         inputMode="numeric"
-        description="The maximum tokens in one response, also reserved out of the context window."
+        description="单次响应的最大 token 数，也会从上下文窗口中预留。"
         value={outputLimit}
         disabled={disabled}
         onChange={edit(setOutputLimit)}
@@ -322,11 +317,11 @@ export const AddGatewayModelForm = ({
       />
       {behavesLikeOffered.length > 0 && (
         <Select<string | null>
-          label="Behaves like"
+          label="行为类似于"
           labelTooltip={BEHAVES_LIKE_HELP}
           required={false}
           className="w-full"
-          placeholder="None"
+          placeholder="无"
           disabled={disabled}
           value={behavesLike?.id ?? null}
           onValueChange={(value) => {
@@ -335,15 +330,15 @@ export const AddGatewayModelForm = ({
           }}
           renderValue={() => behavesLike?.name}
         >
-          <Select.Option value={null}>None</Select.Option>
+          <Select.Option value={null}>无</Select.Option>
           {behavesLikeOffered.map((option) => (
             <Select.Option key={option.id} value={option.id}>{option.name}</Select.Option>
           ))}
         </Select>
       )}
       <Select<boolean | null>
-        label="Image input"
-        description="Whether the model takes images beside text."
+        label="图片输入"
+        description="模型是否支持在文本之外输入图片。"
         required={false}
         className="w-full"
         placeholder={NOT_STATED}
@@ -353,15 +348,15 @@ export const AddGatewayModelForm = ({
           edited()
           setImageInput(value)
         }}
-        renderValue={(value) => (value ? 'Yes' : 'No')}
+        renderValue={(value) => (value ? '是' : '否')}
       >
         <Select.Option value={null}>{NOT_STATED}</Select.Option>
-        <Select.Option value={true}>Yes</Select.Option>
-        <Select.Option value={false}>No</Select.Option>
+        <Select.Option value={true}>是</Select.Option>
+        <Select.Option value={false}>否</Select.Option>
       </Select>
       <Select<ReasoningLevel, true>
         multiple
-        label="Reasoning levels"
+        label="推理级别"
         description={REASONING_LEVELS_HELP}
         required={false}
         className="w-full"
@@ -390,10 +385,10 @@ export const AddGatewayModelForm = ({
         )}
         <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" variant="secondary" icon={Plus} disabled={disabled}>
-            Add model
+            添加模型
           </Button>
           <GatewayTestButton
-            name="this model"
+            name="此模型"
             size="base"
             testing={test?.state === 'testing'}
             onTest={testDescribed}

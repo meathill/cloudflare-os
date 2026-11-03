@@ -95,8 +95,8 @@ const withProvider = (provider: 'google' | 'openai', enabled: boolean): GatewayM
 })
 
 const TEST_PASSED: GatewayModelTest = { model: 'claude-sonnet', ok: true }
-const TEST_PASSED_TEXT = 'claude-sonnet answered through the gateway.'
-const MODEL_TEST_PASSED_TEXT = 'Answered through the gateway.'
+const TEST_PASSED_TEXT = '模型 claude-sonnet 已通过网关响应。'
+const MODEL_TEST_PASSED_TEXT = '已通过网关响应。'
 
 // What one request of a described model's test found, at the level it asked for.
 const levelPassed = (reasoning: ReasoningLevel | null): GatewayModelLevelTest =>
@@ -107,7 +107,7 @@ const levelFailed = (
   model: 'gpt-next', ok: false, message, reasoning, ...(status !== undefined && { status }),
 })
 
-const SUGGESTIONS_LABEL = 'Suggest models from models.dev'
+const SUGGESTIONS_LABEL = '从 models.dev 推荐模型'
 const SUGGESTING: GatewayModels = { ...GATEWAY_MODELS, modelsDevSuggestions: true }
 
 const listed = (id: string, name: string, limit: { context: number; output: number }) => ({
@@ -165,7 +165,7 @@ const deferred = <T = void,>() => {
 const modeGroup = (modelName: string) => {
   const group = Array.from(document.body.querySelectorAll('fieldset')).find((fieldset) =>
     document.getElementById(fieldset.getAttribute('aria-labelledby') ?? '')?.textContent
-      === `How ${modelName} is offered`)
+      === `${modelName} 的提供方式`)
   if (!group) throw new Error(`No mode group for ${modelName}`)
   return group
 }
@@ -226,12 +226,12 @@ const settingCheckbox = (label: string) => {
   return input
 }
 
-const userModelsSwitch = () => settingSwitch('Users may add their own models')
-const userModelsCheckbox = () => settingCheckbox('Users may add their own models')
+const userModelsSwitch = () => settingSwitch('允许用户添加自己的模型')
+const userModelsCheckbox = () => settingCheckbox('允许用户添加自己的模型')
 
 const providersSection = () => {
   const heading = Array.from(document.body.querySelectorAll('h3'))
-    .find((element) => element.textContent === 'Providers')
+    .find((element) => element.textContent === '服务商')
   if (!heading) throw new Error('No Providers section')
   return heading.closest('section')!
 }
@@ -252,7 +252,7 @@ const providerCheckbox = (label: string) => {
   return input
 }
 
-const testButton = (label: string) => button(`Test ${label}`, providersSection())
+const testButton = (label: string) => button(`测试 ${label}`, providersSection())
 
 /** What the status region of the provider's row says. */
 const testResult = (label: string) =>
@@ -261,7 +261,7 @@ const testResult = (label: string) =>
 // The Test button of a model's row, which names the model while the test is in flight too.
 const modelTestButton = (modelName: string) => {
   const element = Array.from(row(modelName).querySelectorAll<HTMLButtonElement>('button'))
-    .find((b) => [`Test ${modelName}`, `Testing ${modelName}…`].includes(b.getAttribute('aria-label') ?? ''))
+    .find((b) => [`测试 ${modelName}`, `正在测试 ${modelName}…`].includes(b.getAttribute('aria-label') ?? ''))
   if (!element) throw new Error(`No Test button for ${modelName}`)
   return element
 }
@@ -316,16 +316,16 @@ const choose = async (name: string, label: string) => {
   }
 }
 
-const chooseProvider = (label: string) => choose('Provider', label)
+const chooseProvider = (label: string) => choose('服务商', label)
 
 const describedBy = (element: HTMLElement) =>
   (element.getAttribute('aria-describedby') ?? '').split(' ')
     .map((id) => document.getElementById(id)?.textContent ?? '').join(' ')
 
-const openSettings = (modelName: string) => click(button(`Settings for ${modelName}`))
+const openSettings = (modelName: string) => click(button(`设置（${modelName}）`))
 
 const budgetField = (modelName = 'Claude Opus') =>
-  labeledInput(`Compaction budget for ${modelName}`)
+  labeledInput(`压缩预算（${modelName}）`)
 
 // What a browser does to a control with focus that a write disables. jsdom leaves focus on such a
 // control and won't blur it either, so focus leaves by way of a button that takes it and goes.
@@ -338,7 +338,7 @@ const dropFocus = () => act(async () => {
 
 // The options of the list the Model ID field says it controls.
 const suggestionOptions = () => {
-  const list = document.getElementById(labeledInput('Model ID').getAttribute('aria-controls') ?? '')
+  const list = document.getElementById(labeledInput('模型 ID').getAttribute('aria-controls') ?? '')
   return Array.from(list?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])
 }
 
@@ -346,8 +346,8 @@ const suggested = () => suggestionOptions().map((option) => option.textContent)
 
 /** Pick the first model suggested once `typed` is typed into the Model ID field. */
 const pickSuggestion = async (typed: string) => {
-  await focus(labeledInput('Model ID'))
-  await type(labeledInput('Model ID'), typed)
+  await focus(labeledInput('模型 ID'))
+  await type(labeledInput('模型 ID'), typed)
   await click(suggestionOptions()[0])
 }
 
@@ -355,7 +355,7 @@ const pickSuggestion = async (typed: string) => {
 // before them and what its test answered is after them. Each provider's row has a status region
 // of its own.
 const addFormStatus = (side: number) => {
-  const add = button('Add model')
+  const add = button('添加模型')
   return Array.from(add.closest('form')!.querySelectorAll('[role="status"]'))
     .filter((region) => add.compareDocumentPosition(region) & side)
 }
@@ -365,9 +365,9 @@ const suggestionNote = () =>
 
 // The Test button of the add form, which says what it tests while the test is in flight too.
 const formTestButton = () => {
-  const form = button('Add model').closest('form')!
+  const form = button('添加模型').closest('form')!
   const element = Array.from(form.querySelectorAll<HTMLButtonElement>('button'))
-    .find((b) => ['Test this model', 'Testing this model…'].includes(b.getAttribute('aria-label') ?? ''))
+    .find((b) => ['测试 此模型', '正在测试 此模型…'].includes(b.getAttribute('aria-label') ?? ''))
   if (!element) throw new Error('No Test button in the add form')
   return element
 }
@@ -380,13 +380,13 @@ const formTestResult = () => {
 }
 
 const fillAddForm = async (fields: { id: string; name: string; contextWindow: string; outputLimit?: string }) => {
-  await type(labeledInput('Model ID'), fields.id)
-  await type(labeledInput('Display name'), fields.name)
-  await type(labeledInput('Context window'), fields.contextWindow)
-  await type(labeledInput('Output limit'), fields.outputLimit ?? '')
+  await type(labeledInput('模型 ID'), fields.id)
+  await type(labeledInput('显示名称'), fields.name)
+  await type(labeledInput('上下文窗口'), fields.contextWindow)
+  await type(labeledInput('输出上限'), fields.outputLimit ?? '')
 }
 
-const addFormValues = () => ['Model ID', 'Display name', 'Context window', 'Output limit']
+const addFormValues = () => ['模型 ID', '显示名称', '上下文窗口', '输出上限']
   .map((label) => labeledInput(label).value)
 
 describe('AdminModelsPanel', () => {
@@ -442,8 +442,8 @@ describe('AdminModelsPanel', () => {
     it('explains where models are managed instead of offering controls', async () => {
       await render({ gatewayModels: undefined })
 
-      expect(document.body.textContent).toContain('only when the deployment provides them through AI Gateway')
-      expect(document.body.textContent).toContain('each user adds their own models')
+      expect(document.body.textContent).toContain('仅当部署通过 AI Gateway')
+      expect(document.body.textContent).toContain('每位用户需要在自己的服务商页面添加模型')
       expect(document.body.querySelectorAll('button, input, [role="radio"]')).toHaveLength(0)
     })
   })
@@ -454,8 +454,8 @@ describe('AdminModelsPanel', () => {
 
       expect(userModelsSwitch().getAttribute('aria-checked')).toBe(String(enabled))
       const meaning = document.getElementById(userModelsSwitch().getAttribute('aria-describedby')!)
-      expect(meaning?.textContent).toContain('When off, only the models listed here can be used')
-      expect(meaning?.textContent).toContain('Nothing is deleted.')
+      expect(meaning?.textContent).toContain('关闭后只能使用这里列出的模型')
+      expect(meaning?.textContent).toContain('不会删除任何内容。')
     })
 
     it.each([true, false])('sets the opposite of %s, then re-reads the settings', async (enabled) => {
@@ -498,10 +498,10 @@ describe('AdminModelsPanel', () => {
 
       expect(userModelsSwitch().disabled).toBe(true)
       await click(userModelsCheckbox())
-      await click(modeOption('Claude Sonnet', 'Hidden'))
+      await click(modeOption('Claude Sonnet', '已隐藏'))
       expect(setUserModelsEnabled).toHaveBeenCalledOnce()
       expect(setGatewayModelMode).not.toHaveBeenCalled()
-      expect(button('Add model').disabled).toBe(true)
+      expect(button('添加模型').disabled).toBe(true)
 
       await act(async () => call.resolve())
 
@@ -513,7 +513,7 @@ describe('AdminModelsPanel', () => {
       const call = deferred()
       setGatewayModelMode.mockReturnValueOnce(call.promise)
 
-      await click(modeOption('Claude Sonnet', 'Hidden'))
+      await click(modeOption('Claude Sonnet', '已隐藏'))
 
       expect(userModelsSwitch().disabled).toBe(true)
       await click(userModelsCheckbox())
@@ -526,17 +526,16 @@ describe('AdminModelsPanel', () => {
 
     // A binding made for a removed model runs only as a model of the user's own does.
     it.each([
-      [true, 'then run, even if the model was disabled.', 'then run, even if it was disabled,'],
-      [false, 'then stay stopped for as long as users may not add their own models.',
-        'then stay stopped for as long as users may not add their own models,'],
+      [true, '将继续运行，即使该模型之前已禁用。', '将继续运行，即使该模型之前已禁用'],
+      [false, '将保持停止，直到允许用户添加自己的模型。', '将保持停止，直到允许用户添加自己的模型'],
     ])('when %s, says what removing a model does to its bindings', async (enabled, inList, inDialog) => {
       await render({ gatewayModels: { ...GATEWAY_MODELS, userModelsEnabled: enabled } })
 
       expect(row('GPT Custom').closest('section')?.textContent)
-        .toContain(`gadget model bindings made for it ${inList}`)
-      await click(button('Remove GPT Custom'))
+        .toContain(`应用中指向此模型的绑定${inList}`)
+      await click(button('移除 GPT Custom'))
       expect(confirmation()?.textContent)
-        .toContain(`gpt-custom: gadget model bindings made for the model ${inDialog} and a model`)
+        .toContain(`gpt-custom：应用中指向此模型的绑定${inDialog}。使用相同 ID`)
     })
   })
 
@@ -552,9 +551,9 @@ describe('AdminModelsPanel', () => {
         ['Google', 'false', false],
         ['Cloudflare Workers AI', 'false', false],
       ])
-      expect(describedBy(providerSwitch('Anthropic'))).toBe('Set by CF_AI_GATEWAY_PROVIDERS')
+      expect(describedBy(providerSwitch('Anthropic'))).toBe('由 CF_AI_GATEWAY_PROVIDERS 设置')
       expect(describedBy(providerSwitch('Google'))).toBe(
-        'Needs CF_AI_GATEWAY_API_TOKEN: requests to this provider fail until the deployment sets it.')
+        '需要 CF_AI_GATEWAY_API_TOKEN；部署设置此令牌之前，对该服务商的请求会失败。')
       // Above the models.
       expect(providersSection().compareDocumentPosition(row('Claude Sonnet'))
         & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -590,7 +589,7 @@ describe('AdminModelsPanel', () => {
       await click(providerCheckbox('Google'))
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
-        title: 'Couldn’t update Google',
+        title: '无法更新 Google',
         description: 'Provider "google" is not served through AI Gateway.',
         variant: 'error',
       })
@@ -608,9 +607,9 @@ describe('AdminModelsPanel', () => {
 
       expect(providerSwitches().map((toggle) => toggle.disabled)).toEqual([true, true, true, true])
       expect(userModelsSwitch().disabled).toBe(true)
-      expect(button('Add model').disabled).toBe(true)
+      expect(button('添加模型').disabled).toBe(true)
       await click(providerCheckbox('OpenAI'))
-      await click(modeOption('Claude Sonnet', 'Hidden'))
+      await click(modeOption('Claude Sonnet', '已隐藏'))
       expect(setGatewayProviderEnabled).toHaveBeenCalledOnce()
       expect(setGatewayModelMode).not.toHaveBeenCalled()
 
@@ -635,11 +634,11 @@ describe('AdminModelsPanel', () => {
       expect(testGatewayProvider).toHaveBeenCalledExactlyOnceWith('openai')
       expect(providerSwitches().map((toggle) => toggle.disabled)).toEqual([true, false, false, false])
       expect(userModelsSwitch().disabled).toBe(false)
-      expect(button('Add model').disabled).toBe(false)
+      expect(button('添加模型').disabled).toBe(false)
       expect(modesDisabled('Claude Sonnet')).toBe(false)
 
       // A write goes through meanwhile.
-      await click(modeOption('Claude Sonnet', 'Hidden'))
+      await click(modeOption('Claude Sonnet', '已隐藏'))
       expect(setGatewayModelMode).toHaveBeenCalledExactlyOnceWith('claude-sonnet', 'hidden')
       expect(onChanged).toHaveBeenCalledOnce()
 
@@ -647,9 +646,8 @@ describe('AdminModelsPanel', () => {
         { model: 'gpt-main', ok: false, status: 401, message: 'Incorrect API key provided.' }))
 
       expect(testResult('OpenAI')).toBe(
-        'Failed (401): Incorrect API key provided.' +
-        'The gateway may hold no key or credits for this provider, or CF_AI_GATEWAY_API_TOKEN ' +
-        'may not be allowed to run models.')
+        '失败 (401): Incorrect API key provided.' +
+        '网关中可能没有此服务商的密钥或余额，或者 CF_AI_GATEWAY_API_TOKEN 没有运行模型的权限。')
       expect(onChanged).toHaveBeenCalledOnce()
       expect(addToast).not.toHaveBeenCalled()
     })
@@ -665,7 +663,7 @@ describe('AdminModelsPanel', () => {
       const errors = logged.mock.calls.length
       logged.mockRestore()
       expect(testResult('OpenAI')).toBe(
-        'Couldn’t run the test: This deployment does not provide models through AI Gateway.')
+        '无法运行测试: This deployment does not provide models through AI Gateway.')
       expect(addToast).not.toHaveBeenCalled()
       expect(errors).toBe(1)
     })
@@ -684,58 +682,53 @@ describe('AdminModelsPanel', () => {
   })
 
   describe('the default reasoning level', () => {
-    const LABEL = 'Default reasoning level'
+    const LABEL = '默认推理级别'
 
     it.each([
-      [null, 'Built-in'],
-      ['xhigh', 'Extra high'],
+      [null, '内置'],
+      ['xhigh', '极高'],
     ] as const)('shows %s as the server reported it, with what it applies to', async (level, shown) => {
       await render({ gatewayModels: { ...RUNTIME_MODELS, defaultReasoning: level } })
 
       expect(button(LABEL).textContent).toBe(shown)
       expect(describedBy(button(LABEL))).toBe(
-        'The reasoning level of the agent’s turns on every model listed here that has no level ' +
-        'of its own. Built-in sets none: each model is then asked the way the Workshop asks it ' +
-        'by default, which the model’s Settings name. That is Provider default, where the model ' +
-        'reasons at whatever effort its provider defaults to, a fixed level, or no level sent. A ' +
-        'level that a model lacks is fitted to the nearest one it has. One-shot calls (titles, ' +
-        'summaries, gadget model bindings) are not affected, and neither are the models users added.')
+        '适用于列表中未单独设置推理级别的模型。选择内置时不设置统一级别，各模型使用自己的默认方式：服务商默认、固定级别或不发送级别。如果模型不支持指定级别，将使用最接近的可用级别。标题、摘要、应用模型绑定等单次调用以及用户添加的模型不受影响。')
       expect(await optionLabels(LABEL))
-        .toEqual(['Built-in', 'Off', 'Minimal', 'Low', 'Medium', 'High', 'Extra high', 'Max'])
+        .toEqual(['内置', '关闭', '最低', '低', '中', '高', '极高', '最高'])
     })
 
     it('tells each model’s row what the default is', async () => {
       const { show } = await render({ gatewayModels: { ...RUNTIME_MODELS, defaultReasoning: 'high' } })
       await openSettings('Claude Opus')
 
-      expect(button('Reasoning level for Claude Opus').textContent).toBe('Deployment default (High)')
+      expect(button('Claude Opus 的推理级别').textContent).toBe('部署默认（高）')
 
       await show(RUNTIME_MODELS)
 
-      expect(button('Reasoning level for Claude Opus').textContent)
-        .toBe('Deployment default (built-in: Provider default)')
+      expect(button('Claude Opus 的推理级别').textContent)
+        .toBe('部署默认（内置：服务商默认）')
     })
 
     it('names each model’s built-in in its row until the server reports a default', async () => {
       const models = [OPUS, GPT, LEVELLED_ADDED]
       const { show } = await render({ gatewayModels: { ...RUNTIME_MODELS, models } })
       for (const model of models) await openSettings(model.name)
-      const shown = () => models.map((model) => button(`Reasoning level for ${model.name}`).textContent)
+      const shown = () => models.map((model) => button(`${model.name} 的推理级别`).textContent)
 
       expect(shown()).toEqual([
-        'Deployment default (built-in: Provider default)',
-        'Deployment default (built-in: Medium)',
-        'Deployment default (built-in: no level sent)',
+        '部署默认（内置：服务商默认）',
+        '部署默认（内置：中）',
+        '部署默认（内置：不发送级别）',
       ])
 
       await show({ ...RUNTIME_MODELS, models, defaultReasoning: 'xhigh' })
 
-      expect(shown()).toEqual(Array(3).fill('Deployment default (Extra high)'))
+      expect(shown()).toEqual(Array(3).fill('部署默认（极高）'))
     })
 
     it.each([
-      [null, 'High', 'high'],
-      ['high', 'Built-in', null],
+      [null, '高', 'high'],
+      ['high', '内置', null],
     ] as const)('from %s, sets the level chosen as %s, then re-reads the settings', async (
       level, chosen, sent,
     ) => {
@@ -759,7 +752,7 @@ describe('AdminModelsPanel', () => {
         gatewayModels: { ...RUNTIME_MODELS, defaultReasoning: 'low' },
       })
 
-      await choose(LABEL, 'Low')
+      await choose(LABEL, '低')
 
       expect(setDefaultReasoning).not.toHaveBeenCalled()
     })
@@ -781,15 +774,15 @@ describe('AdminModelsPanel', () => {
       setDefaultReasoning.mockRejectedValueOnce(
         new Error('This deployment does not provide models through AI Gateway.'))
 
-      await choose(LABEL, 'Max')
+      await choose(LABEL, '最高')
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-        title: 'Couldn’t update “Default reasoning level”',
+        title: '无法更新“默认推理级别”',
         description: 'This deployment does not provide models through AI Gateway.',
         variant: 'error',
       }))
       expect(onChanged).not.toHaveBeenCalled()
-      expect(button(LABEL).textContent).toBe('Built-in')
+      expect(button(LABEL).textContent).toBe('内置')
       expect(button(LABEL).disabled).toBe(false)
     })
 
@@ -798,11 +791,11 @@ describe('AdminModelsPanel', () => {
       const call = deferred()
       setDefaultReasoning.mockReturnValueOnce(call.promise)
 
-      await choose(LABEL, 'High')
+      await choose(LABEL, '高')
 
       expect(button(LABEL).disabled).toBe(true)
       expect(userModelsSwitch().disabled).toBe(true)
-      await click(modeOption('Claude Sonnet', 'Hidden'))
+      await click(modeOption('Claude Sonnet', '已隐藏'))
       expect(setGatewayModelMode).not.toHaveBeenCalled()
 
       await act(async () => call.resolve())
@@ -812,19 +805,19 @@ describe('AdminModelsPanel', () => {
   })
 
   describe('model settings', () => {
-    const LEVEL = 'Reasoning level for Claude Opus'
+    const LEVEL = 'Claude Opus 的推理级别'
 
     it('sets the level chosen for a model, then re-reads the settings', async () => {
       const { setGatewayModelSettings, onChanged, show } = await render({ gatewayModels: RUNTIME_MODELS })
       await openSettings('Claude Opus')
 
-      await choose(LEVEL, 'High')
+      await choose(LEVEL, '高')
 
       expect(setGatewayModelSettings).toHaveBeenCalledExactlyOnceWith('claude-opus', { reasoning: 'high' })
       expect(onChanged).toHaveBeenCalledOnce()
       expect(setGatewayModelSettings.mock.invocationCallOrder[0])
         .toBeLessThan(onChanged.mock.invocationCallOrder[0])
-      expect(row('Claude Opus').textContent).not.toContain('Changed')
+      expect(row('Claude Opus').textContent).not.toContain('已更改')
 
       await show({
         ...RUNTIME_MODELS,
@@ -832,9 +825,9 @@ describe('AdminModelsPanel', () => {
       })
 
       // Still open, on what the re-read reported.
-      expect(button(LEVEL).textContent).toBe('High')
-      expect(row('Claude Opus').textContent).toContain('Changed')
-      expect(row('Claude Haiku').textContent).not.toContain('Changed')
+      expect(button(LEVEL).textContent).toBe('高')
+      expect(row('Claude Opus').textContent).toContain('已更改')
+      expect(row('Claude Haiku').textContent).not.toContain('已更改')
     })
 
     it('saves a model’s compaction budget beside the level it has', async () => {
@@ -847,7 +840,7 @@ describe('AdminModelsPanel', () => {
       await openSettings('Claude Opus')
       await type(budgetField(), '150000')
 
-      await click(button('Save the compaction budget of Claude Opus'))
+      await click(button('保存 Claude Opus 的压缩预算'))
 
       expect(setGatewayModelSettings).toHaveBeenCalledExactlyOnceWith(
         'claude-opus', { reasoning: 'low', compactionInputBudget: 150000 })
@@ -859,24 +852,24 @@ describe('AdminModelsPanel', () => {
       setGatewayModelSettings.mockRejectedValue(new Error('No such model: claude-opus'))
       await openSettings('Claude Opus')
 
-      await choose(LEVEL, 'High')
+      await choose(LEVEL, '高')
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
-        title: 'Couldn’t update Claude Opus',
+        title: '无法更新 Claude Opus',
         description: 'No such model: claude-opus',
         variant: 'error',
       })
-      expect(button(LEVEL).textContent).toBe('Deployment default (built-in: Provider default)')
+      expect(button(LEVEL).textContent).toBe('部署默认（内置：服务商默认）')
       expect(button(LEVEL).disabled).toBe(false)
 
       await type(budgetField(), '150000')
-      await click(button('Save the compaction budget of Claude Opus'))
+      await click(button('保存 Claude Opus 的压缩预算'))
 
       expect(addToast).toHaveBeenCalledTimes(2)
       expect(budgetField().value).toBe('')
       expect(budgetField().disabled).toBe(false)
       expect(onChanged).not.toHaveBeenCalled()
-      expect(row('Claude Opus').textContent).not.toContain('Changed')
+      expect(row('Claude Opus').textContent).not.toContain('已更改')
     })
 
     it('locks every control while a change is in flight', async () => {
@@ -886,20 +879,20 @@ describe('AdminModelsPanel', () => {
       await openSettings('Claude Opus')
       await openSettings('GPT Main')
 
-      await choose(LEVEL, 'High')
+      await choose(LEVEL, '高')
 
       expect(button(LEVEL).disabled).toBe(true)
       expect(budgetField().disabled).toBe(true)
-      expect(button('Save the compaction budget of Claude Opus').disabled).toBe(true)
-      expect(button('Reasoning level for GPT Main').disabled).toBe(true)
-      expect(button('Default reasoning level').disabled).toBe(true)
-      await click(modeOption('Claude Opus', 'Hidden'))
+      expect(button('保存 Claude Opus 的压缩预算').disabled).toBe(true)
+      expect(button('GPT Main 的推理级别').disabled).toBe(true)
+      expect(button('默认推理级别').disabled).toBe(true)
+      await click(modeOption('Claude Opus', '已隐藏'))
       expect(setGatewayModelMode).not.toHaveBeenCalled()
 
       await act(async () => call.resolve())
 
       expect(button(LEVEL).disabled).toBe(false)
-      expect(button('Reasoning level for GPT Main').disabled).toBe(false)
+      expect(button('GPT Main 的推理级别').disabled).toBe(false)
     })
 
     it('sets an added model’s level and budget under its ID, and tells its row the default', async () => {
@@ -908,14 +901,14 @@ describe('AdminModelsPanel', () => {
       })
       await openSettings('GPT Custom')
 
-      expect(button('Reasoning level for GPT Custom').textContent).toBe('Deployment default (Medium)')
+      expect(button('GPT Custom 的推理级别').textContent).toBe('部署默认（中）')
 
-      await choose('Reasoning level for GPT Custom', 'High')
+      await choose('GPT Custom 的推理级别', '高')
 
       expect(setGatewayModelSettings).toHaveBeenLastCalledWith('gpt-custom', { reasoning: 'high' })
 
       await type(budgetField('GPT Custom'), '100000')
-      await click(button('Save the compaction budget of GPT Custom'))
+      await click(button('保存 GPT Custom 的压缩预算'))
 
       expect(setGatewayModelSettings)
         .toHaveBeenLastCalledWith('gpt-custom', { compactionInputBudget: 100000 })
@@ -930,21 +923,20 @@ describe('AdminModelsPanel', () => {
         },
       })
 
-      expect(row('GPT Custom').textContent).toContain('Behaves like Claude Opus')
+      expect(row('GPT Custom').textContent).toContain('行为类似于 Claude Opus')
 
       await show({
         ...RUNTIME_MODELS,
         models: [GPT, { ...ADDED, provider: 'anthropic', behavesLike: 'claude-opus', behavesLikeKnown: true }],
       })
 
-      expect(row('GPT Custom').textContent).toContain('Behaves like claude-opus')
+      expect(row('GPT Custom').textContent).toContain('行为类似于 claude-opus')
     })
   })
 
   describe('model tests', () => {
     const NOTE =
-      'Test sends a model one request the way a chat turn would, with the reasoning level in ' +
-      'effect for it, and shows what came back. A test can use up to 2,048 output tokens.'
+      '测试会以对话的方式向模型发送一次请求，使用当前推理级别并显示返回结果。一次测试最多使用 2,048 个输出 token。'
     const FAILED: GatewayModelTest =
       { model: 'claude-opus', ok: false, status: 500, message: 'The server had an error.' }
 
@@ -966,19 +958,19 @@ describe('AdminModelsPanel', () => {
     // to, and the presses that make it.
     const MODEL_WRITES = [
       ['a change of its mode', 'setGatewayModelMode', 'Claude Opus',
-        () => click(modeOption('Claude Opus', 'Hidden'))],
+        () => click(modeOption('Claude Opus', '已隐藏'))],
       ['a change of its reasoning level', 'setGatewayModelSettings', 'Claude Opus', async () => {
         await openSettings('Claude Opus')
-        await choose('Reasoning level for Claude Opus', 'High')
+        await choose('Claude Opus 的推理级别', '高')
       }],
       ['a compaction budget saved for it', 'setGatewayModelSettings', 'Claude Opus', async () => {
         await openSettings('Claude Opus')
         await type(budgetField(), '150000')
-        await click(button('Save the compaction budget of Claude Opus'))
+        await click(button('保存 Claude Opus 的压缩预算'))
       }],
       ['its removal', 'removeGatewayModel', 'GPT Custom', async () => {
-        await click(button('Remove GPT Custom'))
-        await click(button('Remove', confirmation()!))
+        await click(button('移除 GPT Custom'))
+        await click(button('移除', confirmation()!))
       }],
     ] as const
 
@@ -999,10 +991,10 @@ describe('AdminModelsPanel', () => {
     it('tests the model whose Test is pressed, in any mode, and shows the answer in its row only', async () => {
       const { testGatewayModel, testGatewayProvider, onChanged } = await render()
       for (const name of ['Claude Sonnet', 'Claude Legacy', 'GPT Custom']) {
-        expect(modelTestButton(name).getAttribute('aria-label')).toBe(`Test ${name}`)
+        expect(modelTestButton(name).getAttribute('aria-label')).toBe(`测试 ${name}`)
         expect(modelTestResult(name)).toBe('')
       }
-      expect(selectedMode('Claude Legacy')).toEqual(['Disabled'])
+      expect(selectedMode('Claude Legacy')).toEqual(['已禁用'])
 
       await click(modelTestButton('Claude Legacy'))
 
@@ -1026,9 +1018,9 @@ describe('AdminModelsPanel', () => {
       await click(modelTestButton('GPT Custom'))
 
       expect(testGatewayModel.mock.calls).toEqual([['claude-sonnet'], ['gpt-custom']])
-      expect(modelTestButton('Claude Sonnet').textContent).toBe('Testing…')
-      expect(modelTestButton('GPT Custom').getAttribute('aria-label')).toBe('Testing GPT Custom…')
-      expect(modelTestButton('Claude Legacy').textContent).toBe('Test')
+      expect(modelTestButton('Claude Sonnet').textContent).toBe('正在测试…')
+      expect(modelTestButton('GPT Custom').getAttribute('aria-label')).toBe('正在测试 GPT Custom…')
+      expect(modelTestButton('Claude Legacy').textContent).toBe('测试')
       // A second press of a test in flight asks for nothing.
       await click(modelTestButton('Claude Sonnet'))
       expect(testGatewayModel).toHaveBeenCalledTimes(2)
@@ -1036,15 +1028,15 @@ describe('AdminModelsPanel', () => {
       await act(async () => custom.resolve(
         { model: 'gpt-custom', ok: false, status: 429, message: 'Rate limit reached.' }))
 
-      expect(modelTestResult('GPT Custom')).toBe('Failed (429): Rate limit reached.')
-      expect(modelTestButton('GPT Custom').textContent).toBe('Test')
+      expect(modelTestResult('GPT Custom')).toBe('失败 (429): Rate limit reached.')
+      expect(modelTestButton('GPT Custom').textContent).toBe('测试')
       expect(modelTestResult('Claude Sonnet')).toBe('')
-      expect(modelTestButton('Claude Sonnet').textContent).toBe('Testing…')
+      expect(modelTestButton('Claude Sonnet').textContent).toBe('正在测试…')
 
       await act(async () => sonnet.resolve({ model: 'claude-sonnet', ok: true }))
 
       expect(modelTestResult('Claude Sonnet')).toBe(MODEL_TEST_PASSED_TEXT)
-      expect(modelTestResult('GPT Custom')).toBe('Failed (429): Rate limit reached.')
+      expect(modelTestResult('GPT Custom')).toBe('失败 (429): Rate limit reached.')
       expect(modelTestResult('Claude Legacy')).toBe('')
     })
 
@@ -1056,8 +1048,8 @@ describe('AdminModelsPanel', () => {
       await click(modelTestButton('Claude Sonnet'))
 
       expect(userModelsSwitch().disabled).toBe(false)
-      expect(button('Add model').disabled).toBe(false)
-      expect(button('Remove GPT Custom').disabled).toBe(false)
+      expect(button('添加模型').disabled).toBe(false)
+      expect(button('移除 GPT Custom').disabled).toBe(false)
       expect(modesDisabled('Claude Sonnet')).toBe(false)
       expect(providerSwitches().map((toggle) => toggle.disabled)).toEqual([true, false, false, false])
       expect(onChanged).not.toHaveBeenCalled()
@@ -1072,9 +1064,8 @@ describe('AdminModelsPanel', () => {
       }))
 
       expect(modelTestResult('Claude Sonnet')).toBe(
-        'Failed (401): invalid x-api-key' +
-        'The gateway may hold no key or credits for this provider, or CF_AI_GATEWAY_API_TOKEN ' +
-        'may not be allowed to run models.')
+        '失败 (401): invalid x-api-key' +
+        '网关中可能没有此服务商的密钥或余额，或者 CF_AI_GATEWAY_API_TOKEN 没有运行模型的权限。')
       expect(onChanged).toHaveBeenCalledOnce()
       expect(addToast).not.toHaveBeenCalled()
     })
@@ -1085,7 +1076,7 @@ describe('AdminModelsPanel', () => {
       setUserModelsEnabled.mockReturnValueOnce(call.promise)
       await click(userModelsCheckbox())
       expect(modesDisabled('GPT Custom')).toBe(true)
-      expect(button('Remove GPT Custom').disabled).toBe(true)
+      expect(button('移除 GPT Custom').disabled).toBe(true)
 
       expect(modelTestButton('GPT Custom').disabled).toBe(false)
       expect(modelTestButton('GPT Custom').getAttribute('aria-disabled')).toBe('false')
@@ -1111,8 +1102,8 @@ describe('AdminModelsPanel', () => {
       await click(modelTestButton('Claude Sonnet'))
 
       expect(modelTestResult('Claude Sonnet'))
-        .toBe('Couldn’t run the test: No such model: claude-sonnet')
-      expect(modelTestButton('Claude Sonnet').textContent).toBe('Test')
+        .toBe('无法运行测试: No such model: claude-sonnet')
+      expect(modelTestButton('Claude Sonnet').textContent).toBe('测试')
       expect(modelTestResult('Claude Legacy')).toBe('')
       expect(addToast).not.toHaveBeenCalled()
       expect(logged).toHaveBeenCalledExactlyOnceWith(expect.any(String), failure)
@@ -1152,7 +1143,7 @@ describe('AdminModelsPanel', () => {
     it('forgets every model’s result after a change of the default reasoning level, and no provider’s', async () => {
       const { setDefaultReasoning, onChanged } = await renderTested()
 
-      await choose('Default reasoning level', 'High')
+      await choose('默认推理级别', '高')
 
       expect(setDefaultReasoning).toHaveBeenCalledExactlyOnceWith('high')
       expect(onChanged).toHaveBeenCalledOnce()
@@ -1165,7 +1156,7 @@ describe('AdminModelsPanel', () => {
       setDefaultReasoning.mockRejectedValueOnce(
         new Error('This deployment does not provide models through AI Gateway.'))
 
-      await choose('Default reasoning level', 'High')
+      await choose('默认推理级别', '高')
 
       expect(setDefaultReasoning).toHaveBeenCalledOnce()
       expect(addToast).toHaveBeenCalledOnce()
@@ -1174,10 +1165,10 @@ describe('AdminModelsPanel', () => {
 
     it.each([
       ['a change of another model’s mode', 'setGatewayModelMode',
-        () => click(modeOption('Claude Haiku', 'Hidden'))],
+        () => click(modeOption('Claude Haiku', '已隐藏'))],
       ['a change of another model’s settings', 'setGatewayModelSettings', async () => {
         await openSettings('Claude Haiku')
-        await choose('Reasoning level for Claude Haiku', 'High')
+        await choose('Claude Haiku 的推理级别', '高')
       }],
       ['a provider turned on', 'setGatewayProviderEnabled', () => click(providerCheckbox('Google'))],
       ['users’ own models turned off', 'setUserModelsEnabled', () => click(userModelsCheckbox())],
@@ -1185,7 +1176,7 @@ describe('AdminModelsPanel', () => {
         () => click(settingCheckbox(SUGGESTIONS_LABEL))],
       ['a model added', 'addGatewayModel', async () => {
         await fillAddForm({ id: 'gpt-next', name: 'GPT Next', contextWindow: '128000' })
-        await click(button('Add model'))
+        await click(button('添加模型'))
       }],
     ] as const)('keeps every result after %s', async (_case, method, change) => {
       const rendered = await renderTested()
@@ -1207,7 +1198,7 @@ describe('AdminModelsPanel', () => {
         models: RUNTIME_MODELS.models.map((model) => ({ ...model, mode: 'hidden' })),
       })
 
-      expect(selectedMode('Claude Opus')).toEqual(['Hidden'])
+      expect(selectedMode('Claude Opus')).toEqual(['已隐藏'])
       expect(results()).toEqual(ALL_PASSED)
     })
 
@@ -1217,9 +1208,9 @@ describe('AdminModelsPanel', () => {
       onChanged.mockReturnValueOnce(reread.promise)
       testGatewayModel.mockResolvedValueOnce(FAILED)
       await click(modelTestButton('Claude Opus'))
-      expect(modelTestResult('Claude Opus')).toBe('Failed (500): The server had an error.')
+      expect(modelTestResult('Claude Opus')).toBe('失败 (500): The server had an error.')
 
-      await click(modeOption('Claude Opus', 'Hidden'))
+      await click(modeOption('Claude Opus', '已隐藏'))
 
       expect(onChanged).toHaveBeenCalledOnce()
       expect(modesDisabled('Claude Opus')).toBe(true)
@@ -1241,7 +1232,7 @@ describe('AdminModelsPanel', () => {
       await click(modelTestButton('Claude Opus'))
       await click(modelTestButton('GPT Main'))
 
-      await click(modeOption('Claude Opus', 'Hidden'))
+      await click(modeOption('Claude Opus', '已隐藏'))
 
       expect(setGatewayModelMode).toHaveBeenCalledExactlyOnceWith('claude-opus', 'hidden')
       expect(addToast).toHaveBeenCalledExactlyOnceWith(
@@ -1251,8 +1242,8 @@ describe('AdminModelsPanel', () => {
     })
 
     it.each([
-      ['a write to the model', () => click(modeOption('Claude Opus', 'Hidden'))],
-      ['a change of the default reasoning level', () => choose('Default reasoning level', 'High')],
+      ['a write to the model', () => click(modeOption('Claude Opus', '已隐藏'))],
+      ['a change of the default reasoning level', () => choose('默认推理级别', '高')],
     ])('shows nothing of an answer that arrives after %s, and tests the model again at once', async (
       _case, change,
     ) => {
@@ -1261,11 +1252,11 @@ describe('AdminModelsPanel', () => {
       const later = deferred<GatewayModelTest>()
       testGatewayModel.mockReturnValueOnce(earlier.promise).mockReturnValueOnce(later.promise)
       await click(modelTestButton('Claude Opus'))
-      expect(modelTestButton('Claude Opus').textContent).toBe('Testing…')
+      expect(modelTestButton('Claude Opus').textContent).toBe('正在测试…')
 
       await change()
 
-      expect(modelTestButton('Claude Opus').textContent).toBe('Test')
+      expect(modelTestButton('Claude Opus').textContent).toBe('测试')
       expect(modelTestResult('Claude Opus')).toBe('')
 
       await click(modelTestButton('Claude Opus'))
@@ -1273,12 +1264,12 @@ describe('AdminModelsPanel', () => {
       await act(async () => earlier.resolve(FAILED))
 
       // The earlier answer neither shows nor ends the later test.
-      expect(modelTestButton('Claude Opus').textContent).toBe('Testing…')
+      expect(modelTestButton('Claude Opus').textContent).toBe('正在测试…')
       expect(modelTestResult('Claude Opus')).toBe('')
 
       await act(async () => later.resolve({ model: 'claude-opus', ok: true }))
 
-      expect(modelTestButton('Claude Opus').textContent).toBe('Test')
+      expect(modelTestButton('Claude Opus').textContent).toBe('测试')
       expect(modelTestResult('Claude Opus')).toBe(MODEL_TEST_PASSED_TEXT)
     })
   })
@@ -1291,15 +1282,15 @@ describe('AdminModelsPanel', () => {
     }
 
     it.each([
-      ['a model’s reasoning level', 'Reasoning level for Claude Opus', 'setGatewayModelSettings'],
-      ['the default reasoning level', 'Default reasoning level', 'setDefaultReasoning'],
+      ['a model’s reasoning level', 'Claude Opus 的推理级别', 'setGatewayModelSettings'],
+      ['the default reasoning level', '默认推理级别', 'setDefaultReasoning'],
     ] as const)('returns to the select that %s was picked in', async (_case, select, method) => {
       const rendered = await render({ gatewayModels: RUNTIME_MODELS })
       const call = deferred()
       rendered[method].mockReturnValueOnce(call.promise)
       await openSettings('Claude Opus')
 
-      await choose(select, 'High')
+      await choose(select, '高')
       await dropFocus()
       expect(button(select).disabled).toBe(true)
       expect(document.activeElement).toBe(document.body)
@@ -1315,7 +1306,7 @@ describe('AdminModelsPanel', () => {
       setGatewayModelSettings.mockReturnValueOnce(call.promise)
       await openSettings('Claude Opus')
       await type(budgetField(), '150000')
-      const save = button('Save the compaction budget of Claude Opus')
+      const save = button('保存 Claude Opus 的压缩预算')
 
       await focus(save)
       await click(save)
@@ -1333,7 +1324,7 @@ describe('AdminModelsPanel', () => {
       const call = deferred()
       setGatewayModelSettings.mockReturnValueOnce(call.promise)
       await openSettings('Claude Opus')
-      const reset = button('Reset the compaction budget of Claude Opus')
+      const reset = button('重置 Claude Opus 的压缩预算')
 
       await focus(reset)
       await click(reset)
@@ -1351,10 +1342,10 @@ describe('AdminModelsPanel', () => {
       const { setGatewayModelMode } = await render({ gatewayModels: RUNTIME_MODELS })
       const call = deferred()
       setGatewayModelMode.mockReturnValueOnce(call.promise)
-      const hidden = modeOptions('Claude Opus').find(({ text }) => text === 'Hidden')!.radio
+      const hidden = modeOptions('Claude Opus').find(({ text }) => text === '已隐藏')!.radio
 
       await focus(hidden)
-      await click(modeOption('Claude Opus', 'Hidden'))
+      await click(modeOption('Claude Opus', '已隐藏'))
       await dropFocus()
       expect(modesDisabled('Claude Opus')).toBe(true)
       expect(document.activeElement).toBe(document.body)
@@ -1368,8 +1359,8 @@ describe('AdminModelsPanel', () => {
       const { removeGatewayModel } = await render({ gatewayModels: RUNTIME_MODELS })
       const call = deferred()
       removeGatewayModel.mockReturnValueOnce(call.promise)
-      await click(button('Remove GPT Custom'))
-      const confirm = button('Remove', confirmation()!)
+      await click(button('移除 GPT Custom'))
+      const confirm = button('移除', confirmation()!)
       const focused = vi.spyOn(confirm, 'focus')
 
       await focus(confirm)
@@ -1414,13 +1405,13 @@ describe('AdminModelsPanel', () => {
       const pressed = document.activeElement
       await act(async () => call.resolve())
 
-      expect(pressed?.textContent).toBe('Testing…')
+      expect(pressed?.textContent).toBe('正在测试…')
       expect(document.activeElement).toBe(pressed)
 
       await act(async () => answer.resolve(TEST_PASSED))
 
       expect(document.activeElement).toBe(pressed)
-      expect(pressed?.textContent).toBe('Test')
+      expect(pressed?.textContent).toBe('测试')
     })
 
     it('leaves focus on a model’s Test button that was pressed while the write was in flight', async () => {
@@ -1429,8 +1420,8 @@ describe('AdminModelsPanel', () => {
       setGatewayModelMode.mockReturnValueOnce(call.promise)
       const answer = deferred<GatewayModelTest>()
       testGatewayModel.mockReturnValueOnce(answer.promise)
-      await focus(modeOptions('Claude Haiku').find(({ text }) => text === 'Hidden')!.radio)
-      await click(modeOption('Claude Haiku', 'Hidden'))
+      await focus(modeOptions('Claude Haiku').find(({ text }) => text === '已隐藏')!.radio)
+      await click(modeOption('Claude Haiku', '已隐藏'))
       await dropFocus()
 
       await focus(modelTestButton('Claude Opus'))
@@ -1438,22 +1429,22 @@ describe('AdminModelsPanel', () => {
       const pressed = document.activeElement
       await act(async () => call.resolve())
 
-      expect(pressed?.textContent).toBe('Testing…')
+      expect(pressed?.textContent).toBe('正在测试…')
       expect(document.activeElement).toBe(pressed)
 
       await act(async () => answer.resolve({ model: 'claude-opus', ok: true }))
 
       expect(document.activeElement).toBe(pressed)
-      expect(pressed?.textContent).toBe('Test')
+      expect(pressed?.textContent).toBe('测试')
     })
 
     it('returns to the control a write was made from although a model’s test answered meanwhile', async () => {
       const { setGatewayModelMode } = await render({ gatewayModels: RUNTIME_MODELS })
       const call = deferred()
       setGatewayModelMode.mockReturnValueOnce(call.promise)
-      const hidden = modeOptions('Claude Haiku').find(({ text }) => text === 'Hidden')!.radio
+      const hidden = modeOptions('Claude Haiku').find(({ text }) => text === '已隐藏')!.radio
       await focus(hidden)
-      await click(modeOption('Claude Haiku', 'Hidden'))
+      await click(modeOption('Claude Haiku', '已隐藏'))
       await dropFocus()
 
       // Pressed without taking focus, as a pointer does in some browsers.
@@ -1474,17 +1465,17 @@ describe('AdminModelsPanel', () => {
       setGatewayModelSettings.mockReturnValueOnce(call.promise)
       await openSettings('Claude Opus')
       await type(budgetField(), '150000')
-      const save = button('Save the compaction budget of Claude Opus')
+      const save = button('保存 Claude Opus 的压缩预算')
       await focus(save)
       await click(save)
       await dropFocus()
 
       // A disclosure stays enabled throughout.
-      await focus(button('Settings for GPT Main'))
+      await focus(button('设置（GPT Main）'))
       await act(async () => call.resolve())
 
       expect(save.disabled).toBe(false)
-      expect(document.activeElement).toBe(button('Settings for GPT Main'))
+      expect(document.activeElement).toBe(button('设置（GPT Main）'))
     })
   })
 
@@ -1492,25 +1483,25 @@ describe('AdminModelsPanel', () => {
     it('names each control after its model and exposes the mode the server reported', async () => {
       await render()
 
-      expect(selectedMode('Claude Sonnet')).toEqual(['Enabled (default)'])
-      expect(selectedMode('Claude Legacy')).toEqual(['Disabled'])
+      expect(selectedMode('Claude Sonnet')).toEqual(['已启用 （默认）'])
+      expect(selectedMode('Claude Legacy')).toEqual(['已禁用'])
     })
 
     it('marks the default mode, and marks a model as changed only when it is off its default', async () => {
       await render()
 
       expect(modeOptions('Claude Sonnet').map(({ text }) => text))
-        .toEqual(['Enabled (default)', 'Hidden', 'Disabled'])
+        .toEqual(['已启用 （默认）', '已隐藏', '已禁用'])
       expect(modeOptions('Claude Legacy').map(({ text }) => text))
-        .toEqual(['Enabled', 'Hidden (default)', 'Disabled'])
-      expect(row('Claude Sonnet').textContent).not.toContain('Changed')
-      expect(row('Claude Legacy').textContent).toContain('Changed')
+        .toEqual(['已启用', '已隐藏 （默认）', '已禁用'])
+      expect(row('Claude Sonnet').textContent).not.toContain('已更改')
+      expect(row('Claude Legacy').textContent).toContain('已更改')
     })
 
     it('sets the chosen mode, then re-reads the settings', async () => {
       const { setGatewayModelMode, onChanged } = await render()
 
-      await click(modeOption('Claude Sonnet', 'Hidden'))
+      await click(modeOption('Claude Sonnet', '已隐藏'))
 
       expect(setGatewayModelMode).toHaveBeenCalledExactlyOnceWith('claude-sonnet', 'hidden')
       expect(onChanged).toHaveBeenCalledOnce()
@@ -1521,7 +1512,7 @@ describe('AdminModelsPanel', () => {
     it('resets an override by choosing the default mode', async () => {
       const { setGatewayModelMode } = await render()
 
-      await click(modeOption('Claude Legacy', 'Hidden'))
+      await click(modeOption('Claude Legacy', '已隐藏'))
 
       expect(setGatewayModelMode).toHaveBeenCalledExactlyOnceWith('claude-legacy', 'hidden')
     })
@@ -1529,13 +1520,13 @@ describe('AdminModelsPanel', () => {
     it('disables a model only once that is confirmed', async () => {
       const { setGatewayModelMode, onChanged } = await render()
 
-      await click(modeOption('Claude Sonnet', 'Disabled'))
+      await click(modeOption('Claude Sonnet', '已禁用'))
       expect(setGatewayModelMode).not.toHaveBeenCalled()
       expect(confirmation()?.textContent).toContain('Claude Sonnet')
-      expect(confirmation()?.textContent).toContain('scheduled tasks')
-      expect(confirmation()?.textContent).toContain('hide it instead.')
+      expect(confirmation()?.textContent).toContain('定时任务')
+      expect(confirmation()?.textContent).toContain('请选择隐藏。')
 
-      await click(button('Disable', confirmation()!))
+      await click(button('禁用', confirmation()!))
       expect(setGatewayModelMode).toHaveBeenCalledExactlyOnceWith('claude-sonnet', 'disabled')
       expect(onChanged).toHaveBeenCalledOnce()
       expect(confirmation()).toBeNull()
@@ -1544,17 +1535,17 @@ describe('AdminModelsPanel', () => {
     it('leaves the model’s mode alone when disabling is cancelled', async () => {
       const { setGatewayModelMode } = await render()
 
-      await click(modeOption('Claude Sonnet', 'Disabled'))
-      await click(button('Cancel', confirmation()!))
+      await click(modeOption('Claude Sonnet', '已禁用'))
+      await click(button('取消', confirmation()!))
 
       expect(setGatewayModelMode).not.toHaveBeenCalled()
       expect(confirmation()).toBeNull()
-      expect(selectedMode('Claude Sonnet')).toEqual(['Enabled (default)'])
+      expect(selectedMode('Claude Sonnet')).toEqual(['已启用 （默认）'])
     })
 
     it.each([
-      ['Claude Sonnet', 'Hidden', 'claude-sonnet', 'hidden'],
-      ['Claude Legacy', 'Enabled', 'claude-legacy', 'enabled'],
+      ['Claude Sonnet', '已隐藏', 'claude-sonnet', 'hidden'],
+      ['Claude Legacy', '已启用', 'claude-legacy', 'enabled'],
     ])('sets %s to %s without asking', async (name, label, id, mode) => {
       const { setGatewayModelMode } = await render()
 
@@ -1568,8 +1559,8 @@ describe('AdminModelsPanel', () => {
       const { setGatewayModelMode, onChanged } = await render()
       setGatewayModelMode.mockRejectedValueOnce(new Error('No such model: claude-sonnet'))
 
-      await click(modeOption('Claude Sonnet', 'Disabled'))
-      await click(button('Disable', confirmation()!))
+      await click(modeOption('Claude Sonnet', '已禁用'))
+      await click(button('禁用', confirmation()!))
 
       expect(confirmation()).toBeNull()
       expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
@@ -1577,7 +1568,7 @@ describe('AdminModelsPanel', () => {
         variant: 'error',
       }))
       expect(onChanged).not.toHaveBeenCalled()
-      expect(selectedMode('Claude Sonnet')).toEqual(['Enabled (default)'])
+      expect(selectedMode('Claude Sonnet')).toEqual(['已启用 （默认）'])
       expect(modesDisabled('Claude Sonnet')).toBe(false)
     })
 
@@ -1586,20 +1577,20 @@ describe('AdminModelsPanel', () => {
       const call = deferred()
       setGatewayModelMode.mockReturnValueOnce(call.promise)
 
-      await click(modeOption('Claude Sonnet', 'Hidden'))
+      await click(modeOption('Claude Sonnet', '已隐藏'))
 
-      await click(modeOption('Claude Sonnet', 'Disabled'))
-      await click(modeOption('Claude Legacy', 'Enabled'))
+      await click(modeOption('Claude Sonnet', '已禁用'))
+      await click(modeOption('Claude Legacy', '已启用'))
       expect(setGatewayModelMode).toHaveBeenCalledOnce()
       expect(confirmation()).toBeNull()
-      expect(button('Remove GPT Custom').disabled).toBe(true)
-      expect(button('Add model').disabled).toBe(true)
+      expect(button('移除 GPT Custom').disabled).toBe(true)
+      expect(button('添加模型').disabled).toBe(true)
 
       await act(async () => call.resolve())
 
-      expect(button('Remove GPT Custom').disabled).toBe(false)
-      expect(button('Add model').disabled).toBe(false)
-      await click(modeOption('Claude Legacy', 'Enabled'))
+      expect(button('移除 GPT Custom').disabled).toBe(false)
+      expect(button('添加模型').disabled).toBe(false)
+      await click(modeOption('Claude Legacy', '已启用'))
       expect(setGatewayModelMode).toHaveBeenLastCalledWith('claude-legacy', 'enabled')
     })
   })
@@ -1609,7 +1600,7 @@ describe('AdminModelsPanel', () => {
       await render()
 
       expect(row('GPT Custom').closest('section')?.querySelector('h3')?.textContent)
-        .toBe('Added by this deployment')
+        .toBe('此部署添加的模型')
       expect(row('GPT Custom').textContent).toContain('OpenAI')
       expect(row('Claude Sonnet').closest('section')?.querySelector('h3')?.textContent)
         .toBe('Anthropic')
@@ -1618,12 +1609,12 @@ describe('AdminModelsPanel', () => {
     it('removes a model only once the removal is confirmed', async () => {
       const { removeGatewayModel, onChanged } = await render()
 
-      await click(button('Remove GPT Custom'))
+      await click(button('移除 GPT Custom'))
       expect(removeGatewayModel).not.toHaveBeenCalled()
       expect(confirmation()?.textContent).toContain('GPT Custom')
-      expect(confirmation()?.textContent).toContain('To shut a model off, disable it instead.')
+      expect(confirmation()?.textContent).toContain('要关闭模型，请选择禁用。')
 
-      await click(button('Remove', confirmation()!))
+      await click(button('移除', confirmation()!))
       expect(removeGatewayModel).toHaveBeenCalledExactlyOnceWith('gpt-custom')
       expect(onChanged).toHaveBeenCalledOnce()
       expect(confirmation()).toBeNull()
@@ -1632,8 +1623,8 @@ describe('AdminModelsPanel', () => {
     it('leaves the model alone when the removal is cancelled', async () => {
       const { removeGatewayModel } = await render()
 
-      await click(button('Remove GPT Custom'))
-      await click(button('Cancel', confirmation()!))
+      await click(button('移除 GPT Custom'))
+      await click(button('取消', confirmation()!))
 
       expect(removeGatewayModel).not.toHaveBeenCalled()
       expect(confirmation()).toBeNull()
@@ -1643,8 +1634,8 @@ describe('AdminModelsPanel', () => {
       const { removeGatewayModel } = await render()
       removeGatewayModel.mockRejectedValueOnce(new Error('No such added model: gpt-custom'))
 
-      await click(button('Remove GPT Custom'))
-      await click(button('Remove', confirmation()!))
+      await click(button('移除 GPT Custom'))
+      await click(button('移除', confirmation()!))
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
         description: 'No such added model: gpt-custom',
@@ -1657,19 +1648,19 @@ describe('AdminModelsPanel', () => {
     const VALID = { id: 'gpt-next', name: 'GPT Next', contextWindow: '128000' }
 
     it.each([
-      ['an empty ID', { ...VALID, id: '   ' }, 'Model ID'],
-      ['an empty name', { ...VALID, name: '   ' }, 'Display name'],
-      ['no context window', { ...VALID, contextWindow: '' }, 'Context window'],
-      ['a fractional context window', { ...VALID, contextWindow: '1280.5' }, 'Context window'],
-      ['a zero context window', { ...VALID, contextWindow: '0' }, 'Context window'],
-      ['a negative context window', { ...VALID, contextWindow: '-128000' }, 'Context window'],
-      ['a fractional output limit', { ...VALID, outputLimit: '40.96' }, 'Output limit'],
-      ['a zero output limit', { ...VALID, outputLimit: '0' }, 'Output limit'],
+      ['an empty ID', { ...VALID, id: '   ' }, '模型 ID'],
+      ['an empty name', { ...VALID, name: '   ' }, '显示名称'],
+      ['no context window', { ...VALID, contextWindow: '' }, '上下文窗口'],
+      ['a fractional context window', { ...VALID, contextWindow: '1280.5' }, '上下文窗口'],
+      ['a zero context window', { ...VALID, contextWindow: '0' }, '上下文窗口'],
+      ['a negative context window', { ...VALID, contextWindow: '-128000' }, '上下文窗口'],
+      ['a fractional output limit', { ...VALID, outputLimit: '40.96' }, '输出上限'],
+      ['a zero output limit', { ...VALID, outputLimit: '0' }, '输出上限'],
     ])('refuses %s and points at the field', async (_case, fields, invalidField) => {
       const { addGatewayModel } = await render()
       await fillAddForm(fields)
 
-      await click(button('Add model'))
+      await click(button('添加模型'))
 
       expect(addGatewayModel).not.toHaveBeenCalled()
       const field = labeledInput(invalidField)
@@ -1677,22 +1668,22 @@ describe('AdminModelsPanel', () => {
       expect(document.activeElement).toBe(field)
       const described = field.getAttribute('aria-describedby')!.split(' ')
         .map((id) => document.getElementById(id)?.textContent).join(' ')
-      expect(described).toMatch(/^Enter /)
+      expect(described).toMatch(/^请输入/)
     })
 
     // Focus can't announce an error on the field it is already in.
     it('says the error aloud when the invalid field already has focus', async () => {
       const { addGatewayModel } = await render()
       await fillAddForm({ ...VALID, contextWindow: '128k' })
-      const field = labeledInput('Context window')
+      const field = labeledInput('上下文窗口')
       act(() => field.focus())
 
-      await click(button('Add model'))
+      await click(button('添加模型'))
 
       expect(addGatewayModel).not.toHaveBeenCalled()
       expect(document.activeElement).toBe(field)
       expect(document.body.querySelector('[role="alert"]')?.textContent)
-        .toBe('Enter a positive whole number of tokens')
+        .toBe('请输入大于零的整数 token 数')
 
       await type(field, '128000')
       expect(document.body.querySelector('[role="alert"]')).toBeNull()
@@ -1702,7 +1693,7 @@ describe('AdminModelsPanel', () => {
       const { addGatewayModel, onChanged } = await render()
       await fillAddForm({ id: '  gpt-next ', name: ' GPT Next  ', contextWindow: ' 128000 ', outputLimit: '4096' })
 
-      await click(button('Add model'))
+      await click(button('添加模型'))
 
       expect(addGatewayModel).toHaveBeenCalledExactlyOnceWith({
         provider: 'anthropic', id: 'gpt-next', name: 'GPT Next', contextWindow: 128000, outputLimit: 4096,
@@ -1715,7 +1706,7 @@ describe('AdminModelsPanel', () => {
       const { addGatewayModel } = await render()
       await fillAddForm(VALID)
 
-      await click(button('Add model'))
+      await click(button('添加模型'))
 
       expect(addGatewayModel).toHaveBeenCalledExactlyOnceWith({
         provider: 'anthropic', id: 'gpt-next', name: 'GPT Next', contextWindow: 128000,
@@ -1727,13 +1718,13 @@ describe('AdminModelsPanel', () => {
       addGatewayModel.mockRejectedValueOnce(new Error('"gpt-custom" is already an added model.'))
       await fillAddForm({ id: 'gpt-custom', name: 'GPT Custom', contextWindow: '128000', outputLimit: '4096' })
 
-      await click(button('Add model'))
+      await click(button('添加模型'))
 
       expect(document.body.querySelector('[role="alert"]')?.textContent)
         .toBe('"gpt-custom" is already an added model.')
       expect(addFormValues()).toEqual(['gpt-custom', 'GPT Custom', '128000', '4096'])
       expect(onChanged).not.toHaveBeenCalled()
-      expect(button('Add model').disabled).toBe(false)
+      expect(button('添加模型').disabled).toBe(false)
     })
 
     it('cannot be submitted twice while the add is in flight', async () => {
@@ -1742,41 +1733,38 @@ describe('AdminModelsPanel', () => {
       addGatewayModel.mockReturnValueOnce(call.promise)
       await fillAddForm(VALID)
 
-      await click(button('Add model'))
-      expect(button('Add model').disabled).toBe(true)
+      await click(button('添加模型'))
+      expect(button('添加模型').disabled).toBe(true)
       expect(modesDisabled('Claude Sonnet')).toBe(true)
       // Locked too, so nothing typed meanwhile is cleared with the model that was added.
-      expect(labeledInput('Model ID').disabled).toBe(true)
+      expect(labeledInput('模型 ID').disabled).toBe(true)
       await act(async () => {
         document.body.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
       })
       expect(addGatewayModel).toHaveBeenCalledOnce()
 
       await act(async () => call.resolve())
-      expect(button('Add model').disabled).toBe(false)
+      expect(button('添加模型').disabled).toBe(false)
     })
 
     describe('behaving like another model', () => {
-      const LABEL = 'Behaves like'
+      const LABEL = '行为类似于'
       const TOOLTIP =
-        'The model chosen here lends the new one its thinking format and, where they are not ' +
-        'stated here, its reasoning levels and its image input, until this version knows the new ' +
-        'model itself. From then on the choice is not used. The name, the limits and the cost ' +
-        'are never borrowed.'
+        '此处选择的模型为新模型提供思考格式，以及未在此指定的推理级别和图片输入能力，直到当前版本识别新模型为止。识别后不再使用此选择。名称、限制和费用不会继承。'
 
       it('offers none, then the chosen provider’s catalog models that the runtime knows', async () => {
         await render({
           gatewayModels: { ...RUNTIME_MODELS, models: [...RUNTIME_MODELS.models, KNOWN_ADDED] },
         })
 
-        expect(button(LABEL).textContent).toBe('None')
+        expect(button(LABEL).textContent).toBe('无')
         // Neither Claude Sonnet, which the runtime has no entry for, nor Claude Added, which it
         // knows but the catalog doesn't list.
-        expect(await optionLabels(LABEL)).toEqual(['None', 'Claude Opus', 'Claude Haiku'])
+        expect(await optionLabels(LABEL)).toEqual(['无', 'Claude Opus', 'Claude Haiku'])
 
         await chooseProvider('OpenAI')
 
-        expect(await optionLabels(LABEL)).toEqual(['None', 'GPT Main'])
+        expect(await optionLabels(LABEL)).toEqual(['无', 'GPT Main'])
       })
 
       it('is not offered under a provider with no such model', async () => {
@@ -1791,13 +1779,13 @@ describe('AdminModelsPanel', () => {
 
         await choose(LABEL, 'Claude Haiku')
         expect(button(LABEL).textContent).toBe('Claude Haiku')
-        await click(button('Add model'))
+        await click(button('添加模型'))
 
         expect(addGatewayModel).toHaveBeenCalledExactlyOnceWith({
           provider: 'anthropic', id: 'gpt-next', name: 'GPT Next', contextWindow: 128000,
           behavesLike: 'claude-haiku',
         })
-        expect(button(LABEL).textContent).toBe('None')
+        expect(button(LABEL).textContent).toBe('无')
       })
 
       it('adds the model with none once the choice is taken back', async () => {
@@ -1805,8 +1793,8 @@ describe('AdminModelsPanel', () => {
         await fillAddForm(VALID)
         await choose(LABEL, 'Claude Haiku')
 
-        await choose(LABEL, 'None')
-        await click(button('Add model'))
+        await choose(LABEL, '无')
+        await click(button('添加模型'))
 
         expect(addGatewayModel).toHaveBeenCalledOnce()
         expect(addGatewayModel.mock.calls[0][0]).not.toHaveProperty('behavesLike')
@@ -1818,10 +1806,10 @@ describe('AdminModelsPanel', () => {
         await choose(LABEL, 'Claude Haiku')
 
         await chooseProvider('OpenAI')
-        expect(button(LABEL).textContent).toBe('None')
+        expect(button(LABEL).textContent).toBe('无')
         await chooseProvider('Anthropic')
-        expect(button(LABEL).textContent).toBe('None')
-        await click(button('Add model'))
+        expect(button(LABEL).textContent).toBe('无')
+        await click(button('添加模型'))
 
         // What was typed by hand is kept, and the choice alone is dropped.
         expect(addGatewayModel).toHaveBeenCalledOnce()
@@ -1843,8 +1831,8 @@ describe('AdminModelsPanel', () => {
         expect(() => button(LABEL)).toThrow('No button')
         await chooseProvider('Anthropic')
 
-        expect(button(LABEL).textContent).toBe('None')
-        await click(button('Add model'))
+        expect(button(LABEL).textContent).toBe('无')
+        await click(button('添加模型'))
         expect(addGatewayModel).toHaveBeenCalledOnce()
         expect(addGatewayModel.mock.calls[0][0]).toStrictEqual({
           provider: 'anthropic', id: 'gpt-next', name: 'GPT Next', contextWindow: 128000,
@@ -1856,17 +1844,17 @@ describe('AdminModelsPanel', () => {
         const { addGatewayModel } = await render({
           gatewayModels: { ...RUNTIME_MODELS, modelsDevSuggestions: true },
         })
-        await focus(labeledInput('Model ID'))
-        await type(labeledInput('Model ID'), 'opus-4')
+        await focus(labeledInput('模型 ID'))
+        await type(labeledInput('模型 ID'), 'opus-4')
 
         await click(suggestionOptions()[0])
-        expect(button(LABEL).textContent).toBe('None')
+        expect(button(LABEL).textContent).toBe('无')
 
         await choose(LABEL, 'Claude Opus')
-        await type(labeledInput('Model ID'), 'haiku-4')
+        await type(labeledInput('模型 ID'), 'haiku-4')
         await click(suggestionOptions()[0])
         expect(button(LABEL).textContent).toBe('Claude Opus')
-        await click(button('Add model'))
+        await click(button('添加模型'))
 
         expect(addGatewayModel).toHaveBeenCalledExactlyOnceWith({
           provider: 'anthropic', id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5 (latest)',
@@ -1893,7 +1881,7 @@ describe('AdminModelsPanel', () => {
         addGatewayModel.mockReturnValueOnce(call.promise)
         await fillAddForm(VALID)
 
-        await click(button('Add model'))
+        await click(button('添加模型'))
         expect(button(LABEL).disabled).toBe(true)
 
         await act(async () => call.resolve())
@@ -1902,9 +1890,9 @@ describe('AdminModelsPanel', () => {
     })
 
     describe('stating what a model can do', () => {
-      const IMAGES = 'Image input'
-      const LEVELS = 'Reasoning levels'
-      const NOT_STATED = 'Not stated'
+      const IMAGES = '图片输入'
+      const LEVELS = '推理级别'
+      const NOT_STATED = '未指定'
       const ADDED_MODEL = {
         provider: 'anthropic', id: 'gpt-next', name: 'GPT Next', contextWindow: 128000,
       }
@@ -1924,7 +1912,7 @@ describe('AdminModelsPanel', () => {
         await fillAddForm(VALID)
 
         expect(stated()).toEqual([NOT_STATED, NOT_STATED])
-        await click(button('Add model'))
+        await click(button('添加模型'))
 
         expect(addGatewayModel).toHaveBeenCalledOnce()
         expect(addGatewayModel.mock.calls[0][0]).toStrictEqual(ADDED_MODEL)
@@ -1933,24 +1921,24 @@ describe('AdminModelsPanel', () => {
       it('offers a yes or a no on images, and every reasoning level by its name', async () => {
         await render()
 
-        expect(await optionLabels(IMAGES)).toEqual([NOT_STATED, 'Yes', 'No'])
+        expect(await optionLabels(IMAGES)).toEqual([NOT_STATED, '是', '否'])
         await press(document.activeElement as HTMLElement, 'Escape')
         expect(await optionLabels(LEVELS))
-          .toEqual(['Off', 'Minimal', 'Low', 'Medium', 'High', 'Extra high', 'Max'])
+          .toEqual(['关闭', '最低', '低', '中', '高', '极高', '最高'])
         expect(describedBy(button(LEVELS)))
-          .toContain('Pick only Off for a model that does no reasoning.')
+          .toContain('对于不支持推理的模型，只选择“关闭”。')
       })
 
       it.each([
-        ['takes images', 'Yes', true],
-        ['takes none', 'No', false],
+        ['takes images', '是', true],
+        ['takes none', '否', false],
       ])('adds a model stated as one that %s, with no levels stated', async (_case, label, imageInput) => {
         const { addGatewayModel } = await render()
         await fillAddForm(VALID)
 
         await choose(IMAGES, label)
         expect(stated()).toEqual([label, NOT_STATED])
-        await click(button('Add model'))
+        await click(button('添加模型'))
 
         expect(addGatewayModel).toHaveBeenCalledOnce()
         expect(addGatewayModel.mock.calls[0][0])
@@ -1961,9 +1949,9 @@ describe('AdminModelsPanel', () => {
         const { addGatewayModel } = await render()
         await fillAddForm(VALID)
 
-        await pickLevels('Max', 'Off', 'High')
-        expect(stated()).toEqual([NOT_STATED, 'Off, High, Max'])
-        await click(button('Add model'))
+        await pickLevels('最高', '关闭', '高')
+        expect(stated()).toEqual([NOT_STATED, '关闭, 高, 最高'])
+        await click(button('添加模型'))
 
         expect(addGatewayModel).toHaveBeenCalledOnce()
         expect(addGatewayModel.mock.calls[0][0])
@@ -1974,10 +1962,10 @@ describe('AdminModelsPanel', () => {
         const { addGatewayModel } = await render()
         await fillAddForm(VALID)
 
-        await choose(IMAGES, 'Yes')
-        await pickLevels('Off')
-        expect(stated()).toEqual(['Yes', 'Off'])
-        await click(button('Add model'))
+        await choose(IMAGES, '是')
+        await pickLevels('关闭')
+        expect(stated()).toEqual(['是', '关闭'])
+        await click(button('添加模型'))
 
         expect(addGatewayModel).toHaveBeenCalledOnce()
         expect(addGatewayModel.mock.calls[0][0]).toStrictEqual({
@@ -1988,16 +1976,16 @@ describe('AdminModelsPanel', () => {
       it('states only what is left once a statement is taken back', async () => {
         const { addGatewayModel } = await render()
         await fillAddForm(VALID)
-        await choose(IMAGES, 'No')
-        await pickLevels('Low', 'High')
+        await choose(IMAGES, '否')
+        await pickLevels('低', '高')
 
-        await pickLevels('Low')
-        expect(stated()).toEqual(['No', 'High'])
+        await pickLevels('低')
+        expect(stated()).toEqual(['否', '高'])
         await choose(IMAGES, NOT_STATED)
-        expect(stated()).toEqual([NOT_STATED, 'High'])
-        await pickLevels('High')
+        expect(stated()).toEqual([NOT_STATED, '高'])
+        await pickLevels('高')
         expect(stated()).toEqual([NOT_STATED, NOT_STATED])
-        await click(button('Add model'))
+        await click(button('添加模型'))
 
         expect(addGatewayModel).toHaveBeenCalledOnce()
         expect(addGatewayModel.mock.calls[0][0]).toStrictEqual(ADDED_MODEL)
@@ -2006,13 +1994,13 @@ describe('AdminModelsPanel', () => {
       it('has nothing stated for the next model after an add', async () => {
         const { addGatewayModel } = await render()
         await fillAddForm(VALID)
-        await choose(IMAGES, 'Yes')
-        await pickLevels('Low', 'High')
+        await choose(IMAGES, '是')
+        await pickLevels('低', '高')
 
-        await click(button('Add model'))
+        await click(button('添加模型'))
         expect(stated()).toEqual([NOT_STATED, NOT_STATED])
         await fillAddForm({ ...VALID, id: 'gpt-after' })
-        await click(button('Add model'))
+        await click(button('添加模型'))
 
         expect(addGatewayModel).toHaveBeenCalledTimes(2)
         expect(addGatewayModel.mock.calls[0][0]).toStrictEqual({
@@ -2025,14 +2013,14 @@ describe('AdminModelsPanel', () => {
         const { addGatewayModel } = await render()
         addGatewayModel.mockRejectedValueOnce(new Error('"gpt-next" is already an added model.'))
         await fillAddForm(VALID)
-        await choose(IMAGES, 'No')
-        await pickLevels('Off')
+        await choose(IMAGES, '否')
+        await pickLevels('关闭')
 
-        await click(button('Add model'))
+        await click(button('添加模型'))
 
         expect(document.body.querySelector('[role="alert"]')?.textContent)
           .toBe('"gpt-next" is already an added model.')
-        expect(stated()).toEqual(['No', 'Off'])
+        expect(stated()).toEqual(['否', '关闭'])
       })
 
       it('is prefilled by a picked suggestion with what models.dev states, and with no more', async () => {
@@ -2061,21 +2049,21 @@ describe('AdminModelsPanel', () => {
 
         // Its entry names no efforts, so no levels are stated for it.
         await pickSuggestion('sees')
-        expect(stated()).toEqual(['Yes', NOT_STATED])
+        expect(stated()).toEqual(['是', NOT_STATED])
 
         await pickSuggestion('thinks')
-        expect(stated()).toEqual(['No', 'Off, High'])
+        expect(stated()).toEqual(['否', '关闭, 高'])
 
         await pickSuggestion('plain')
-        expect(stated()).toEqual(['No', 'Off'])
+        expect(stated()).toEqual(['否', '关闭'])
 
         // A pick states what its entry does and nothing else, so it also takes a statement away.
         await pickSuggestion('silent')
         expect(stated()).toEqual([NOT_STATED, NOT_STATED])
 
         await pickSuggestion('plain')
-        await choose(IMAGES, 'Yes')
-        await click(button('Add model'))
+        await choose(IMAGES, '是')
+        await click(button('添加模型'))
 
         // What is added is what the form then holds.
         expect(addGatewayModel).toHaveBeenCalledOnce()
@@ -2089,15 +2077,15 @@ describe('AdminModelsPanel', () => {
         stubModelsDev()
         await render({ gatewayModels: SUGGESTING })
         await fillAddForm(VALID)
-        await choose(IMAGES, 'Yes')
-        await pickLevels('High')
+        await choose(IMAGES, '是')
+        await pickLevels('高')
 
         await chooseProvider('OpenAI')
-        expect(stated()).toEqual(['Yes', 'High'])
+        expect(stated()).toEqual(['是', '高'])
 
         await pickSuggestion('5.2')
-        expect(stated()).toEqual(['No', NOT_STATED])
-        await pickLevels('Off')
+        expect(stated()).toEqual(['否', NOT_STATED])
+        await pickLevels('关闭')
         await chooseProvider('Anthropic')
 
         expect(addFormValues()).toEqual(['', '', '', ''])
@@ -2110,7 +2098,7 @@ describe('AdminModelsPanel', () => {
         addGatewayModel.mockReturnValueOnce(call.promise)
         await fillAddForm(VALID)
 
-        await click(button('Add model'))
+        await click(button('添加模型'))
         expect(button(IMAGES).disabled).toBe(true)
         expect(button(LEVELS).disabled).toBe(true)
 
@@ -2122,14 +2110,11 @@ describe('AdminModelsPanel', () => {
 
     describe('testing a model before adding it', () => {
       const HELP =
-        'Test sends the model described here one request with no reasoning level set and one at ' +
-        'each reasoning level it would list once added. Each request can use up to 2,048 output ' +
-        'tokens, and nothing is added.'
+        '测试将按未设置推理级别和添加后列出的每个推理级别分别发送一次请求。每次请求最多使用 2,048 个输出 token，测试不会添加模型。'
       const HINT =
-        'The gateway may hold no key or credits for this provider, or CF_AI_GATEWAY_API_TOKEN ' +
-        'may not be allowed to run models.'
+        '网关中可能没有此服务商的密钥或余额，或者 CF_AI_GATEWAY_API_TOKEN 没有运行模型的权限。'
       // The one line of the test that the fake admin answers with.
-      const NO_LEVEL_PASSED = `No level set: ${MODEL_TEST_PASSED_TEXT}`
+      const NO_LEVEL_PASSED = `未设置级别: ${MODEL_TEST_PASSED_TEXT}`
       const ALREADY_ADDED = '"gpt-next" is already an added model.'
 
       // A valid form whose model was tested, with the answer shown.
@@ -2144,15 +2129,15 @@ describe('AdminModelsPanel', () => {
       it('says by its buttons what Test sends and can use, and that nothing is added', async () => {
         await render()
 
-        const form = button('Add model').closest('form')!
+        const form = button('添加模型').closest('form')!
         const help = Array.from(form.querySelectorAll('p')).find((p) => p.textContent === HELP)
         expect(help).toBeDefined()
         // Read in the page's flow, and not spoken as a result is.
         expect(help!.closest('[role="status"], [role="alert"], [aria-live]')).toBeNull()
-        expect(button('Add model').compareDocumentPosition(formTestButton())
+        expect(button('添加模型').compareDocumentPosition(formTestButton())
           & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
         expect(formTestButton().type).toBe('button')
-        expect(formTestButton().textContent).toBe('Test')
+        expect(formTestButton().textContent).toBe('测试')
         // The region is there for the first answer to be announced in.
         expect(formTestResult()).toEqual([])
       })
@@ -2162,10 +2147,10 @@ describe('AdminModelsPanel', () => {
           await render({ gatewayModels: RUNTIME_MODELS })
         const typed = { id: '  gpt-next ', name: ' GPT Next  ', contextWindow: ' 128000 ', outputLimit: '4096' }
         await fillAddForm(typed)
-        await choose('Behaves like', 'Claude Haiku')
-        await choose('Image input', 'No')
-        await choose('Reasoning levels', 'High')
-        await choose('Reasoning levels', 'Off')
+        await choose('行为类似于', 'Claude Haiku')
+        await choose('图片输入', '否')
+        await choose('推理级别', '高')
+        await choose('推理级别', '关闭')
         await press(document.activeElement as HTMLElement, 'Escape')
 
         await click(formTestButton())
@@ -2181,7 +2166,7 @@ describe('AdminModelsPanel', () => {
         expect(onChanged).not.toHaveBeenCalled()
         expect(addToast).not.toHaveBeenCalled()
         expect(addFormValues()).toEqual(Object.values(typed))
-        expect(button('Behaves like').textContent).toBe('Claude Haiku')
+        expect(button('行为类似于').textContent).toBe('Claude Haiku')
       })
 
       it('shows a line for each request under the level it asked for, in the order they came in', async () => {
@@ -2198,9 +2183,9 @@ describe('AdminModelsPanel', () => {
 
         expect(formTestResult()).toEqual([
           NO_LEVEL_PASSED,
-          'Off: Failed (400): Unsupported value: reasoning_effort does not support none.',
-          'Extra high: Failed: The request timed out.',
-          `Max: ${MODEL_TEST_PASSED_TEXT}`,
+          '关闭: 失败 (400): Unsupported value: reasoning_effort does not support none.',
+          '极高: 失败: The request timed out.',
+          `最高: ${MODEL_TEST_PASSED_TEXT}`,
         ])
         expect(addToast).not.toHaveBeenCalled()
       })
@@ -2217,18 +2202,18 @@ describe('AdminModelsPanel', () => {
         await click(formTestButton())
 
         expect(formTestResult()).toEqual([
-          'No level set: Failed (401): invalid x-api-key',
-          'Low: Failed (403): Your credit balance is too low.',
-          `High: ${MODEL_TEST_PASSED_TEXT}`,
+          '未设置级别: 失败 (401): invalid x-api-key',
+          '低: 失败 (403): Your credit balance is too low.',
+          `高: ${MODEL_TEST_PASSED_TEXT}`,
           HINT,
         ])
       })
 
       it.each([
-        ['an empty ID', { ...VALID, id: '   ' }, 'Model ID'],
-        ['an empty name', { ...VALID, name: '   ' }, 'Display name'],
-        ['a fractional context window', { ...VALID, contextWindow: '1280.5' }, 'Context window'],
-        ['a zero output limit', { ...VALID, outputLimit: '0' }, 'Output limit'],
+        ['an empty ID', { ...VALID, id: '   ' }, '模型 ID'],
+        ['an empty name', { ...VALID, name: '   ' }, '显示名称'],
+        ['a fractional context window', { ...VALID, contextWindow: '1280.5' }, '上下文窗口'],
+        ['a zero output limit', { ...VALID, outputLimit: '0' }, '输出上限'],
       ])('asks for nothing with %s, and points at the field as an add does', async (
         _case, fields, invalidField,
       ) => {
@@ -2242,8 +2227,8 @@ describe('AdminModelsPanel', () => {
         const field = labeledInput(invalidField)
         expect(field.getAttribute('aria-invalid')).toBe('true')
         expect(document.activeElement).toBe(field)
-        expect(describedBy(field)).toMatch(/^Enter /)
-        expect(formTestButton().textContent).toBe('Test')
+        expect(describedBy(field)).toMatch(/^请输入/)
+        expect(formTestButton().textContent).toBe('测试')
         expect(formTestResult()).toEqual([])
       })
 
@@ -2251,7 +2236,7 @@ describe('AdminModelsPanel', () => {
       it('says the error aloud when the invalid field already has focus', async () => {
         const { testNewGatewayModel } = await render()
         await fillAddForm({ ...VALID, contextWindow: '128k' })
-        const field = labeledInput('Context window')
+        const field = labeledInput('上下文窗口')
         await focus(field)
 
         await click(formTestButton())
@@ -2259,7 +2244,7 @@ describe('AdminModelsPanel', () => {
         expect(testNewGatewayModel).not.toHaveBeenCalled()
         expect(document.activeElement).toBe(field)
         expect(document.body.querySelector('[role="alert"]')?.textContent)
-          .toBe('Enter a positive whole number of tokens')
+          .toBe('请输入大于零的整数 token 数')
       })
 
       it('says that a test is in flight, keeps focus, and asks for nothing on a second press', async () => {
@@ -2268,32 +2253,32 @@ describe('AdminModelsPanel', () => {
         testNewGatewayModel.mockReturnValueOnce(call.promise)
         await fillAddForm(VALID)
         const pressed = formTestButton()
-        expect(pressed.getAttribute('aria-label')).toBe('Test this model')
+        expect(pressed.getAttribute('aria-label')).toBe('测试 此模型')
         await focus(pressed)
 
         await click(pressed)
 
         expect(formTestButton()).toBe(pressed)
-        expect(pressed.textContent).toBe('Testing…')
-        expect(pressed.getAttribute('aria-label')).toBe('Testing this model…')
+        expect(pressed.textContent).toBe('正在测试…')
+        expect(pressed.getAttribute('aria-label')).toBe('正在测试 此模型…')
         expect(pressed.getAttribute('aria-disabled')).toBe('true')
         expect(pressed.disabled).toBe(false)
         expect(document.activeElement).toBe(pressed)
         expect(formTestResult()).toEqual([])
         // A test is not a write, so it locks nothing.
-        expect(button('Add model').disabled).toBe(false)
-        expect(labeledInput('Model ID').disabled).toBe(false)
+        expect(button('添加模型').disabled).toBe(false)
+        expect(labeledInput('模型 ID').disabled).toBe(false)
         expect(modesDisabled('Claude Sonnet')).toBe(false)
         await click(pressed)
         expect(testNewGatewayModel).toHaveBeenCalledOnce()
 
         await act(async () => call.resolve([levelPassed(null), levelPassed('high')]))
 
-        expect(pressed.textContent).toBe('Test')
-        expect(pressed.getAttribute('aria-label')).toBe('Test this model')
+        expect(pressed.textContent).toBe('测试')
+        expect(pressed.getAttribute('aria-label')).toBe('测试 此模型')
         expect(pressed.getAttribute('aria-disabled')).toBe('false')
         expect(document.activeElement).toBe(pressed)
-        expect(formTestResult()).toEqual([NO_LEVEL_PASSED, `High: ${MODEL_TEST_PASSED_TEXT}`])
+        expect(formTestResult()).toEqual([NO_LEVEL_PASSED, `高: ${MODEL_TEST_PASSED_TEXT}`])
         expect(addGatewayModel).not.toHaveBeenCalled()
 
         // Once a test has answered, the next press runs another.
@@ -2310,8 +2295,8 @@ describe('AdminModelsPanel', () => {
 
         await click(formTestButton())
 
-        expect(formTestResult()).toEqual([`Couldn’t run the test: ${ALREADY_ADDED}`])
-        expect(formTestButton().textContent).toBe('Test')
+        expect(formTestResult()).toEqual([`无法运行测试: ${ALREADY_ADDED}`])
+        expect(formTestButton().textContent).toBe('测试')
         // Said in the test's own region, and not as the refusal of an add is.
         expect(document.body.querySelector('[role="alert"]')).toBeNull()
         expect(addToast).not.toHaveBeenCalled()
@@ -2321,13 +2306,13 @@ describe('AdminModelsPanel', () => {
 
       // Every way the form comes to describe another model: what each is, and what makes it.
       const EDITS = [
-        ['the model ID is edited', () => type(labeledInput('Model ID'), 'gpt-after')],
-        ['the display name is edited', () => type(labeledInput('Display name'), 'GPT After')],
-        ['the context window is edited', () => type(labeledInput('Context window'), '64000')],
-        ['the output limit is edited', () => type(labeledInput('Output limit'), '4096')],
-        ['a model to behave like is chosen', () => choose('Behaves like', 'Claude Haiku')],
-        ['image input is stated', () => choose('Image input', 'Yes')],
-        ['a reasoning level is stated', () => choose('Reasoning levels', 'High')],
+        ['the model ID is edited', () => type(labeledInput('模型 ID'), 'gpt-after')],
+        ['the display name is edited', () => type(labeledInput('显示名称'), 'GPT After')],
+        ['the context window is edited', () => type(labeledInput('上下文窗口'), '64000')],
+        ['the output limit is edited', () => type(labeledInput('输出上限'), '4096')],
+        ['a model to behave like is chosen', () => choose('行为类似于', 'Claude Haiku')],
+        ['image input is stated', () => choose('图片输入', '是')],
+        ['a reasoning level is stated', () => choose('推理级别', '高')],
         ['the provider is changed', () => chooseProvider('OpenAI')],
       ] as const
 
@@ -2357,10 +2342,10 @@ describe('AdminModelsPanel', () => {
       it('forgets the results once a suggestion is picked', async () => {
         stubModelsDev()
         await render({ gatewayModels: SUGGESTING })
-        await type(labeledInput('Display name'), 'Opus')
-        await type(labeledInput('Context window'), '200000')
-        await focus(labeledInput('Model ID'))
-        await type(labeledInput('Model ID'), 'opus')
+        await type(labeledInput('显示名称'), 'Opus')
+        await type(labeledInput('上下文窗口'), '200000')
+        await focus(labeledInput('模型 ID'))
+        await type(labeledInput('模型 ID'), 'opus')
         await click(formTestButton())
         expect(formTestResult()).toEqual([NO_LEVEL_PASSED])
 
@@ -2377,11 +2362,11 @@ describe('AdminModelsPanel', () => {
         testNewGatewayModel.mockReturnValueOnce(earlier.promise).mockReturnValueOnce(later.promise)
         await fillAddForm(VALID)
         await click(formTestButton())
-        expect(formTestButton().textContent).toBe('Testing…')
+        expect(formTestButton().textContent).toBe('正在测试…')
 
-        await type(labeledInput('Display name'), 'GPT After')
+        await type(labeledInput('显示名称'), 'GPT After')
 
-        expect(formTestButton().textContent).toBe('Test')
+        expect(formTestButton().textContent).toBe('测试')
         expect(formTestResult()).toEqual([])
 
         await click(formTestButton())
@@ -2390,19 +2375,19 @@ describe('AdminModelsPanel', () => {
         await act(async () => earlier.resolve([levelFailed(null, 'The server had an error.', 500)]))
 
         // The earlier answer neither shows nor ends the later test.
-        expect(formTestButton().textContent).toBe('Testing…')
+        expect(formTestButton().textContent).toBe('正在测试…')
         expect(formTestResult()).toEqual([])
 
         await act(async () => later.resolve([levelPassed(null)]))
 
-        expect(formTestButton().textContent).toBe('Test')
+        expect(formTestButton().textContent).toBe('测试')
         expect(formTestResult()).toEqual([NO_LEVEL_PASSED])
       })
 
       it('forgets the results once the model is added, and tests nothing by adding it', async () => {
         const { addGatewayModel, testNewGatewayModel } = await renderTested()
 
-        await click(button('Add model'))
+        await click(button('添加模型'))
 
         expect(addGatewayModel).toHaveBeenCalledOnce()
         expect(addFormValues()).toEqual(['', '', '', ''])
@@ -2417,10 +2402,10 @@ describe('AdminModelsPanel', () => {
         await fillAddForm(VALID)
         await click(formTestButton())
 
-        await click(button('Add model'))
+        await click(button('添加模型'))
 
         expect(addFormValues()).toEqual(['', '', '', ''])
-        expect(formTestButton().textContent).toBe('Test')
+        expect(formTestButton().textContent).toBe('测试')
 
         await act(async () => call.resolve([levelPassed(null)]))
 
@@ -2432,7 +2417,7 @@ describe('AdminModelsPanel', () => {
         const { addGatewayModel, testNewGatewayModel } = await renderTested()
         addGatewayModel.mockRejectedValueOnce(new Error(ALREADY_ADDED))
 
-        await click(button('Add model'))
+        await click(button('添加模型'))
 
         expect(document.body.querySelector('[role="alert"]')?.textContent).toBe(ALREADY_ADDED)
         expect(formTestResult()).toEqual([NO_LEVEL_PASSED])
@@ -2442,7 +2427,7 @@ describe('AdminModelsPanel', () => {
         await click(formTestButton())
 
         expect(document.body.querySelector('[role="alert"]')?.textContent).toBe(ALREADY_ADDED)
-        expect(formTestResult()).toEqual([NO_LEVEL_PASSED, `Low: ${MODEL_TEST_PASSED_TEXT}`])
+        expect(formTestResult()).toEqual([NO_LEVEL_PASSED, `低: ${MODEL_TEST_PASSED_TEXT}`])
         expect(addGatewayModel).toHaveBeenCalledOnce()
       })
 
@@ -2452,8 +2437,8 @@ describe('AdminModelsPanel', () => {
         setUserModelsEnabled.mockReturnValueOnce(call.promise)
         await fillAddForm(VALID)
         await click(userModelsCheckbox())
-        expect(button('Add model').disabled).toBe(true)
-        expect(labeledInput('Model ID').disabled).toBe(true)
+        expect(button('添加模型').disabled).toBe(true)
+        expect(labeledInput('模型 ID').disabled).toBe(true)
 
         expect(formTestButton().disabled).toBe(false)
         expect(formTestButton().getAttribute('aria-disabled')).toBe('false')
@@ -2465,11 +2450,11 @@ describe('AdminModelsPanel', () => {
         }])
         expect(formTestResult()).toEqual([NO_LEVEL_PASSED])
         // The test did not end the write's lock either.
-        expect(button('Add model').disabled).toBe(true)
+        expect(button('添加模型').disabled).toBe(true)
 
         await act(async () => call.resolve())
 
-        expect(button('Add model').disabled).toBe(false)
+        expect(button('添加模型').disabled).toBe(false)
         expect(formTestResult()).toEqual([NO_LEVEL_PASSED])
       })
     })
@@ -2479,12 +2464,12 @@ describe('AdminModelsPanel', () => {
 
       expect(document.body.querySelector('form')).toBeNull()
       expect(document.body.textContent)
-        .toContain('No model can be added, because no provider is on. Turn one on under Providers.')
+        .toContain('没有启用的服务商，无法添加模型。请先在服务商设置中启用。')
     })
   })
 
   describe('suggestions from models.dev', () => {
-    const modelId = () => labeledInput('Model ID')
+    const modelId = () => labeledInput('模型 ID')
 
     describe('the setting', () => {
       it.each([true, false])('shows %s as the server reported it, with what it does', async (enabled) => {
@@ -2493,8 +2478,8 @@ describe('AdminModelsPanel', () => {
         const toggle = settingSwitch(SUGGESTIONS_LABEL)
         expect(toggle.getAttribute('aria-checked')).toBe(String(enabled))
         const meaning = document.getElementById(toggle.getAttribute('aria-describedby')!)
-        expect(meaning?.textContent).toContain('your browser downloads models.dev’s public model list')
-        expect(meaning?.textContent).toContain('nothing is added until you select “Add model”')
+        expect(meaning?.textContent).toContain('浏览器会下载 models.dev 的公开模型列表')
+        expect(meaning?.textContent).toContain('点击“添加模型”后才会添加')
       })
 
       it.each([true, false])('sets the opposite of %s, then re-reads the settings', async (enabled) => {
@@ -2521,7 +2506,7 @@ describe('AdminModelsPanel', () => {
         await click(settingCheckbox(SUGGESTIONS_LABEL))
 
         expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-          title: 'Couldn’t update “Suggest models from models.dev”',
+          title: '无法更新“从 models.dev 推荐模型”',
           description: 'This deployment does not provide models through AI Gateway.',
           variant: 'error',
         }))
@@ -2538,7 +2523,7 @@ describe('AdminModelsPanel', () => {
 
         expect(settingSwitch(SUGGESTIONS_LABEL).disabled).toBe(true)
         await click(settingCheckbox(SUGGESTIONS_LABEL))
-        await click(modeOption('Claude Sonnet', 'Hidden'))
+        await click(modeOption('Claude Sonnet', '已隐藏'))
         expect(setModelsDevSuggestions).toHaveBeenCalledOnce()
         expect(setGatewayModelMode).not.toHaveBeenCalled()
 
@@ -2574,8 +2559,8 @@ describe('AdminModelsPanel', () => {
       const fetch = stubModelsDev()
       await render({ gatewayModels: SUGGESTING })
 
-      await focus(labeledInput('Display name'))
-      await type(labeledInput('Display name'), 'Claude')
+      await focus(labeledInput('显示名称'))
+      await type(labeledInput('显示名称'), 'Claude')
       expect(fetch).not.toHaveBeenCalled()
 
       await engage()
@@ -2591,12 +2576,12 @@ describe('AdminModelsPanel', () => {
       await focus(modelId())
       await type(modelId(), 'cl')
       await type(modelId(), 'claude')
-      await focus(labeledInput('Display name'))
+      await focus(labeledInput('显示名称'))
       await focus(modelId())
       await show({ ...SUGGESTING, userModelsEnabled: false })
       await show(GATEWAY_MODELS)
       await show(SUGGESTING)
-      await focus(labeledInput('Display name'))
+      await focus(labeledInput('显示名称'))
       await focus(modelId())
       await type(modelId(), 'claude-')
 
@@ -2609,7 +2594,7 @@ describe('AdminModelsPanel', () => {
       await render({ gatewayModels: SUGGESTING })
 
       await focus(modelId())
-      await focus(labeledInput('Display name'))
+      await focus(labeledInput('显示名称'))
       await focus(modelId())
       await type(modelId(), 'claude')
 
@@ -2686,9 +2671,9 @@ describe('AdminModelsPanel', () => {
       stubModelsDev()
       await render({ gatewayModels: SUGGESTING })
       await focus(modelId())
-      await type(labeledInput('Display name'), 'My Opus')
-      await type(labeledInput('Context window'), '150000')
-      await type(labeledInput('Output limit'), '8000')
+      await type(labeledInput('显示名称'), 'My Opus')
+      await type(labeledInput('上下文窗口'), '150000')
+      await type(labeledInput('输出上限'), '8000')
 
       await type(modelId(), 'claude-opus-4-5')
 
@@ -2706,9 +2691,9 @@ describe('AdminModelsPanel', () => {
       expect(addFormValues()).toEqual(['claude-opus-4-5', 'Claude Opus 4.5 (latest)', '200000', '64000'])
       expect(addGatewayModel).not.toHaveBeenCalled()
 
-      await type(labeledInput('Display name'), 'Claude Opus 4.5')
-      await type(labeledInput('Output limit'), '32000')
-      await click(button('Add model'))
+      await type(labeledInput('显示名称'), 'Claude Opus 4.5')
+      await type(labeledInput('输出上限'), '32000')
+      await click(button('添加模型'))
 
       expect(addGatewayModel).toHaveBeenCalledExactlyOnceWith({
         provider: 'anthropic', id: 'claude-opus-4-5', name: 'Claude Opus 4.5',
@@ -2723,7 +2708,7 @@ describe('AdminModelsPanel', () => {
       await type(modelId(), 'haiku')
 
       await click(suggestionOptions()[0])
-      await click(button('Add model'))
+      await click(button('添加模型'))
 
       expect(addGatewayModel).toHaveBeenCalledExactlyOnceWith({
         provider: 'anthropic', id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5 (latest)',
@@ -2735,7 +2720,7 @@ describe('AdminModelsPanel', () => {
     it('empties the output limit for a Workers AI suggestion', async () => {
       stubModelsDev()
       await render({ gatewayModels: { ...SUGGESTING, providers: ['cloudflare'] } })
-      await type(labeledInput('Output limit'), '4096')
+      await type(labeledInput('输出上限'), '4096')
       await focus(modelId())
       await type(modelId(), 'llama')
 
@@ -2796,7 +2781,7 @@ describe('AdminModelsPanel', () => {
       await focus(modelId())
       await type(modelId(), 'opus')
       await click(suggestionOptions()[0])
-      await type(labeledInput('Display name'), 'Claude Opus 4.5')
+      await type(labeledInput('显示名称'), 'Claude Opus 4.5')
 
       await chooseProvider('OpenAI')
 
@@ -2839,7 +2824,7 @@ describe('AdminModelsPanel', () => {
       await chooseProvider('OpenAI')
 
       expect(addFormValues()).toEqual(['claude-next', 'Claude Next', '200000', '4096'])
-      await click(button('Add model'))
+      await click(button('添加模型'))
       expect(addGatewayModel).toHaveBeenCalledExactlyOnceWith({
         provider: 'openai', id: 'claude-next', name: 'Claude Next', contextWindow: 200000, outputLimit: 4096,
       })
@@ -2887,11 +2872,11 @@ describe('AdminModelsPanel', () => {
       await focus(modelId())
 
       expect(suggestionNote()).toEqual([
-        'Suggestions from models.dev couldn’t be loaded. Enter the model’s details by hand.',
+        '无法加载 models.dev 的建议，请手动输入模型详情。',
       ])
       await fillAddForm({ id: 'claude-opus-4-5', name: 'Claude Opus 4.5', contextWindow: '200000' })
       expect(suggested()).toEqual([])
-      await click(button('Add model'))
+      await click(button('添加模型'))
 
       expect(addGatewayModel).toHaveBeenCalledExactlyOnceWith({
         provider: 'anthropic', id: 'claude-opus-4-5', name: 'Claude Opus 4.5', contextWindow: 200000,
@@ -2916,20 +2901,20 @@ describe('AdminModelsPanel', () => {
       stubModelsDev()
       const { addGatewayModel } = await render({ gatewayModels: SUGGESTING })
       await fillAddForm({ id: '  ', name: 'Claude Next', contextWindow: '200000' })
-      await focus(labeledInput('Display name'))
+      await focus(labeledInput('显示名称'))
 
-      await click(button('Add model'))
+      await click(button('添加模型'))
 
       expect(addGatewayModel).not.toHaveBeenCalled()
       expect(document.activeElement).toBe(modelId())
       expect(modelId().getAttribute('aria-invalid')).toBe('true')
       const described = modelId().getAttribute('aria-describedby')!.split(' ')
         .map((id) => document.getElementById(id)?.textContent).join(' ')
-      expect(described).toBe('Enter the model ID')
+      expect(described).toBe('请输入模型 ID')
 
       // Focus can't announce an error on the field it is already in.
-      await click(button('Add model'))
-      expect(document.body.querySelector('[role="alert"]')?.textContent).toBe('Enter the model ID')
+      await click(button('添加模型'))
+      expect(document.body.querySelector('[role="alert"]')?.textContent).toBe('请输入模型 ID')
 
       await type(modelId(), 'claude-next')
       expect(modelId().getAttribute('aria-invalid')).toBe('false')
@@ -2943,7 +2928,7 @@ describe('AdminModelsPanel', () => {
       addGatewayModel.mockReturnValueOnce(call.promise)
       await fillAddForm({ id: 'claude-next', name: 'Claude Next', contextWindow: '200000' })
 
-      await click(button('Add model'))
+      await click(button('添加模型'))
       expect(modelId().disabled).toBe(true)
 
       await act(async () => call.resolve())
@@ -2956,7 +2941,7 @@ describe('AdminModelsPanel', () => {
     await render({ gatewayModels: { ...GATEWAY_MODELS, providers: ['anthropic'], models: [] } })
 
     expect(document.body.querySelectorAll('[role="radio"]')).toHaveLength(0)
-    expect(document.body.textContent).toContain('No models added.')
-    expect(button('Add model').disabled).toBe(false)
+    expect(document.body.textContent).toContain('尚未添加模型。')
+    expect(button('添加模型').disabled).toBe(false)
   })
 })

@@ -99,7 +99,7 @@ it.each([
     await clickHookSwitch(TITLE)
 
     expect(addToast).toHaveBeenCalledExactlyOnceWith({
-      title: `Failed to ${done === 'enabled' ? 'enable' : 'disable'} hook`, description, variant: 'error',
+      title: `${done === 'enabled' ? '启用' : '禁用'}钩子失败`, description, variant: 'error',
     })
     expect(isOn()).toBe(enabled)
   })

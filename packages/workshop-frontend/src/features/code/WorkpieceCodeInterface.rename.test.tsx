@@ -98,7 +98,7 @@ describe('WorkpieceCodeInterface rename', () => {
   it('reports a missing file without treating it as binary', async () => {
     await render()
     await act(async () => { await browser.props!.onFileRename('missing.txt', 'new.txt') })
-    expect(toast).toHaveBeenLastCalledWith({ title: 'File not found', variant: 'error' })
+    expect(toast).toHaveBeenLastCalledWith({ title: '未找到文件', variant: 'error' })
     expect(submit).not.toHaveBeenCalled()
   })
 
@@ -106,7 +106,7 @@ describe('WorkpieceCodeInterface rename', () => {
     await render()
     await act(async () => { await browser.props!.onFileRename('opaque.bin', 'new.bin') })
     expect(toast).toHaveBeenLastCalledWith({
-      title: 'Only text files can be renamed in this editor', variant: 'error',
+      title: '此编辑器只能重命名文本文件', variant: 'error',
     })
     expect(submit).not.toHaveBeenCalled()
   })
@@ -127,7 +127,7 @@ describe('WorkpieceCodeInterface rename', () => {
     })
     await act(async () => { resolveRead({ kind: 'text', text: 'original\n' }) })
     await vi.waitFor(() => {
-      expect(toast).toHaveBeenLastCalledWith({ title: 'File not found', variant: 'error' })
+      expect(toast).toHaveBeenLastCalledWith({ title: '未找到文件', variant: 'error' })
     })
     expect(submit).not.toHaveBeenCalled()
   })
@@ -136,7 +136,7 @@ describe('WorkpieceCodeInterface rename', () => {
     await render()
     await act(async () => { await browser.props!.onFileRename('later.txt', 'new.txt') })
     expect(toast).toHaveBeenLastCalledWith({
-      title: 'Renamed file: later.txt → new.txt', variant: 'success',
+      title: '已重命名文件：later.txt → new.txt', variant: 'success',
     })
     await vi.waitFor(() => { expect(submit).toHaveBeenCalledTimes(1) })
     expect(submit.mock.calls[0]).toEqual([1, expect.objectContaining({ change: {

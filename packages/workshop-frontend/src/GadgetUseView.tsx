@@ -65,7 +65,7 @@ export default function GadgetUseView({
         <TopBarNotice />
         {/* Left: logo / title */}
         <div className="flex items-center gap-2 min-w-0">
-          <Link to="/" aria-label="Home" className="flex-shrink-0 hover:opacity-80 transition-opacity">
+          <Link to="/" aria-label="首页" className="flex-shrink-0 hover:opacity-80 transition-opacity">
             <SiteLogo size={22}>
               <Hexagon size={22} className="text-kumo-brand" weight="bold" />
             </SiteLogo>
@@ -79,7 +79,7 @@ export default function GadgetUseView({
 
           {metadata.owner && (
             <span className="text-xs text-kumo-inactive flex-shrink-0">
-              by {metadata.owner.name}
+              作者： {metadata.owner.name}
             </span>
           )}
         </div>
@@ -112,7 +112,7 @@ export default function GadgetUseView({
         <div className="flex items-center gap-2 flex-shrink-0">
           <GadgetExportMenu
             gadget={gadget}
-            gadgetTitle={gadgets.find(g => g.id === selectedGadgetId)?.title ?? 'Gadget'}
+            gadgetTitle={gadgets.find(g => g.id === selectedGadgetId)?.title ?? '应用'}
           />
           <span className="hidden md:inline-flex">
             <GadgetPresence
@@ -156,7 +156,7 @@ export default function GadgetUseView({
           />
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center">
-            <p className="text-sm text-kumo-subtle">This workspace has no gadgets yet.</p>
+            <p className="text-sm text-kumo-subtle">此工作区还没有应用。</p>
           </div>
         )}
       </div>

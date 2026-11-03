@@ -128,11 +128,11 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                         场景一：从零立项一部新剧本（立项开本）
                       </h4>
                       <span className="rounded bg-kumo-fill px-1.5 py-0.5 text-[11px] font-medium text-kumo-brand">
-                        用 Workspace
+                        使用工作区
                       </span>
                     </div>
                     <p className="mt-1.5 text-[13px] leading-5 text-kumo-default">
-                      <b>做法：</b>每开一部新戏，新建一个 <b>Workspace（工作区）</b>，比如命名为《哈利波特大战葫芦娃》或《锦衣卫奇案录》。
+                      <b>做法：</b>每开一部新戏，新建一个 <b>工作区</b>，比如命名为《哈利波特大战葫芦娃》或《锦衣卫奇案录》。
                     </p>
                     <p className="mt-1 text-[12px] leading-5 text-kumo-subtle">
                       <b>编剧视角：</b>这就是该剧目的<b>专属项目工作目录 / 剧组会议室</b>。这里保存这部剧全部的人物小传、世界观设定、对话推演与素材文件。不同剧目之间完全隔离，再也不用担心都市剧设定混进仙侠本里。
@@ -207,7 +207,7 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                       </span>
                     </div>
                     <p className="mt-1.5 text-[13px] leading-5 text-kumo-default">
-                      <b>做法：</b>在任意剧目的 Workspace 里点击右上角分享，将链接发给编剧搭档。
+                      <b>做法：</b>在任意剧目的工作区里点击右上角分享，将链接发给编剧搭档。
                     </p>
                     <p className="mt-1 text-[12px] leading-5 text-kumo-subtle">
                       <b>编剧视角：</b>就像两人坐在同一个白板前写戏：一人写分场动作，一人润色对白潜台词，AI 编剧在旁边随时解答世界观设定与法宝克制，所有编辑光标毫秒级实时同步，不用再互相传 Word 搞版本冲突。
@@ -228,14 +228,14 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                         场景五：多轮推敲调整后，彻底打包定稿（最终交付）
                       </h4>
                       <span className="rounded bg-kumo-fill px-1.5 py-0.5 text-[11px] font-medium text-kumo-brand">
-                        成为 Output
+                        产出成果
                       </span>
                     </div>
                     <p className="mt-1.5 text-[13px] leading-5 text-kumo-default">
                       <b>做法：</b>初稿在工作区中经过团队沟通调整、好莱坞 5 维工业质检后，彻底定稿保存并打包。
                     </p>
                     <p className="mt-1 text-[12px] leading-5 text-kumo-subtle">
-                      <b>编剧视角：</b>沟通聊天只是草稿过程，打包出来的才是<b>真正的剧本交付成果（Output）</b>！它会自动沉淀在左侧的“Outputs 成果库”中，排版规范、干净无冗余，可随时导出为工业 Fountain 格式或 PDF 发给制片人与导演。
+                      <b>编剧视角：</b>沟通聊天只是草稿过程，打包出来的才是<b>真正的剧本交付成果</b>！它会自动沉淀在左侧的“成果库”中，排版规范、干净无冗余，可随时导出为工业 Fountain 格式或 PDF 发给制片人与导演。
                     </p>
                   </div>
                 </div>
@@ -261,7 +261,7 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                     </span>
                     <div>
                       <div className="text-[13px] font-semibold text-kumo-default">
-                        📐 选拔或定制工作流母版（Blueprint）
+                        📐 选拔或定制工作流蓝图
                       </div>
                       <div className="mt-1 text-[12px] leading-4 text-kumo-subtle">
                         资深编剧沉淀成熟的戏份套路（如“武打戏流”、“短剧黄金三秒爽点流”），固化为可复用的蓝图母版。
@@ -275,7 +275,7 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                     </span>
                     <div>
                       <div className="text-[13px] font-semibold text-kumo-default">
-                        🏢 建立剧目独立工作目录（Workspace）
+                        🏢 建立剧目独立工作区
                       </div>
                       <div className="mt-1 text-[12px] leading-4 text-kumo-subtle">
                         立项《哈利波特大战葫芦娃》，输入核心创意，调用选好的工作流自动铺开故事大纲与人物小传骨架。
@@ -303,10 +303,10 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                     </span>
                     <div>
                       <div className="text-[13px] font-semibold text-kumo-default">
-                        📦 彻底打包定稿剧本（Output）
+                        📦 彻底打包定稿剧本
                       </div>
                       <div className="mt-1 text-[12px] leading-4 text-kumo-subtle">
-                        脱离杂乱的沟通聊天流，将定稿成果一键打包为符合工业规范的成文剧本，归档在 Outputs 库中直接交付。
+                        脱离杂乱的沟通聊天流，将定稿成果一键打包为符合工业规范的成文剧本，归档在成果库中直接交付。
                       </div>
                     </div>
                   </div>
@@ -324,7 +324,7 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                   <span className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
                     <FolderSimple size={16} weight="bold" />
                   </span>
-                  <h4 className="text-[14px] font-semibold">Workspace（剧本工作区 / 项目工作目录）</h4>
+                  <h4 className="text-[14px] font-semibold">工作区（剧本工作区 / 项目工作目录）</h4>
                   <span className="ml-auto rounded bg-kumo-fill px-1.5 py-0.5 text-[11px] font-medium text-kumo-subtle">
                     一部剧 = 一个工作区
                   </span>
@@ -343,7 +343,7 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                   <span className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
                     <Blueprint size={16} weight="bold" />
                   </span>
-                  <h4 className="text-[14px] font-semibold">Blueprint（剧作蓝图 / 工业流模版）</h4>
+                  <h4 className="text-[14px] font-semibold">蓝图（剧作蓝图 / 工业流模板）</h4>
                   <span className="ml-auto rounded bg-kumo-fill px-1.5 py-0.5 text-[11px] font-medium text-kumo-subtle">
                     现成的戏份与结构模具
                   </span>
@@ -362,16 +362,16 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                   <span className="flex h-6 w-6 items-center justify-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400">
                     <Stack size={16} weight="bold" />
                   </span>
-                  <h4 className="text-[14px] font-semibold">Output（最终剧本成果 / 交付件）</h4>
+                  <h4 className="text-[14px] font-semibold">成果（最终剧本成果 / 交付件）</h4>
                   <span className="ml-auto rounded bg-kumo-fill px-1.5 py-0.5 text-[11px] font-medium text-kumo-subtle">
                     彻底定稿打包的作品
                   </span>
                 </div>
                 <p className="mt-2 text-[13px] leading-5 text-kumo-default">
-                  <b>人话解释：</b>聊天是推敲过程，Output 才是<b>可以发给制片人和导演的正式剧本实体</b>。
+                  <b>人话解释：</b>聊天是推敲过程，成果才是<b>可以发给制片人和导演的正式剧本实体</b>。
                 </p>
                 <div className="mt-2 rounded-md bg-kumo-base p-2.5 text-[12px] leading-4 text-kumo-subtle">
-                  所有的修改推敲在工作区完成并确认后，彻底打包出来的成果文档（如 100 集分场大纲、标准 Fountain 剧本）汇总在左侧“Outputs 成果库”中，可直接送审、打印或导出。
+                  所有的修改推敲在工作区完成并确认后，彻底打包出来的成果文档（如 100 集分场大纲、标准 Fountain 剧本）汇总在左侧“成果库”中，可直接送审、打印或导出。
                 </div>
               </div>
 

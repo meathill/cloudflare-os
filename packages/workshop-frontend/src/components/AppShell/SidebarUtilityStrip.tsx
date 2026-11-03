@@ -16,18 +16,19 @@ function nextThemeMode(mode: ThemeMode): ThemeMode {
 
 function ThemeModeButton() {
   const { themeMode, resolvedThemeMode, setThemeMode } = useTheme()
+  const themeLabels: Record<ThemeMode, string> = { system: '跟随系统', light: '浅色', dark: '深色' }
   const label = themeMode === 'system'
-    ? `Theme: system (${resolvedThemeMode})`
-    : `Theme: ${themeMode}`
+    ? `主题：跟随系统（${themeLabels[resolvedThemeMode]}）`
+    : `主题：${themeLabels[themeMode]}`
   const nextMode = nextThemeMode(themeMode)
 
   return (
     <Tooltip
-      content={`${label}. Switch to ${nextMode}.`}
+      content={`${label}。切换为${themeLabels[nextMode]}。`}
       render={(
         <button
           type="button"
-          aria-label={`${label}. Switch to ${nextMode}.`}
+          aria-label={`${label}。切换为${themeLabels[nextMode]}。`}
           onClick={() => setThemeMode(nextMode)}
           className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-kumo-inactive transition-colors hover:bg-kumo-tint hover:text-kumo-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring focus-visible:ring-offset-2 focus-visible:ring-offset-kumo-elevated"
         >
@@ -126,7 +127,7 @@ export default function SidebarUtilityStrip({ collapsed = false }: { collapsed?:
           collapsed ? 'flex-col justify-center gap-2 px-1.5' : '',
         ].join(' ')}
       >
-        <StripLink to="/gatekeepers" label="Gatekeepers">
+        <StripLink to="/gatekeepers" label="连接服务">
           <Plug size={15} />
         </StripLink>
         <ScriptStudioButton onOpenStudio={() => setStudioOpen(true)} />

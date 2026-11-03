@@ -57,7 +57,7 @@ export const CreateCollectionDialog = ({
       setGitSetup({ collection, token });
     } catch (error) {
       toasts.add({
-        title: error instanceof Error ? error.message : "Failed to create Git token",
+        title: error instanceof Error ? error.message : "创建 Git 令牌失败",
         variant: "error",
       });
     } finally {
@@ -87,7 +87,7 @@ export const CreateCollectionDialog = ({
       }
     } catch (error) {
       toasts.add({
-        title: error instanceof Error ? error.message : "Failed to create collection",
+        title: error instanceof Error ? error.message : "创建知识集合失败",
         variant: "error",
       });
     } finally {
@@ -107,12 +107,12 @@ export const CreateCollectionDialog = ({
       <Dialog className="w-[min(520px,calc(100vw-32px))]! bg-kumo-base p-0 top-[10%]! translate-y-0!" size="sm">
         <div className="flex items-center justify-between gap-4 border-b border-kumo-line px-4 py-4 sm:px-6">
           <Dialog.Title className="text-[17px] leading-6 font-medium tracking-[-0.35px] text-kumo-default">
-            {gitSetup ? "Set up Git mirror" : "Add collection"}
+            {gitSetup ? "设置 Git 镜像" : "添加知识集合"}
           </Dialog.Title>
           <Dialog.Close
             disabled={busy}
             render={(props) => (
-              <Button {...props} variant="ghost" shape="square" aria-label="Close">
+              <Button {...props} variant="ghost" shape="square" aria-label="关闭">
                 <X size={18} />
               </Button>
             )}
@@ -122,8 +122,7 @@ export const CreateCollectionDialog = ({
           {gitSetup ? (
             <>
               <Text variant="secondary">
-                The collection is ready. Git content is pushed into its generated destination;
-                you do not enter a source repository URL here.
+                知识集合已准备就绪。Git 内容会推送到生成的目标地址，无需在此输入源仓库 URL。
               </Text>
               {gitSetup.token ? (
                 <GitTokenCredentials
@@ -135,45 +134,45 @@ export const CreateCollectionDialog = ({
               ) : (
                 <LayerCard className="flex items-center justify-between gap-3 bg-kumo-control p-4">
                   <Text variant="secondary">
-                    Create credentials to finish configuring the push mirror.
+                    创建凭据以完成推送镜像配置。
                   </Text>
                   <Button
                     variant="secondary"
                     onClick={() => void createToken(gitSetup.collection)}
                     loading={creatingToken}
                   >
-                    Create token
+                    创建令牌
                   </Button>
                 </LayerCard>
               )}
             </>
           ) : (
             <>
-              <Field label="Name">
+              <Field label="名称">
                 <div className="flex w-full items-center gap-2">
                   <CollectionIconPicker value={icon} onChange={setIcon} variant="boxed" size={24} />
                   <Input
-                    aria-label="Name"
+                    aria-label="名称"
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
                     onKeyDown={(event) => { if (event.key === "Enter") void create(); }}
                     maxLength={100}
-                    placeholder="A short name, e.g., Brand guidelines"
+                    placeholder="简短的名称，例如品牌指南"
                     autoFocus
                     className="min-w-0 flex-1"
                   />
                 </div>
               </Field>
               <InputArea
-                label={<span>Description <span className="font-normal text-kumo-inactive">Optional</span></span>}
+                label={<span>描述 <span className="font-normal text-kumo-inactive">可选</span></span>}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder="What it contains and when to use it"
+                placeholder="包含什么内容以及何时使用"
                 rows={3}
               />
               {viewerInfo.supportsGitCollections && (
                 <Radio.Group<ContextCollectionContent["source"]>
-                  legend="Type"
+                  legend="类型"
                   appearance="card"
                   value={source}
                   onValueChange={(value) => setSource(value)}
@@ -181,19 +180,19 @@ export const CreateCollectionDialog = ({
                 >
                   <Radio.Item
                     value="web"
-                    label={<span className="flex items-center gap-2"><PencilSimple size={15} />Editable documents</span>}
-                    description="Create, edit, and delete files in this app."
+                    label={<span className="flex items-center gap-2"><PencilSimple size={15} />可编辑文档</span>}
+                    description="在此应用中创建、编辑和删除文件。"
                   />
                   <Radio.Item
                     value="git"
-                    label={<span className="flex items-center gap-2"><GitBranch size={15} />Git mirror</span>}
-                    description="Push content from a Git repository. Changes remain managed in Git."
+                    label={<span className="flex items-center gap-2"><GitBranch size={15} />Git 镜像</span>}
+                    description="从 Git 仓库推送内容，变更仍由 Git 管理。"
                   />
                 </Radio.Group>
               )}
               {viewerInfo.isAdmin && (
                 <Radio.Group<ContextCollectionVisibility>
-                  legend="Visibility"
+                  legend="可见范围"
                   appearance="card"
                   value={visibility}
                   onValueChange={(value) => setVisibility(value)}
@@ -201,13 +200,13 @@ export const CreateCollectionDialog = ({
                 >
                   <Radio.Item
                     value="private"
-                    label={<span className="flex items-center gap-2"><Lock size={15} />Only me</span>}
-                    description="Private to your account until you share it."
+                    label={<span className="flex items-center gap-2"><Lock size={15} />仅自己</span>}
+                    description="仅你的账号可见，直到你分享。"
                   />
                   <Radio.Item
                     value="public"
-                    label={<span className="flex items-center gap-2"><Buildings size={15} />Everyone</span>}
-                    description="Shared across your organization and enabled for all users."
+                    label={<span className="flex items-center gap-2"><Buildings size={15} />所有人</span>}
+                    description="在组织内共享，并为所有用户启用。"
                   />
                 </Radio.Group>
               )}
@@ -216,16 +215,16 @@ export const CreateCollectionDialog = ({
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-kumo-line px-4 py-3 sm:px-6">
           {gitSetup ? (
-            <Button onClick={dialog.requestClose} disabled={busy}>Done</Button>
+            <Button onClick={dialog.requestClose} disabled={busy}>完成</Button>
           ) : (
             <>
-              <Button variant="secondary" onClick={dialog.requestClose} disabled={busy}>Cancel</Button>
+              <Button variant="secondary" onClick={dialog.requestClose} disabled={busy}>取消</Button>
               <Button
                 onClick={create}
                 loading={creating}
                 disabled={!title.trim()}
               >
-                Add collection
+                添加知识集合
               </Button>
             </>
           )}

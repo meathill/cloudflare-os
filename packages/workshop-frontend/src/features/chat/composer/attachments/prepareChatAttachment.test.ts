@@ -19,7 +19,7 @@ describe("prepareChatAttachment", () => {
 
   it.each(["application/octet-stream", "image/png"])("enforces the upload limit for %s", async type => {
     const file = new File([new Uint8Array(MAX_CHAT_ATTACHMENT_BYTES + 1)], "large", {type});
-    await expect(prepareChatAttachment(file)).rejects.toThrow("Attachments must be 4.0 MB or smaller.");
+    await expect(prepareChatAttachment(file)).rejects.toThrow("单个附件不能超过 4.0 MB。");
   });
 
   it("accepts an original image exactly at the limit without resizing it", async () => {
