@@ -8,7 +8,8 @@ export interface ScriptSkill {
   systemInstruction: string;
 }
 
-export const CHINESE_ONLINE_SCRIPT_SKILLS: ScriptSkill[] = [
+/** 剧本工作台可用的工业编剧技能与提示词。 */
+export const SCRIPT_SKILLS: ScriptSkill[] = [
   {
     id: "character-bible",
     name: "人物小传与弧光设计",

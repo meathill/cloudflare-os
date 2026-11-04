@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES, DEFAULT_UPDATE_MINIMUM_AGE_HOURS, DEFAULT_UPDATE_NOTICE_SNOOZE_HOURS, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, resolveSiteName, type GatewayModel } from "@gadgets/workshop-shared/api";
-import { defaultOutputFormatId, isUpdateCheckInterval, isUpdateHours, normalizeAdminConfig, parseAdminConfig, parseRestrictedWebFetchHosts, reorderFormats, resolveFormatOutput, sanitizeAddedModel, sanitizeModelSettings, sanitizeOutputOverrides, serializeAdminConfig, CHINESEONLINE_DEFAULT_INSTRUCTIONS, formatInstanceInstructions } from "../src/admin-config.js";
+import { defaultOutputFormatId, isUpdateCheckInterval, isUpdateHours, normalizeAdminConfig, parseAdminConfig, parseRestrictedWebFetchHosts, reorderFormats, resolveFormatOutput, sanitizeAddedModel, sanitizeModelSettings, sanitizeOutputOverrides, serializeAdminConfig, SCRIPT_WRITING_DEFAULT_INSTRUCTIONS, formatInstanceInstructions } from "../src/admin-config.js";
 import { DEFAULT_ADMIN_CONFIG } from "../src/storage-schema/admin-settings-storage.js";
 
 describe("parseAdminConfig", () => {
@@ -489,7 +489,7 @@ describe("admin config update notice", () => {
 describe("formatInstanceInstructions", () => {
   it("injects 有缘心之助 guardrails when instructions are empty", () => {
     let result = formatInstanceInstructions("");
-    expect(result).toContain(CHINESEONLINE_DEFAULT_INSTRUCTIONS);
+    expect(result).toContain(SCRIPT_WRITING_DEFAULT_INSTRUCTIONS);
     expect(result).toContain("有缘心之助剧本创作协作平台");
     expect(result).toContain("绝对禁止调用 `createGadget` 去手写任何 client.js / server.js 游戏引擎或网页应用代码");
     expect(result).toContain("format.script");
@@ -502,7 +502,7 @@ describe("formatInstanceInstructions", () => {
 
   it("prepends guardrails when custom admin instructions are provided", () => {
     let result = formatInstanceInstructions("Custom admin rule 123");
-    expect(result).toContain(CHINESEONLINE_DEFAULT_INSTRUCTIONS);
+    expect(result).toContain(SCRIPT_WRITING_DEFAULT_INSTRUCTIONS);
     expect(result).toContain("Custom admin rule 123");
   });
 });

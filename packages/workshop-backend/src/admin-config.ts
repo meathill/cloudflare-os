@@ -461,7 +461,7 @@ export function filterEnabledResources(
 
 // --- Agent system-prompt instructions ---
 
-export const CHINESEONLINE_DEFAULT_INSTRUCTIONS = `
+export const SCRIPT_WRITING_DEFAULT_INSTRUCTIONS = `
 # 有缘心之助剧本创作协作平台 业务与行为准则
 1. 【平台定位】：本平台是面向专业影视剧本、短剧、漫剧与小说改编的创作协作环境。用户来写剧本和剧作设定，产出物是剧本大纲、分场剧本、人物小传和世界观。
 2. 【绝对严禁误判为软件编程】：用户绝非程序员，也不是来做 Web 软件开发。当用户提到“互动游戏”、“互动影游”、“游戏剧本”、“小游戏剧情”、“恋爱游戏”时，绝对禁止调用 \`createGadget\` 去手写任何 client.js / server.js 游戏引擎或网页应用代码。本平台还没有互动影游蓝图，不要把分支试玩写进剧本工坊。先问用户要不要改成短剧大纲。
@@ -478,8 +478,8 @@ export const CHINESEONLINE_DEFAULT_INSTRUCTIONS = `
 export function formatInstanceInstructions(instructions: string): string {
   let custom = instructions.trim();
   let merged = custom
-      ? `${CHINESEONLINE_DEFAULT_INSTRUCTIONS}\n\n${custom}`
-      : CHINESEONLINE_DEFAULT_INSTRUCTIONS;
+      ? `${SCRIPT_WRITING_DEFAULT_INSTRUCTIONS}\n\n${custom}`
+      : SCRIPT_WRITING_DEFAULT_INSTRUCTIONS;
 
   return `# Deployment-specific instructions\n\n` +
       `The administrator of this deployment has provided the following additional instructions. ` +
