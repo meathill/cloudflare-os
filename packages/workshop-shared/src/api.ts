@@ -2179,6 +2179,8 @@ type SuggestedModel = {
   kind?: ModelKind;
 };
 
+// 有缘心之助：下架型号（Kimi K2.7 Code、GLM 5.2、DeepSeek V4 Pro 0813、GPT-6 Astra、
+// Gemini 3.6 Flash）保留条目但标记 hidden：选择器不再提供，历史对话与定时任务仍能解析。
 // The literal is kept apart from the export so SuggestedModelId can derive the model ids from it.
 const SUGGESTED_MODEL_CATALOG = {
   // First so that, when its provider is on, Auto leads the model pickers and is the model a new
@@ -2196,18 +2198,23 @@ const SUGGESTED_MODEL_CATALOG = {
   "cloudflare": {
     "@cf/moonshotai/kimi-k2.7-code": {
       name: "Kimi K2.7 Code (Workers AI)", contextWindow: 262144,
-      outputLimit: WORKERS_AI_OUTPUT_LIMIT,
+      outputLimit: WORKERS_AI_OUTPUT_LIMIT, hidden: true,
     },
     "@cf/zai-org/glm-5.2": {
       name: "GLM 5.2 (Workers AI)", contextWindow: 262144, outputLimit: WORKERS_AI_OUTPUT_LIMIT,
+      hidden: true,
     },
     "@cf/zai-org/glm-5.3-flash": {
       name: "GLM 5.3 Flash (Workers AI)", contextWindow: 1048576,
       outputLimit: WORKERS_AI_OUTPUT_LIMIT,
     },
+    "@cf/deepseek-ai/deepseek-v4.1-flash-1017": {
+      name: "DeepSeek V4.1 Flash (Workers AI)", contextWindow: 1048576,
+      outputLimit: WORKERS_AI_OUTPUT_LIMIT,
+    },
     "@cf/deepseek-ai/deepseek-v4-pro-0813": {
       name: "DeepSeek V4 Pro 0813 (Workers AI)", contextWindow: 1048576,
-      outputLimit: WORKERS_AI_OUTPUT_LIMIT,
+      outputLimit: WORKERS_AI_OUTPUT_LIMIT, hidden: true,
     },
     "@cf/cloudflare/clef": {name: "Clef (Workers AI)", contextWindow: 65536, kind: "decision"},
     "@cf/cloudflare/clef-flash": {
@@ -2229,6 +2236,10 @@ const SUGGESTED_MODEL_CATALOG = {
       name: "GPT-6.1 Sol", contextWindow: 1050000, outputLimit: 128000,
       compactionInputBudget: 272000,
     },
+    "gpt-6.1-terra": {
+      name: "GPT-6.1 Terra", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+    },
     "gpt-6-sol": {
       name: "GPT-6 Sol", contextWindow: 1050000, outputLimit: 128000,
       compactionInputBudget: 272000,
@@ -2241,6 +2252,7 @@ const SUGGESTED_MODEL_CATALOG = {
     "gpt-6-astra": {
       name: "GPT-6 Astra", contextWindow: 1050000, outputLimit: 128000,
       compactionInputBudget: 272000,
+      hidden: true,
     },
     "gpt-5.6-sol": {
       name: "GPT 5.6 Sol", contextWindow: 1050000, outputLimit: 128000,
@@ -2260,7 +2272,7 @@ const SUGGESTED_MODEL_CATALOG = {
   },
   "google": {
     "gemini-3.8-flash": {name: "Gemini 3.8 Flash", contextWindow: 1048576},
-    "gemini-3.6-flash": {name: "Gemini 3.6 Flash", contextWindow: 1048576},
+    "gemini-3.6-flash": {name: "Gemini 3.6 Flash", contextWindow: 1048576, hidden: true},
   },
   "ollama": {
   },

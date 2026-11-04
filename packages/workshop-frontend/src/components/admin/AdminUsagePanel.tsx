@@ -195,7 +195,7 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
               {overview.totalTokens.toLocaleString()}
             </div>
             <div className="mt-1 text-xs text-kumo-subtle">
-              Gemini 3.8 Flash 输入与输出
+              所有 AI 模型的输入与输出
             </div>
           </div>
 
@@ -209,26 +209,44 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
             </div>
             <div
               className="mt-1 text-xs text-kumo-subtle truncate"
-              title="含 2026 年底前 Google 5 折优惠：输入 $0.75 / 输出 $3.75 / 缓存 $0.075 每 1M Tokens"
+              title="按各模型官方单价核算，Gemini 系列另含 2026 年底前半价优惠"
             >
-              AI 对话 {overview.totalCalls.toLocaleString()} 轮 (含年底前半价)
+              AI 对话 {overview.totalCalls.toLocaleString()} 轮（按各模型单价估算）
             </div>
           </div>
         </div>
 
         {/* 官方计费说明提示 */}
-        <div className="mt-4 px-3.5 py-2.5 bg-kumo-base/60 border border-kumo-line rounded-lg flex items-center justify-between text-xs text-kumo-subtle">
+        <div className="mt-4 px-3.5 py-2.5 bg-kumo-base/60 border border-kumo-line rounded-lg flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-kumo-subtle">
           <span>
-            💡 <strong>计费规则说明：</strong>严格依照 Google Gemini 官方定价核算。2026 年底前享受半价试用优惠（输入 $0.75 / 输出 $3.75 / 缓存读取 $0.075 每百万 Tokens）；2027 年恢复原价（$1.50 / $7.50 / $0.15）。
+            💡 <strong>计费规则说明：</strong>按各模型官方单价分别核算。Gemini 3.8 Flash 2026 年底前享半价（输入 $0.75 / 输出 $3.75 / 缓存读取 $0.075 每百万 Tokens），2027 年恢复原价（$1.50 / $7.50 / $0.15）；OpenAI 与 Workers AI 模型按各自价目表计费，不含折扣。
           </span>
-          <a
-            href="https://ai.google.dev/gemini-api/docs/pricing"
-            target="_blank"
-            rel="noreferrer"
-            className="text-kumo-brand hover:underline flex-shrink-0 ml-3"
-          >
-            查看官方价目表 ↗
-          </a>
+          <span className="flex flex-shrink-0 gap-3">
+            <a
+              href="https://ai.google.dev/gemini-api/docs/pricing"
+              target="_blank"
+              rel="noreferrer"
+              className="text-kumo-brand hover:underline"
+            >
+              Gemini 价目表 ↗
+            </a>
+            <a
+              href="https://openai.com/api/pricing/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-kumo-brand hover:underline"
+            >
+              OpenAI 价目表 ↗
+            </a>
+            <a
+              href="https://developers.cloudflare.com/workers-ai/platform/pricing/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-kumo-brand hover:underline"
+            >
+              Workers AI 价目表 ↗
+            </a>
+          </span>
         </div>
       </div>
 

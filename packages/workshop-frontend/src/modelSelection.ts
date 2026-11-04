@@ -2,8 +2,7 @@ import type { AiChatAuthorInfo } from "@gadgets/workshop-shared/api";
 
 const LAST_SELECTED_MODEL_KEY = "lastSelectedModel";
 
-export const FIXED_MODEL_ID = "gemini-3.8-flash";
-export const FIXED_MODEL_NAME = "Gemini 3.8 Flash";
+const DEFAULT_MODEL_ID = "gemini-3.8-flash";
 
 /** Sentinel used for UI values and localStorage so an explicit null choice can persist. */
 export const NO_AGENT_OPTION_VALUE = "__gadgets_no_agent__";
@@ -15,7 +14,7 @@ export function getStoredSelectedModel(
   if (storedModel === NO_AGENT_OPTION_VALUE) return null;
   if (storedModel && models.some(model => model.id === storedModel)) return storedModel;
 
-  return models.find(model => model.id === FIXED_MODEL_ID)?.id ?? models[0]?.id ?? null;
+  return models.find(model => model.id === DEFAULT_MODEL_ID)?.id ?? models[0]?.id ?? null;
 }
 
 export function persistSelectedModel(modelId: string | null): void {

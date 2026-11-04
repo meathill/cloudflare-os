@@ -1433,12 +1433,14 @@ describe("AdminSettings.testGatewayModel", () => {
 
   it("tests a model that is hidden or disabled, and leaves it so", async () => {
     const { sent, inDo, stored, put } = answering();
+    // GLM 默认已下架，GLM 5.3 Flash 仍在售：两种模式各取一个偏离默认的模型才会被记住。
+    const offered = "@cf/zai-org/glm-5.3-flash";
     await inDo(admin => admin.setGatewayModelMode(GLM, "disabled"));
-    await inDo(admin => admin.setGatewayModelMode(KIMI, "hidden"));
+    await inDo(admin => admin.setGatewayModelMode(offered, "hidden"));
     put.mockClear();
     expect(await sent(GLM)).toEqual({ cap: 2048 });
-    expect(await sent(KIMI)).toEqual({ cap: 2048 });
-    expect((await stored()).modelModes).toEqual({ [GLM]: "disabled", [KIMI]: "hidden" });
+    expect(await sent(offered)).toEqual({ cap: 2048 });
+    expect((await stored()).modelModes).toEqual({ [GLM]: "disabled", [offered]: "hidden" });
     expect(put).not.toHaveBeenCalled();
   });
 

@@ -160,7 +160,7 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
                       <b>做法：</b>在左侧侧边栏点击 <b>“剧作工坊”</b>（或在对话框输入 <code className="text-kumo-brand">/script-deconstructor</code>），粘贴参考爆款剧本。
                     </p>
                     <p className="mt-1 text-[12px] leading-5 text-kumo-subtle">
-                      <b>编剧视角：</b>模块 A（拆解 Agent）利用 Gemini 3.8 Flash 百万上下文快速提取主线、救猫咪 15 节拍与爽点公式；随后输入你拟替换的新题材（如：商战重生换皮为仙侠宗门），由模块 C 自动按照漫剧特定卡点（黄金 3 秒、1.5 分钟、集尾悬念）产出全新分集剧本。
+                      <b>编剧视角：</b>使用模块 A（拆解 Agent）提取主线、救猫咪 15 节拍与爽点公式；随后输入你拟替换的新题材（如：商战重生换皮为仙侠宗门），由模块 C 自动按照漫剧特定卡点（黄金 3 秒、1.5 分钟、集尾悬念）产出全新分集剧本。
                     </p>
                   </div>
                 </div>

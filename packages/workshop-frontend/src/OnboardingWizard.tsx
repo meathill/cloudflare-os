@@ -16,7 +16,6 @@ import {
   Plugs,
   Hexagon,
 } from '@phosphor-icons/react'
-import { FIXED_MODEL_ID, persistSelectedModel } from './modelSelection'
 import { logoComponents } from './components/ConnectionLogos'
 import { getVendorIconBackground } from './components/vendorColors'
 import { GatekeeperIcon } from './components/GatekeeperIcon'
@@ -33,7 +32,7 @@ import { AuthPopupCancelledError } from './features/native-app/authPopup'
 
 // ─── constants ──────────────────────────────────────────────────────────────────
 
-// 步骤：0 = avatar, 1 = connections, 2 = showcase（模型固定，没有选择步骤）
+// 步骤为头像、可选连接和功能介绍。
 const TOTAL_STEPS_WITH_CONNECTIONS = 3
 const CONNECTIONS_STEP = 1
 
@@ -69,7 +68,7 @@ export default function OnboardingWizard({
   useDocumentTitle('初始化设置')
 
   // Wizard state
-  const [step, setStep] = useState(0) // 0 = avatar, 1 = model, 2 = connections
+  const [step, setStep] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [finishing, setFinishing] = useState(false)
 
@@ -292,9 +291,6 @@ export default function OnboardingWizard({
         await authenticatedApi.setAvatar(avatarData)
         if (currentUser?.id) invalidateAvatarCache(currentUser.id)
       }
-      // 主力模型固定为 Gemini 3.8 Flash，不随用户选择变化。
-      await authenticatedApi.setPreferredModel(FIXED_MODEL_ID)
-      persistSelectedModel(FIXED_MODEL_ID)
       // The tools are optional, so one that fails (say, an admin disabled it meanwhile) is
       // reported and doesn't keep the user in onboarding.
       const ambientToProvision = ambientVendors.filter((v) => !switchedOffAmbientIds.has(v.id))

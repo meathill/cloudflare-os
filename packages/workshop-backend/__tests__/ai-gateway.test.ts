@@ -612,7 +612,7 @@ describe("GatewayModels", () => {
 
   describe("providers", () => {
     const CATALOG_ORDER = ["cloudflare-auto-router", "cloudflare", "anthropic", "openai", "google"];
-    const GEMINI = "gemini-3.6-flash";
+    const GEMINI = "gemini-3.8-flash";
     const NO_TOKEN = 'Provider "google" cannot use the Workers AI binding transport, and no ' +
         "CF_AI_GATEWAY_API_TOKEN is configured for the HTTPS one.";
     it("enables the environment's, and the ones an admin added that the gateway serves", () => {

@@ -207,12 +207,65 @@ const CATALOGS: Partial<Record<AiModelProvider, Record<string, Model<Api>>>> = {
   cloudflare: CLOUDFLARE_WORKERS_AI_MODELS,
 };
 
+// pi 1.0.2 的目录尚未收录 Terra，费用使用 OpenAI Standard 的 30 分钟缓存费率。
+const GPT_6_1_TERRA_FALLBACK: Model<"openai-responses"> = {
+  id: "gpt-6.1-terra",
+  name: "GPT-6.1 Terra",
+  api: "openai-responses",
+  provider: "openai",
+  baseUrl: "https://api.openai.com/v1",
+  reasoning: true,
+  input: ["text", "image"],
+  contextWindow: 1_050_000,
+  maxTokens: 128_000,
+  thinkingLevelMap: {
+    off: "none", minimal: null, low: "low", medium: "medium", high: "high",
+    xhigh: "xhigh", max: "max",
+  },
+  compat: { supportsStrictMode: true, supportsExplicitPromptCacheMode: true },
+  cost: {
+    input: 1, output: 5, cacheRead: 0.05, cacheWrite: 1.25,
+    tiers: [{ inputTokensAbove: 272_000, input: 2, output: 7.5, cacheRead: 0.1, cacheWrite: 2.5 }],
+  },
+};
+
+// pi 1.0.2 的目录尚未收录 DeepSeek V4.1 Flash，元数据按 Cloudflare 官方模型目录，费用按 Workers AI
+// 价目表（输入 $0.3 / 输出 $1.2 / 缓存读 $0.006 每百万 Tokens），与同家族 V4 Flash、V4 Pro 的 pi 条目一致。
+const DEEPSEEK_V4_1_FLASH_FALLBACK: Model<"openai-completions"> = {
+  id: "@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+  name: "DeepSeek V4.1 Flash (Workers AI)",
+  api: "openai-completions",
+  provider: "cloudflare-workers-ai",
+  baseUrl: "",
+  reasoning: true,
+  input: ["text", "image"],
+  contextWindow: 1_048_576,
+  maxTokens: 1_048_576,
+  thinkingLevelMap: { minimal: null, low: null, medium: null, high: "high", max: "max" },
+  compat: {
+    supportsStore: false,
+    supportsDeveloperRole: false,
+    supportsStrictMode: true,
+    supportsLongCacheRetention: false,
+    sendSessionAffinityHeaders: true,
+    requiresReasoningContentOnAssistantMessages: true,
+    thinkingFormat: "deepseek",
+  },
+  cost: { input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0 },
+};
+
 // Consult pi's builtin catalog for cost/compat metadata of a known model id. Unknown models are
 // fine (synthesized with zero cost).
 function catalogModel(provider: AiModelProvider, modelId: string): Model<Api> | undefined {
   let catalog = CATALOGS[provider];
   // Object.hasOwn, so that an ID like "constructor" does not find an inherited entry.
   let model = catalog && Object.hasOwn(catalog, modelId) ? catalog[modelId] : undefined;
+  if (!model && provider === "openai" && modelId === GPT_6_1_TERRA_FALLBACK.id) {
+    return GPT_6_1_TERRA_FALLBACK;
+  }
+  if (!model && provider === "cloudflare" && modelId === DEEPSEEK_V4_1_FLASH_FALLBACK.id) {
+    return DEEPSEEK_V4_1_FLASH_FALLBACK;
+  }
   if (!model && provider === "google" && modelId === GEMINI_3_8_FLASH_FALLBACK.id) {
     // 有缘心之助：pi 目录里没有 gemini-3.8-flash 时用本地兜底描述，成本走官方阶梯价。
     return {

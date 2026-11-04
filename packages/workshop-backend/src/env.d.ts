@@ -24,8 +24,6 @@ declare global {
       CF_AI_GATEWAY_API_TOKEN?: string;   // Run + Read token; optional when the binding transport
                                           // applies (still required for google)
       CF_AI_GATEWAY_USE_BINDING?: string;
-      // 本项目部署生成器设为 "true"，固定提供 Gemini 3.8 Flash。
-      GEMINI_ONLY?: string;
       // Note: outside gateway mode, Workers AI (provider "cloudflare") is BYOK like every other
       // provider -- the account ID and API token live in the user's model config, not in env.
 

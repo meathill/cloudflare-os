@@ -34,24 +34,6 @@ const logger = createWorkshopLogger("workshop.user");
 // listOutputs() call wakes and how long it waits. The client calls again until catch-up is done.
 const OUTPUTS_BACKFILL_PAGE = 16;
 
-/** 主力模型固定为 Gemini 3.8 Flash；API Key 由服务端环境统一提供。 */
-const FIXED_MODEL_ID = "gemini-3.8-flash";
-const FIXED_MODEL_PROFILE: AiChatAuthorInfo = {
-  type: "agent", id: FIXED_MODEL_ID, name: "Gemini 3.8 Flash",
-};
-
-function fixedModelRecord(env: Cloudflare.Env): UserAiModelRecord {
-  let secrets = env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string };
-  return {
-    profile: FIXED_MODEL_PROFILE,
-    config: {
-      provider: "google",
-      model: FIXED_MODEL_ID,
-      apiToken: secrets.GEMINI_API_KEY ?? secrets.GOOGLE_API_KEY ?? "",
-    },
-  };
-}
-
 /** Server-enforced lifetime of a Workshop session issued to a native device. */
 export const DEVICE_SESSION_LIFETIME_MS = 30 * 24 * 60 * 60_000;
 
@@ -683,7 +665,6 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   async listModels(kind: ModelKind = "language"): Promise<AiChatAuthorInfo[]> {
-    if (kind === "language" && this.env.GEMINI_ONLY === "true") return [FIXED_MODEL_PROFILE];
     return this.#listModels(await getGatewayModels(this.env), kind);
   }
 
@@ -790,12 +771,11 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   async getPreferredModel(): Promise<string | null> {
-    return this.storage.preferredModel.get() ??
-      (this.env.GEMINI_ONLY === "true" ? FIXED_MODEL_ID : null);
+    return this.storage.preferredModel.get();
   }
 
   async setPreferredModel(id: string | null): Promise<void> {
-    if (id !== null && !(this.env.GEMINI_ONLY === "true" && id === FIXED_MODEL_ID)) {
+    if (id !== null) {
       // Any model that resolves is accepted, hidden ones included (see getExternalMessageChatContext()).
       if (!this.#resolveModel(id, await getGatewayModels(this.env))) {
         throw new Error(`No such model: ${id}`);
@@ -906,9 +886,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       profile: this.storage.profile.get()
     };
     if (modelId) {
-      result.aiModel = this.env.GEMINI_ONLY === "true" && modelId === FIXED_MODEL_ID
-        ? fixedModelRecord(this.env)
-        : this.#resolveModel(modelId, models);
+      result.aiModel = this.#resolveModel(modelId, models);
       if (!result.aiModel) {
         models?.refuseDisabled(modelId);
         let stored = this.storage.aiModels.get(modelId);
@@ -936,10 +914,8 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   async getExternalMessageChatContext(existingChatModelId: string | null): Promise<UserChatContext> {
     let models = await getGatewayModels(this.env);
     let selectedModelId = existingChatModelId;
-    const isGeminiOnly = this.env.GEMINI_ONLY === "true";
-    const isFixedModel = isGeminiOnly && selectedModelId === FIXED_MODEL_ID;
-    if (!isFixedModel && (selectedModelId === null || !this.#resolveModel(selectedModelId, models))) {
-      let offered = isGeminiOnly ? [FIXED_MODEL_PROFILE] : this.#listModels(models, "language");
+    if (selectedModelId === null || !this.#resolveModel(selectedModelId, models)) {
+      let offered = this.#listModels(models, "language");
       let preferredModel = this.storage.preferredModel.get();
       selectedModelId = (offered.find(model => model.id === preferredModel) ?? offered[0])?.id ?? null;
     }

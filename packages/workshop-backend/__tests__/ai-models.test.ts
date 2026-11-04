@@ -455,6 +455,21 @@ describe("getModel AI Gateway binding transport", () => {
     expect((JSON.parse(entry.body) as { model: string }).model).toBe("claude-sonnet-4-5");
   }, 15000);
 
+  it.each(["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"])(
+      "sends the selected %s to the native OpenAI Responses route", async model => {
+    const handle = getModel(bindingEnv(), { provider: "openai", model, apiToken: "" }, INITIATOR);
+    expect(handle.model.cost.input).toBeGreaterThan(0);
+
+    const request = await captureEntry(handle);
+    expect(request.url).toBe(
+        "https://workers-binding.ai/ai-gateway/gateways/platform-gateway/openai/responses");
+    expect(request.headers["cf-aig-authorization"]).toBe("Bearer cloudflare-gateway-binding");
+    expect(request.headers.authorization).toBeUndefined();
+    expect(JSON.parse(request.body)).toMatchObject({
+      model, reasoning: { effort: "medium" }, store: false, stream: true,
+    });
+  }, 15000);
+
   it("drives Workers AI through the binding via its gateway route", async () => {
     const handle = getModel(bindingEnv(), WORKERS_AI_CONFIG, INITIATOR);
 
@@ -1102,6 +1117,7 @@ describe("gateway model reasoning levels", () => {
     ["anthropic", "claude-sonnet-5", ["off", "minimal", ...LOW_TO_MAX]],
     ["anthropic", "claude-haiku-4-5", OFF_TO_HIGH],
     ["openai", "gpt-6.1-sol", LOW_TO_MAX],
+    ["openai", "gpt-6.1-terra", ["off", ...LOW_TO_MAX]],
     ["openai", "gpt-6-astra", LOW_TO_MAX],
     ["openai", "gpt-6-sol", ["off", ...LOW_TO_MAX]],
     ["openai", "gpt-6-luna", ["off", ...LOW_TO_MAX]],
@@ -1134,6 +1150,7 @@ describe("gateway model reasoning levels", () => {
     ["anthropic", "claude-sonnet-5", "adaptive"],
     ["anthropic", "claude-haiku-4-5", null],
     ["openai", "gpt-6.1-sol", "medium"],
+    ["openai", "gpt-6.1-terra", "medium"],
     ["openai", "gpt-6-sol", "medium"],
     ["openai", "gpt-6-luna", "medium"],
     ["openai", "gpt-6-astra", "medium"],
@@ -1145,6 +1162,7 @@ describe("gateway model reasoning levels", () => {
     ["cloudflare", "@cf/moonshotai/kimi-k2.7-code", null],
     ["cloudflare", "@cf/zai-org/glm-5.2", null],
     ["cloudflare", "@cf/zai-org/glm-5.3-flash", null],
+    ["cloudflare", "@cf/deepseek-ai/deepseek-v4.1-flash-1017", null],
     ["cloudflare", "@cf/deepseek-ai/deepseek-v4-pro-0813", null],
     ["cloudflare", "@cf/cloudflare/clef", null],
     ["cloudflare", "@cf/cloudflare/clef-flash", null],

@@ -268,7 +268,7 @@ function ProvidersPage() {
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-kumo-default">AI 服务商</h1>
           <p className="mt-1 text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-subtle">
-            系统已统一配置并锁定主力模型为 Google Gemini 3.8 Flash，凭据由服务端统一托管。
+            查看可用的 AI 模型。发送消息前可在输入框下方选择模型。
           </p>
         </div>
       </header>
