@@ -289,18 +289,17 @@ describe("bundled blueprints", () => {
         'id: "pdf", label: "PDF", mode: "browser", contentType: "application/pdf"',
       ],
       "format.slides": [
+        // 本项目的幻灯片蓝图只导出 HTML 与 PDF，不提供 pptx。
         'id: "html", label: "HTML", mode: "browser", contentType: "text/html"',
         'id: "pdf", label: "PDF", mode: "browser", contentType: "application/pdf"',
-        'id: "pptx", label: "PowerPoint", mode: "server", contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation"',
       ],
       "format.spreadsheet": [
         // `const` in the source; the TypeScript build emits `var`.
         'CSV_FORMAT_PREFIX = "csv:"',
-        'id: "xlsx"',
-        'label: "Excel Workbook"',
-        'contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"',
+        // 本项目打包的表格蓝图按工作表导出 CSV，不提供 xlsx（与上游默认蓝图集不同）。
         'mode: "server"',
         'contentType: "text/csv"',
+        'fileExtension: ".csv"',
       ],
     };
 
