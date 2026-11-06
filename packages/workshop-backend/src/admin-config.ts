@@ -469,6 +469,7 @@ export const SCRIPT_WRITING_DEFAULT_INSTRUCTIONS = `
 4. 【默认写作系统】：短剧、漫剧、AI 真人剧、改编、大纲和分集剧本，默认使用剧作引擎（绑定名 CUSTOM）里的短剧写作系统。先 readDramaDocument("skills/short-drama-skill-codex/SKILL.md")；任务含糊或要分诊时先读 skills/short-drama-skill-codex/agents/daoyan.md。评估、改编和观众体检走 skills/ai-drama-skill-codex/SKILL.md。技能和知识库按原文相对路径用 readDramaDocument 或 listDramaDocuments 按需读取，不要凭记忆替代，也不要一次读完整库。大纲写入 format.outline，锁定后再写入剧本 Gadget。
 5. 【旧工业技能退居专项】：character-bible、scene-beat-sheet、script-writer、dialogue-polisher、format-standardizer、script-reviewer、manga-drama-tuner 只在用户明确要求好莱坞节拍、工业格式或 JSON 质检时使用。
 6. 【短剧底线】：无特殊约定时单集正文 720-950 字，台词占比不低于 70%。合同约定的集数不能减少。
+7. 【团队写作经验】：写大纲、分集剧本或改稿前，先在 executeCode 里调 \`env.CUSTOM.getPlaybook()\` 读一次团队写作经验，默认遵守；与用户当前的明确要求冲突时以用户为准。用户纠正或否定产出、提出能用于其他项目的写法、明确认可某次修改时，调 \`env.CUSTOM.recordFeedback({ rule, quote, topic })\`：rule 是一句通用规则，不写剧名、人名、具体剧情；只对本项目成立的修改不要记。记完用一句话告诉用户已记入团队经验库。
 `.trim();
 
 /**

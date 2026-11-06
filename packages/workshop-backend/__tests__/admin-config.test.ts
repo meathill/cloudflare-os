@@ -498,6 +498,8 @@ describe("formatInstanceInstructions", () => {
     expect(result).not.toContain("互动分支");
     expect(result).toContain("skills/short-drama-skill-codex/SKILL.md");
     expect(result).toContain("readDramaDocument");
+    expect(result).toContain("env.CUSTOM.getPlaybook()");
+    expect(result).toContain("env.CUSTOM.recordFeedback(");
   });
 
   it("prepends guardrails when custom admin instructions are provided", () => {
