@@ -1478,6 +1478,23 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     });
   }
 
+  // An auto-provisioned account is never reconnected, so without this the description stored when it
+  // was minted would never pick up a gatekeeper upgrade (e.g. a newly declared management UI).
+  // Best-effort: a failing describe() keeps the stored description.
+  async #refreshAccountDescription(record: ConnectedAccountRecord): Promise<void> {
+    try {
+      let description = await record.account.describe();
+      if (JSON.stringify(description) === JSON.stringify(record.description)) return;
+      let current = this.storage.connectedAccounts.get(record.id);
+      if (current) this.storage.connectedAccounts.put({ ...current, description });
+    } catch (err) {
+      logger.warn("failed to refresh an auto-provisioned account description", {
+        event: "account.auto.describe.refresh.failed",
+        vendorId: record.vendorId, accountId: record.id, error: err,
+      });
+    }
+  }
+
   // Dedup concurrent #ensureAutoProvisionedAccounts() calls. The provisioning loop awaits cross-worker
   // RPCs (describe/createAccount), which releases the DO input gate; without this, two overlapping
   // calls (e.g. the nav listing apps while a gadget opens) could both see "not provisioned" and
@@ -1497,9 +1514,13 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   async #provisionMissingAccounts(): Promise<void> {
     // Which vendors already have an auto-provisioned account?
     let provisioned = new Set<string>();
+    let refreshes: Promise<void>[] = [];
     for (let rec of this.#connectedAccountRecords()) {
-      if (rec.autoProvisioned) provisioned.add(rec.vendorId);
+      if (!rec.autoProvisioned) continue;
+      provisioned.add(rec.vendorId);
+      refreshes.push(this.#refreshAccountDescription(rec));
     }
+    await Promise.all(refreshes);
 
     let config = await readAdminConfig(this.env);
     for (let {vendorId, vendor} of await this.#ambientVendors()) {
