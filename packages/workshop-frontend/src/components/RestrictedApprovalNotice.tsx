@@ -5,8 +5,7 @@ import { ShieldWarning } from '@phosphor-icons/react'
  * data: the kernel does not check the action for that data, the approver does.
  */
 export const RESTRICTED_APPROVAL_COPY =
-  'This workspace has read sensitive data. Read the full request below before approving — you ' +
-  'are responsible for making sure it contains none of that data.'
+  '此工作区读取过敏感数据。批准前请仔细阅读下方完整请求，并确认其中不包含这些数据。'
 
 /**
  * Shown above a pending action's description on every approve surface (Activity review pane,

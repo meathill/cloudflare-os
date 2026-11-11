@@ -75,30 +75,30 @@ const button = (text: string) => Array.from(document.body.querySelectorAll('butt
 describe('native connector modal cancellation', () => {
   it('lets the user cancel a dismissed auth tab and retry without waiting for expiry', async () => {
     const api = await renderPage()
-    await act(async () => button('Continue to Example').click())
+    await act(async () => button('继续前往 Example').click())
     const oldId = authentication.open.mock.calls[0][0]
     await act(async () => window.dispatchEvent(new Event('focus')))
-    const cancel = button('Cancel connection')
+    const cancel = button('取消连接')
     expect(cancel).toBeDefined()
     expect(cancel.disabled).toBe(false)
     await act(async () => cancel.click())
     expect(authentication.close).toHaveBeenCalledExactlyOnceWith(oldId)
-    expect(button('Continue to Example').disabled).toBe(false)
+    expect(button('继续前往 Example').disabled).toBe(false)
     expect(state.toast).not.toHaveBeenCalled()
 
-    await act(async () => button('Continue to Example').click())
+    await act(async () => button('继续前往 Example').click())
     const newId = authentication.open.mock.calls[1][0]
     expect(newId).not.toBe(oldId)
     await act(async () => result(oldId, 'b'.repeat(64)))
     expect(api.completeConnectHandoff).not.toHaveBeenCalled()
     await act(async () => result(newId, 'c'.repeat(64)))
     expect(api.completeConnectHandoff).toHaveBeenCalledExactlyOnceWith('c'.repeat(64), 'a'.repeat(64))
-    expect(document.body.textContent).not.toContain('Continue to Example')
+    expect(document.body.textContent).not.toContain('继续前往 Example')
   })
 
   it('cancels an open native flow when leaving the route', async () => {
     const api = await renderPage()
-    await act(async () => button('Continue to Example').click())
+    await act(async () => button('继续前往 Example').click())
     const id = authentication.open.mock.calls[0][0]
     await act(async () => { root!.unmount(); root = undefined })
     expect(authentication.close).toHaveBeenCalledExactlyOnceWith(id)
@@ -110,7 +110,7 @@ describe('native connector modal cancellation', () => {
     const api = await renderPage()
     let finishStart!: (flow: ConnectFlowStart) => void
     api.connectAccount.mockImplementationOnce(() => new Promise(resolve => { finishStart = resolve }))
-    await act(async () => button('Continue to Example').click())
+    await act(async () => button('继续前往 Example').click())
     await act(async () => { root!.unmount(); root = undefined })
     await act(async () => finishStart({ url: 'https://workshop.example/gatekeeper/example/connect', nonce: 'a'.repeat(64) }))
     expect(authentication.open).not.toHaveBeenCalled()

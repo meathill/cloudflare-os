@@ -18,23 +18,23 @@ const AdvancedDetails = ({ details, bindingNames }: {
   bindingNames: string[]
 }) => (
   <Collapsible.Root>
-    <Collapsible.DefaultTrigger>Advanced details</Collapsible.DefaultTrigger>
+    <Collapsible.DefaultTrigger>高级详情</Collapsible.DefaultTrigger>
     <Collapsible.DefaultPanel>
       <div className="space-y-2">
         <dl className={`${BODY_TEXT} m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1`}>
-          <dt>Method</dt>
+          <dt>方法</dt>
           <dd className="m-0 text-kumo-default">{details.method}</dd>
           {details.baseCommit && (
             <>
-              <dt>Common base</dt>
+              <dt>共同基准</dt>
               <dd className="m-0 font-mono text-kumo-default">{details.baseCommit}</dd>
             </>
           )}
-          <dt>Release</dt>
+          <dt>版本</dt>
           <dd className="m-0 font-mono text-kumo-default">{details.releaseCommit}</dd>
           {details.conflictPaths.length > 0 && (
             <>
-              <dt>Conflicts</dt>
+              <dt>冲突</dt>
               <dd className="m-0">
                 <ul className="m-0 list-none space-y-0.5 p-0">
                   {details.conflictPaths.map(path => (
@@ -46,7 +46,7 @@ const AdvancedDetails = ({ details, bindingNames }: {
           )}
           {bindingNames.length > 0 && (
             <>
-              <dt>New bindings</dt>
+              <dt>新绑定</dt>
               <dd className="m-0 break-all font-mono text-kumo-default">{bindingNames.join(', ')}</dd>
             </>
           )}
@@ -78,7 +78,7 @@ export const BlueprintProposalNotice = ({
 
   return (
     <section
-      aria-label={`Blueprint update: ${description.heading}`}
+      aria-label={`蓝图更新：${description.heading}`}
       className="space-y-2.5 rounded-2xl border border-kumo-line bg-kumo-base px-4 py-3"
     >
       <div className="flex items-start gap-3">
@@ -88,11 +88,11 @@ export const BlueprintProposalNotice = ({
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-center justify-between gap-2">
             <p className="m-0 text-[11px] font-medium uppercase leading-4 tracking-[0.06em] text-kumo-inactive">
-              Blueprint update
+              蓝图更新
             </p>
             {status !== 'pending' && (
               <Badge variant={status === 'merged' ? 'success' : 'secondary'}>
-                {status === 'merged' ? 'Accepted' : 'Discarded'}
+                {status === 'merged' ? '已接受' : '已放弃'}
               </Badge>
             )}
           </div>
@@ -113,7 +113,7 @@ export const BlueprintProposalNotice = ({
       {description.missingBindings.length > 0 && (
         <div className="space-y-1">
           <p className={BODY_TEXT}>
-            This version uses connections that the gadget did not have when it was proposed:
+            此版本使用了提议时应用尚未拥有的连接：
           </p>
           <ul className="m-0 list-disc space-y-0.5 pl-5">
             {description.missingBindings.map(binding => (

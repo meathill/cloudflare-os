@@ -44,10 +44,8 @@ const ADDED: AdminModelView = {
 
 const tokens = (count: number) => `${count.toLocaleString()} tokens`
 
-const SMALL_BUDGET_WARNING = `A budget under ${tokens(100000)} makes a chat compact very often.`
-const AUTH_HINT =
-  'The gateway may hold no key or credits for this provider, or CF_AI_GATEWAY_API_TOKEN may not ' +
-  'be allowed to run models.'
+const SMALL_BUDGET_WARNING = `预算低于 ${tokens(100000)} 时，对话会非常频繁地压缩。`
+const AUTH_HINT = '网关中可能没有此服务商的密钥或余额，或者 CF_AI_GATEWAY_API_TOKEN 没有运行模型的权限。'
 
 const button = (name: string) => {
   const element = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
@@ -71,7 +69,7 @@ const type = (element: HTMLInputElement, value: string) => act(() => {
   element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }))
 })
 
-const levelSelect = (modelName = 'Claude Sonnet') => button(`Reasoning level for ${modelName}`)
+const levelSelect = (modelName = 'Claude Sonnet') => button(`${modelName} 的推理级别`)
 
 /** The options of the list that `select` opens, which is left open. */
 const openOptions = async (select: HTMLElement) => {
@@ -104,24 +102,24 @@ const choose = async (select: HTMLElement, label: string) => {
 
 const budgetField = (modelName = 'Claude Sonnet') => {
   const label = Array.from(document.body.querySelectorAll('label'))
-    .find((element) => element.textContent === `Compaction budget for ${modelName}`)
+    .find((element) => element.textContent === `压缩预算（${modelName}）`)
   const field = document.getElementById(label?.htmlFor ?? '')
   if (!(field instanceof HTMLInputElement)) throw new Error(`No budget field for ${modelName}`)
   return field
 }
 
 const saveBudget = (modelName = 'Claude Sonnet') =>
-  button(`Save the compaction budget of ${modelName}`)
+  button(`保存 ${modelName} 的压缩预算`)
 const resetBudget = (modelName = 'Claude Sonnet') =>
-  button(`Reset the compaction budget of ${modelName}`)
+  button(`重置 ${modelName} 的压缩预算`)
 
 // What the row says of the model it behaves like, if anything.
 const behavesLikeLine = () => Array.from(document.body.querySelectorAll('li p'))
-  .map((p) => p.textContent).filter((text) => text?.startsWith('Behaves like'))
+  .map((p) => p.textContent).filter((text) => text?.startsWith('行为类似于'))
 
 // What the row says is stated of the model, if anything.
 const statedLine = () => Array.from(document.body.querySelectorAll('li p'))
-  .map((p) => p.textContent).filter((text) => text?.startsWith('Stated'))
+  .map((p) => p.textContent).filter((text) => text?.startsWith('已声明'))
 
 // As Enter in the field does. jsdom submits no form for a key press.
 const pressEnter = (field: HTMLInputElement) => act(async () => {
@@ -134,7 +132,7 @@ const alerts = () =>
 // The Test button, which names the model while the test is in flight too.
 const testButton = (modelName = 'Claude Sonnet') => {
   const element = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-    .find((b) => [`Test ${modelName}`, `Testing ${modelName}…`].includes(b.getAttribute('aria-label') ?? ''))
+    .find((b) => [`测试 ${modelName}`, `正在测试 ${modelName}…`].includes(b.getAttribute('aria-label') ?? ''))
   if (!element) throw new Error(`No Test button for ${modelName}`)
   return element
 }
@@ -206,14 +204,14 @@ describe('GatewayModelRow', () => {
           />
         </ul>))
     await show(shown)
-    if (!collapsed) await click(button(`Settings for ${shown.model.name}`))
+    if (!collapsed) await click(button(`设置（${shown.model.name}）`))
     return { onModeChange, onSettingsChange, onTest, onRemove, show }
   }
 
   describe('the settings disclosure', () => {
     it('keeps the settings out of the row until it is opened, and puts them away again', async () => {
       await render({ model: SONNET }, { collapsed: true })
-      const disclosure = button('Settings for Claude Sonnet')
+      const disclosure = button('设置（Claude Sonnet）')
 
       expect(disclosure.getAttribute('aria-expanded')).toBe('false')
       expect(() => levelSelect()).toThrow('No button')
@@ -235,8 +233,8 @@ describe('GatewayModelRow', () => {
       await render({ model: SONNET })
       await type(budgetField(), '150000')
 
-      await click(button('Settings for Claude Sonnet'))
-      await click(button('Settings for Claude Sonnet'))
+      await click(button('设置（Claude Sonnet）'))
+      await click(button('设置（Claude Sonnet）'))
 
       expect(budgetField().value).toBe('150000')
     })
@@ -251,7 +249,7 @@ describe('GatewayModelRow', () => {
     ])('when %s', async (_case, changes, changed) => {
       await render({ model: { ...SONNET, ...changes } }, { collapsed: true })
 
-      expect(document.body.querySelector('li')!.textContent!.includes('Changed')).toBe(changed)
+      expect(document.body.querySelector('li')!.textContent!.includes('已更改')).toBe(changed)
     })
   })
 
@@ -263,49 +261,49 @@ describe('GatewayModelRow', () => {
     }
     await render({ model: clef }, { collapsed: true })
 
-    expect(document.body.querySelector('li')!.textContent).toContain('Decision')
+    expect(document.body.querySelector('li')!.textContent).toContain('决策')
     expect(() => testButton('Clef')).toThrow('No Test button')
-    expect(() => button('Settings for Clef')).toThrow('No button')
+    expect(() => button('设置（Clef）')).toThrow('No button')
     expect(document.body.querySelectorAll('[role="radio"]')).toHaveLength(3)
   })
 
   describe('the reasoning level', () => {
     it.each<[BuiltInReasoning, string]>([
-      ['adaptive', 'Deployment default (built-in: Provider default)'],
-      ['medium', 'Deployment default (built-in: Medium)'],
-      ['xhigh', 'Deployment default (built-in: Extra high)'],
-      [null, 'Deployment default (built-in: no level sent)'],
+      ['adaptive', '部署默认（内置：服务商默认）'],
+      ['medium', '部署默认（内置：中）'],
+      ['xhigh', '部署默认（内置：极高）'],
+      [null, '部署默认（内置：不发送级别）'],
     ])('with no deployment default, offers what a model whose built-in is %s is then asked for, ' +
       'then the model’s own levels', async (builtInReasoning, label) => {
       await render({ model: { ...SONNET, builtInReasoning } })
 
       expect(levelSelect().textContent).toBe(label)
       expect((await openOptions(levelSelect())).map((option) => option.textContent))
-        .toEqual([label, 'Off', 'Low', 'High'])
+        .toEqual([label, '关闭', '低', '高'])
     })
 
     it.each<[BuiltInReasoning, ReasoningLevel, string]>([
-      ['adaptive', 'xhigh', 'Deployment default (Extra high)'],
-      ['medium', 'low', 'Deployment default (Low)'],
-      [null, 'off', 'Deployment default (Off)'],
+      ['adaptive', 'xhigh', '部署默认（极高）'],
+      ['medium', 'low', '部署默认（低）'],
+      [null, 'off', '部署默认（关闭）'],
     ])('for a model whose built-in is %s, offers the deployment default of %s by its name, ' +
       'then the model’s own levels', async (builtInReasoning, level, label) => {
       await render({ model: { ...SONNET, builtInReasoning }, defaultReasoning: level })
 
       expect(levelSelect().textContent).toBe(label)
       expect((await openOptions(levelSelect())).map((option) => option.textContent))
-        .toEqual([label, 'Off', 'Low', 'High'])
+        .toEqual([label, '关闭', '低', '高'])
     })
 
     it('follows the built-in the server reports for the model, and the deployment default over it', async () => {
       const { show } = await render({ model: SONNET })
       const reads: [Shown, string][] = [
-        [{ model: SONNET }, 'Deployment default (built-in: Provider default)'],
-        [{ model: { ...SONNET, builtInReasoning: 'medium' } }, 'Deployment default (built-in: Medium)'],
-        [{ model: { ...SONNET, builtInReasoning: null } }, 'Deployment default (built-in: no level sent)'],
+        [{ model: SONNET }, '部署默认（内置：服务商默认）'],
+        [{ model: { ...SONNET, builtInReasoning: 'medium' } }, '部署默认（内置：中）'],
+        [{ model: { ...SONNET, builtInReasoning: null } }, '部署默认（内置：不发送级别）'],
         [{ model: { ...SONNET, builtInReasoning: null }, defaultReasoning: 'high' },
-          'Deployment default (High)'],
-        [{ model: SONNET }, 'Deployment default (built-in: Provider default)'],
+          '部署默认（高）'],
+        [{ model: SONNET }, '部署默认（内置：服务商默认）'],
       ]
 
       for (const [shown, label] of reads) {
@@ -318,10 +316,10 @@ describe('GatewayModelRow', () => {
     it('shows the level the server holds for the model', async () => {
       await render({ model: { ...SONNET, settings: { reasoning: 'low' } }, defaultReasoning: 'high' })
 
-      expect(levelSelect().textContent).toBe('Low')
+      expect(levelSelect().textContent).toBe('低')
       expect((await openOptions(levelSelect()))
         .filter((option) => option.getAttribute('aria-selected') === 'true')
-        .map((option) => option.textContent)).toEqual(['Low'])
+        .map((option) => option.textContent)).toEqual(['低'])
     })
 
     // The server refuses a budget over the maximum, which a stored one is once the maximum drops.
@@ -336,12 +334,12 @@ describe('GatewayModelRow', () => {
         },
       })
 
-      await choose(levelSelect(), 'High')
+      await choose(levelSelect(), '高')
 
       expect(onSettingsChange).toHaveBeenCalledExactlyOnceWith(sent)
       expect(Object.keys(onSettingsChange.mock.calls[0][0])).toEqual(Object.keys(sent))
       // The server's value is what the select shows, and the re-read is what changes it.
-      expect(levelSelect().textContent).toBe('Deployment default (built-in: Provider default)')
+      expect(levelSelect().textContent).toBe('部署默认（内置：服务商默认）')
     })
 
     it('replaces the model’s level', async () => {
@@ -349,7 +347,7 @@ describe('GatewayModelRow', () => {
         model: { ...SONNET, settings: { reasoning: 'low' } },
       })
 
-      await choose(levelSelect(), 'Off')
+      await choose(levelSelect(), '关闭')
 
       expect(onSettingsChange).toHaveBeenCalledExactlyOnceWith({ reasoning: 'off' })
     })
@@ -361,7 +359,7 @@ describe('GatewayModelRow', () => {
     ])('clears the level by choosing the deployment default, %s', async (_case, settings, sent) => {
       const { onSettingsChange } = await render({ model: { ...SONNET, settings } })
 
-      await choose(levelSelect(), 'Deployment default (built-in: Provider default)')
+      await choose(levelSelect(), '部署默认（内置：服务商默认）')
 
       expect(onSettingsChange).toHaveBeenCalledExactlyOnceWith(sent)
       expect(Object.keys(onSettingsChange.mock.calls[0][0])).toEqual(Object.keys(sent))
@@ -372,7 +370,7 @@ describe('GatewayModelRow', () => {
         model: { ...SONNET, settings: { reasoning: 'high' } },
       })
 
-      await choose(levelSelect(), 'High')
+      await choose(levelSelect(), '高')
 
       expect(onSettingsChange).not.toHaveBeenCalled()
     })
@@ -387,7 +385,7 @@ describe('GatewayModelRow', () => {
       await show({ model: { ...SONNET, settings: { reasoning: 'max' } } })
       await show({ model: { ...SONNET, reasoningLevels: ['low', 'high'], settings: { reasoning: 'max' } } })
 
-      expect(levelSelect().textContent).toBe('Max')
+      expect(levelSelect().textContent).toBe('最高')
       expect(onSettingsChange).not.toHaveBeenCalled()
     })
 
@@ -418,8 +416,8 @@ describe('GatewayModelRow', () => {
     })
 
     it.each<[string, GatewayModelSettings | undefined, ReasoningLevel, string, string]>([
-      ['the model’s own', { reasoning: 'max' }, 'high', 'Max', 'Max'],
-      ['the deployment default', undefined, 'medium', 'Deployment default (Medium)', 'Medium'],
+      ['the model’s own', { reasoning: 'max' }, 'high', '最高', '最高'],
+      ['the deployment default', undefined, 'medium', '部署默认（中）', '中'],
     ])('says that a missing level, %s, is fitted when a request is made', async (
       _case, settings, defaultReasoning, shown, missing,
     ) => {
@@ -427,11 +425,10 @@ describe('GatewayModelRow', () => {
 
       expect(levelSelect().textContent).toBe(shown)
       expect(describedBy(levelSelect())).toBe(
-        `This model has no “${missing}” level. A request asks for the nearest level it has, ` +
-        'which is decided when the request is made.')
+        `此模型不支持“${missing}”级别。请求时将选择最接近的可用级别。`)
       // The level the model lacks is not among the ones to choose.
       expect((await openOptions(levelSelect())).map((option) => option.textContent).slice(1))
-        .toEqual(['Off', 'Low', 'High'])
+        .toEqual(['关闭', '低', '高'])
     })
 
     it('offers no level for a model that takes none, and says none is sent', async () => {
@@ -439,7 +436,7 @@ describe('GatewayModelRow', () => {
 
       expect(() => levelSelect()).toThrow('No button')
       expect(document.body.textContent)
-        .toContain('This model takes no reasoning levels, so none is sent to it.')
+        .toContain('此模型不支持推理级别，因此不会发送级别。')
     })
 
     it('still lets a level stored for a model that takes none be cleared', async () => {
@@ -449,13 +446,13 @@ describe('GatewayModelRow', () => {
         },
       })
 
-      expect(levelSelect().textContent).toBe('High')
+      expect(levelSelect().textContent).toBe('高')
       expect(describedBy(levelSelect()))
-        .toBe('This model takes no reasoning levels, so none is sent to it.')
+        .toBe('此模型不支持推理级别，因此不会发送级别。')
       expect((await openOptions(levelSelect())).map((option) => option.textContent))
-        .toEqual(['Deployment default (built-in: no level sent)'])
+        .toEqual(['部署默认（内置：不发送级别）'])
 
-      await choose(levelSelect(), 'Deployment default (built-in: no level sent)')
+      await choose(levelSelect(), '部署默认（内置：不发送级别）')
 
       expect(onSettingsChange).toHaveBeenCalledExactlyOnceWith({})
     })
@@ -471,12 +468,12 @@ describe('GatewayModelRow', () => {
     }
     const field = () => {
       const label = Array.from(document.body.querySelectorAll('label'))
-        .find((element) => element.textContent === 'Allowed models for Auto')
+        .find((element) => element.textContent === '允许的模型（Auto）')
       const element = document.getElementById(label?.htmlFor ?? '')
       if (!(element instanceof HTMLInputElement)) throw new Error('No allowed models field')
       return element
     }
-    const save = () => button('Save the allowed models of Auto')
+    const save = () => button('保存 Auto 的允许模型')
 
     it('offers the list to the Auto Router model alone', async () => {
       await render({ model: SONNET })
@@ -484,20 +481,20 @@ describe('GatewayModelRow', () => {
 
       const { show } = await render({ model: AUTO, poolProviders: ['anthropic', 'openai'] })
       expect(field().value).toBe('')
-      expect(field().placeholder).toBe('Every model of the providers that are on')
-      expect(() => button('Reset the allowed models of Auto')).toThrow('No button')
+      expect(field().placeholder).toBe('所有已启用服务商的模型')
+      expect(() => button('重置 Auto 的允许模型')).toThrow('No button')
       // The field names the pool the blank list resolves to, and where the gateway lists it.
-      expect(describedBy(field())).toContain('providers that are on (Anthropic, OpenAI)')
+      expect(describedBy(field())).toContain('已启用的服务商（Anthropic, OpenAI）')
       expect(document.querySelector('a[href$="/auto-router/#models"]')).not.toBeNull()
       await show({ model: AUTO, poolProviders: [] })
-      expect(describedBy(field())).toContain('No provider is on for Auto to pick from')
+      expect(describedBy(field())).toContain('没有可供自动选择的已启用服务商')
     })
 
     // The names staged as chips, in order.
     const chips = () => Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
       .map((b) => b.getAttribute('aria-label') ?? '')
-      .filter((label) => label.startsWith('Remove ') && label.endsWith(' from the allowed models of Auto'))
-      .map((label) => label.slice('Remove '.length, -' from the allowed models of Auto'.length))
+      .filter((label) => label.startsWith('从 Auto 的允许模型中移除 '))
+      .map((label) => label.slice('从 Auto 的允许模型中移除 '.length))
     const options = () => {
       const list = document.getElementById(field().getAttribute('aria-controls') ?? '')
       return Array.from(list?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])
@@ -549,14 +546,13 @@ describe('GatewayModelRow', () => {
 
       await type(field(), 'luna')
       expect(options()).toEqual([
-        'openai/gpt-6-lunaGPT-6 Luna', 'Add “luna” exactlyUse the text as a gateway model name',
+        'openai/gpt-6-lunaGPT-6 Luna', '精确添加 “luna”按输入的网关模型名使用',
       ])
       await press('Enter')
       expect(chips()).toEqual(['anthropic/*', 'openai/gpt-6-luna'])
 
       await type(field(), '@cf/zai-org/glm-5.2')
-      expect(options()).toEqual(['Add “@cf/zai-org/glm-5.2” exactly'
-        + 'Use the text as a gateway model name'])
+      expect(options()).toEqual(['精确添加 “@cf/zai-org/glm-5.2”按输入的网关模型名使用'])
       await press('Enter')
       // Backspace in an empty field takes back the last name staged.
       await press('Backspace')
@@ -572,7 +568,7 @@ describe('GatewayModelRow', () => {
       async () => {
         await render({ model: AUTO, poolSuggestions: SUGGESTIONS })
         await type(field(), 'openai/gpt-6')
-        expect(options()[0]).toBe('Add “openai/gpt-6” exactlyUse the text as a gateway model name')
+        expect(options()[0]).toBe('精确添加 “openai/gpt-6”按输入的网关模型名使用')
         await press('Enter')
         expect(chips()).toEqual(['openai/gpt-6'])
       })
@@ -717,7 +713,7 @@ describe('GatewayModelRow', () => {
         expect(onSettingsChange).not.toHaveBeenCalled()
         expect(field().value).toBe('claude opus')
         expect(field().getAttribute('aria-invalid')).toBe('true')
-        expect(describedBy(field())).toContain('“claude opus” is not a gateway model name')
+        expect(describedBy(field())).toContain('“claude opus” 不是网关模型名')
         expect(document.activeElement).toBe(field())
 
         // A correction clears the refusal.
@@ -728,7 +724,7 @@ describe('GatewayModelRow', () => {
     it('unsets the list when every name is removed and saved, or Reset is pressed', async () => {
       const held = { ...AUTO, settings: { allowedModels: ['anthropic/*'] } }
       const { onSettingsChange } = await render({ model: held })
-      await click(button('Remove anthropic/* from the allowed models of Auto'))
+      await click(button('从 Auto 的允许模型中移除 anthropic/*'))
       expect(chips()).toEqual([])
       expect(document.activeElement).toBe(field())
       await click(save())
@@ -736,7 +732,7 @@ describe('GatewayModelRow', () => {
 
       onSettingsChange.mockClear()
       await type(field(), 'openai/*,')
-      await click(button('Reset the allowed models of Auto'))
+      await click(button('重置 Auto 的允许模型'))
       expect(onSettingsChange).toHaveBeenCalledExactlyOnceWith({})
       expect(document.activeElement).toBe(field())
       expect(chips()).toEqual(['anthropic/*'])
@@ -758,7 +754,7 @@ describe('GatewayModelRow', () => {
           model: 'cloudflare/auto', ok: true, routedModel: 'anthropic/claude-sonnet-5.5',
         }),
       })
-      expect(testSaid()).toEqual(['Answered through the gateway via anthropic/claude-sonnet-5.5.'])
+      expect(testSaid()).toEqual(['已通过网关响应，经由 anthropic/claude-sonnet-5.5。'])
     })
   })
 
@@ -767,10 +763,9 @@ describe('GatewayModelRow', () => {
       await render({ model: GPT })
 
       expect(budgetField('GPT Next').value).toBe('')
-      expect(budgetField('GPT Next').placeholder).toBe(`${(180000).toLocaleString()} (built-in)`)
+      expect(budgetField('GPT Next').placeholder).toBe(`${(180000).toLocaleString()} （内置）`)
       expect(describedBy(budgetField('GPT Next'))).toContain(
-        `Leave blank for the built-in budget of ${tokens(180000)}. The maximum is ` +
-        `${tokens(272000)}. A chat on this model compacts at about ${tokens(153000)}.`)
+        `留空时使用内置预算 ${tokens(180000)}。上限为 ${tokens(272000)}。此模型的对话约在 ${tokens(153000)} 时压缩。`)
       expect(() => resetBudget('GPT Next')).toThrow('No button')
     })
 
@@ -780,7 +775,7 @@ describe('GatewayModelRow', () => {
       expect(budgetField('GPT Next').value).toBe('250001')
       // 85% of the budget, rounded.
       expect(describedBy(budgetField('GPT Next')))
-        .toContain(`A chat on this model compacts at about ${tokens(212501)}.`)
+        .toContain(`此模型的对话约在 ${tokens(212501)} 时压缩。`)
     })
 
     it('says where a chat compacts by the maximum when the server holds a budget over it', async () => {
@@ -789,7 +784,7 @@ describe('GatewayModelRow', () => {
       expect(budgetField('GPT Next').value).toBe('300000')
       // 85% of the maximum of 272,000.
       expect(describedBy(budgetField('GPT Next')))
-        .toContain(`A chat on this model compacts at about ${tokens(231200)}.`)
+        .toContain(`此模型的对话约在 ${tokens(231200)} 时压缩。`)
     })
 
     it('saves a budget along with the level the model already has', async () => {
@@ -884,7 +879,7 @@ describe('GatewayModelRow', () => {
       expect(onSettingsChange).not.toHaveBeenCalled()
       expect(budgetField().getAttribute('aria-invalid')).toBe('true')
       expect(describedBy(budgetField())).toContain(
-        'Enter a positive whole number of tokens, or leave this blank for the built-in budget')
+        '请输入大于零的整数 token 数，或留空使用内置预算')
       expect(document.activeElement).toBe(budgetField())
       // Landing on the field announces the error that describes it.
       expect(alerts()).toEqual([])
@@ -899,7 +894,7 @@ describe('GatewayModelRow', () => {
 
       expect(onSettingsChange).not.toHaveBeenCalled()
       expect(budgetField('GPT Next').getAttribute('aria-invalid')).toBe('true')
-      expect(describedBy(budgetField('GPT Next'))).toContain(`Enter at most ${tokens(272000)}`)
+      expect(describedBy(budgetField('GPT Next'))).toContain(`最多输入 ${tokens(272000)}`)
       expect(document.activeElement).toBe(budgetField('GPT Next'))
 
       await type(budgetField('GPT Next'), '272000')
@@ -912,8 +907,8 @@ describe('GatewayModelRow', () => {
     // Focus can't announce an error on the field it is already in.
     it.each<[string, AdminModelView, string, string]>([
       ['what is no number of tokens', SONNET, '150k',
-        'Enter a positive whole number of tokens, or leave this blank for the built-in budget'],
-      ['a budget over the maximum', GPT, '272001', `Enter at most ${tokens(272000)}`],
+        '请输入大于零的整数 token 数，或留空使用内置预算'],
+      ['a budget over the maximum', GPT, '272001', `最多输入 ${tokens(272000)}`],
     ])('says the error aloud when Enter in the field is refused %s', async (_case, model, typed, error) => {
       const { onSettingsChange } = await render({ model })
       const field = budgetField(model.name)
@@ -979,9 +974,9 @@ describe('GatewayModelRow', () => {
     it('offers no budget for a model whose window leaves a prompt no room', async () => {
       await render({ model: { ...SONNET, builtInCompactionInputBudget: 0, maxCompactionInputBudget: 0 } })
 
-      expect(levelSelect().textContent).toBe('Deployment default (built-in: Provider default)')
+      expect(levelSelect().textContent).toBe('部署默认（内置：服务商默认）')
       expect(() => budgetField()).toThrow('No budget field')
-      expect(buttons()).not.toContain('Save the compaction budget of Claude Sonnet')
+      expect(buttons()).not.toContain('保存 Claude Sonnet 的压缩预算')
     })
   })
 
@@ -998,7 +993,7 @@ describe('GatewayModelRow', () => {
       await render(
         { model: LIKE_SONNET, behavesLikeName: 'Claude Sonnet', removable: true }, { collapsed: true })
 
-      expect(behavesLikeLine()).toEqual(['Behaves like Claude Sonnet'])
+      expect(behavesLikeLine()).toEqual(['行为类似于 Claude Sonnet'])
     })
 
     it('names a model the catalog doesn’t list by its ID', async () => {
@@ -1006,7 +1001,7 @@ describe('GatewayModelRow', () => {
         { model: { ...LIKE_SONNET, behavesLike: 'claude-preview' }, removable: true },
         { collapsed: true })
 
-      expect(behavesLikeLine()).toEqual(['Behaves like claude-preview'])
+      expect(behavesLikeLine()).toEqual(['行为类似于 claude-preview'])
     })
 
     it('says the choice is not used once this version knows the model itself', async () => {
@@ -1015,7 +1010,7 @@ describe('GatewayModelRow', () => {
         { collapsed: true })
 
       expect(behavesLikeLine())
-        .toEqual(['Behaves like Claude Sonnet. Not used: this version knows this model itself.'])
+        .toEqual(['行为类似于 Claude Sonnet。当前版本已识别此模型，不再使用这些信息。'])
     })
 
     it('says the choice is not used also when this version no longer knows the other model', async () => {
@@ -1027,7 +1022,7 @@ describe('GatewayModelRow', () => {
         { collapsed: true })
 
       expect(behavesLikeLine())
-        .toEqual(['Behaves like claude-retired. Not used: this version knows this model itself.'])
+        .toEqual(['行为类似于 claude-retired。当前版本已识别此模型，不再使用这些信息。'])
     })
 
     it('says nothing is borrowed from a model this version no longer knows', async () => {
@@ -1036,7 +1031,7 @@ describe('GatewayModelRow', () => {
         { collapsed: true })
 
       expect(behavesLikeLine()).toEqual([
-        'Behaves like claude-retired. This version no longer knows that model, so nothing is borrowed.',
+        '行为类似于 claude-retired. This version no longer knows that model, so nothing is borrowed.',
       ])
     })
   })
@@ -1052,20 +1047,20 @@ describe('GatewayModelRow', () => {
     })
 
     it.each<[string, GatewayModelCapabilities, string]>([
-      ['that it takes images', { imageInput: true }, 'Stated: takes images'],
-      ['that it takes none', { imageInput: false }, 'Stated: takes no images'],
+      ['that it takes images', { imageInput: true }, '已声明： 支持图片'],
+      ['that it takes none', { imageInput: false }, '已声明： 不支持图片'],
       [
         'its reasoning levels by their names',
         { reasoningLevels: ['off', 'high', 'xhigh'] },
-        'Stated: reasoning levels Off, High, Extra high',
+        '已声明： 推理级别：关闭, 高, 极高',
       ],
-      ['a single level above Off', { reasoningLevels: ['high'] }, 'Stated: reasoning levels High'],
-      ['no reasoning for Off alone', { reasoningLevels: ['off'] }, 'Stated: no reasoning'],
-      ['no reasoning for no level at all', { reasoningLevels: [] }, 'Stated: no reasoning'],
+      ['a single level above Off', { reasoningLevels: ['high'] }, '已声明： 推理级别：高'],
+      ['no reasoning for Off alone', { reasoningLevels: ['off'] }, '已声明： 无推理'],
+      ['no reasoning for no level at all', { reasoningLevels: [] }, '已声明： 无推理'],
       [
         'both facts, images first',
         { reasoningLevels: ['low', 'high'], imageInput: true },
-        'Stated: takes images · reasoning levels Low, High',
+        '已声明： 支持图片 · 推理级别：低, 高',
       ],
     ])('says %s', async (_case, capabilities, line) => {
       await render({ model: { ...ADDED, capabilities }, removable: true }, { collapsed: true })
@@ -1084,7 +1079,7 @@ describe('GatewayModelRow', () => {
         { collapsed: true })
 
       expect(statedLine()).toEqual([
-        'Stated: takes no images · no reasoning. Not used: this version knows this model itself.',
+        '已声明： 不支持图片 · 无推理。当前版本已识别此模型，不再使用这些信息。',
       ])
     })
 
@@ -1101,18 +1096,18 @@ describe('GatewayModelRow', () => {
         { collapsed: true })
 
       expect(Array.from(document.body.querySelectorAll('li p')).map((p) => p.textContent).slice(-2))
-        .toEqual(['Behaves like Claude Sonnet', 'Stated: takes images'])
+        .toEqual(['行为类似于 Claude Sonnet', '已声明： 支持图片'])
     })
   })
 
   describe('the test', () => {
     it('is run from a button named after the model, without the settings being opened', async () => {
       const { onTest, onModeChange, onSettingsChange } = await render({ model: SONNET }, { collapsed: true })
-      const disclosure = button('Settings for Claude Sonnet')
+      const disclosure = button('设置（Claude Sonnet）')
 
       expect(disclosure.getAttribute('aria-expanded')).toBe('false')
-      expect(testButton().textContent).toBe('Test')
-      expect(testButton().getAttribute('aria-label')).toBe('Test Claude Sonnet')
+      expect(testButton().textContent).toBe('测试')
+      expect(testButton().getAttribute('aria-label')).toBe('测试 Claude Sonnet')
       expect(testButton().disabled).toBe(false)
       expect(testButton().getAttribute('aria-disabled')).toBe('false')
       // Among the row's controls: after the modes, and before the disclosure.
@@ -1132,7 +1127,7 @@ describe('GatewayModelRow', () => {
     it('stays outside the settings when they are open', async () => {
       await render({ model: SONNET })
       const settings = document.getElementById(
-        button('Settings for Claude Sonnet').getAttribute('aria-controls')!)!
+        button('设置（Claude Sonnet）').getAttribute('aria-controls')!)!
 
       expect(settings.contains(levelSelect())).toBe(true)
       expect(settings.contains(testButton())).toBe(false)
@@ -1142,8 +1137,8 @@ describe('GatewayModelRow', () => {
     it('comes before Remove in the row of a model that can be removed', async () => {
       const { onTest, onRemove } = await render({ model: ADDED, removable: true }, { collapsed: true })
 
-      expect(testButton('Claude Next').getAttribute('aria-label')).toBe('Test Claude Next')
-      expect(follows(testButton('Claude Next'), button('Remove Claude Next'))).toBe(true)
+      expect(testButton('Claude Next').getAttribute('aria-label')).toBe('测试 Claude Next')
+      expect(follows(testButton('Claude Next'), button('移除 Claude Next'))).toBe(true)
 
       await click(testButton('Claude Next'))
 
@@ -1168,7 +1163,7 @@ describe('GatewayModelRow', () => {
 
       // The controls that write are.
       expect(levelSelect().disabled).toBe(true)
-      expect(button('Remove Claude Sonnet').disabled).toBe(true)
+      expect(button('移除 Claude Sonnet').disabled).toBe(true)
       expect(testButton().disabled).toBe(false)
       expect(testButton().getAttribute('aria-disabled')).toBe('false')
 
@@ -1186,8 +1181,8 @@ describe('GatewayModelRow', () => {
       await show({ model: SONNET, test: { state: 'testing' } })
 
       expect(testButton()).toBe(pressed)
-      expect(pressed.textContent).toBe('Testing…')
-      expect(pressed.getAttribute('aria-label')).toBe('Testing Claude Sonnet…')
+      expect(pressed.textContent).toBe('正在测试…')
+      expect(pressed.getAttribute('aria-label')).toBe('正在测试 Claude Sonnet…')
       expect(pressed.getAttribute('aria-disabled')).toBe('true')
       // A browser takes focus from a button that is disabled, which jsdom does not.
       expect(pressed.disabled).toBe(false)
@@ -1197,18 +1192,18 @@ describe('GatewayModelRow', () => {
       await show({ model: SONNET, test: answered({ model: 'claude-sonnet', ok: true }) })
 
       expect(testButton()).toBe(pressed)
-      expect(pressed.textContent).toBe('Test')
-      expect(pressed.getAttribute('aria-label')).toBe('Test Claude Sonnet')
+      expect(pressed.textContent).toBe('测试')
+      expect(pressed.getAttribute('aria-label')).toBe('测试 Claude Sonnet')
       expect(pressed.getAttribute('aria-disabled')).toBe('false')
       expect(document.activeElement).toBe(pressed)
       // The region that was there all along is the one that says the result.
       expect(testStatus()).toBe(region)
-      expect(region.textContent).toBe('Answered through the gateway.')
+      expect(region.textContent).toBe('已通过网关响应。')
     })
 
     it('has an empty status region before any test, on a line above the disclosure', async () => {
       await render({ model: SONNET }, { collapsed: true })
-      const disclosure = button('Settings for Claude Sonnet')
+      const disclosure = button('设置（Claude Sonnet）')
 
       expect(testStatus().childNodes).toHaveLength(0)
       expect(follows(testButton(), testStatus())).toBe(true)
@@ -1220,36 +1215,36 @@ describe('GatewayModelRow', () => {
 
     it.each<[string, GatewayTestState, string[]]>([
       // The row is the model, so a pass does not name it again.
-      ['a pass', answered({ model: 'claude-sonnet', ok: true }), ['Answered through the gateway.']],
+      ['a pass', answered({ model: 'claude-sonnet', ok: true }), ['已通过网关响应。']],
       [
         'a failure with a status',
         answered({ model: 'claude-sonnet', ok: false, status: 500, message: 'The server had an error.' }),
-        ['Failed (500): The server had an error.'],
+        ['失败 (500): The server had an error.'],
       ],
       [
         'a failure without a status',
         answered({ model: 'claude-sonnet', ok: false, message: 'API key not valid.' }),
-        ['Failed: API key not valid.'],
+        ['失败: API key not valid.'],
       ],
       [
         'a 401, with what it may mean',
         answered({ model: 'claude-sonnet', ok: false, status: 401, message: 'invalid x-api-key' }),
-        ['Failed (401): invalid x-api-key', AUTH_HINT],
+        ['失败 (401): invalid x-api-key', AUTH_HINT],
       ],
       [
         'a 403, with what it may mean',
         answered({ model: 'claude-sonnet', ok: false, status: 403, message: 'Forbidden' }),
-        ['Failed (403): Forbidden', AUTH_HINT],
+        ['失败 (403): Forbidden', AUTH_HINT],
       ],
       [
         'a test that could not be run, with the reason',
         { state: 'not-run', reason: 'No such model: claude-sonnet' },
-        ['Couldn’t run the test: No such model: claude-sonnet'],
+        ['无法运行测试: No such model: claude-sonnet'],
       ],
       [
         'a test that could not be run, without one',
         { state: 'not-run', reason: undefined },
-        ['Couldn’t run the test.'],
+        ['无法运行测试.'],
       ],
     ])('reports %s in the status region', async (_case, test, expected) => {
       const { show } = await render({ model: SONNET }, { collapsed: true })
@@ -1259,13 +1254,13 @@ describe('GatewayModelRow', () => {
 
       expect(testStatus()).toBe(region)
       expect(testSaid()).toEqual(expected)
-      expect(testButton().textContent).toBe('Test')
+      expect(testButton().textContent).toBe('测试')
     })
 
     it('empties the status region when the test is forgotten', async () => {
       const { show } = await render(
         { model: SONNET, test: answered({ model: 'claude-sonnet', ok: true }) }, { collapsed: true })
-      expect(testSaid()).toEqual(['Answered through the gateway.'])
+      expect(testSaid()).toEqual(['已通过网关响应。'])
 
       await show({ model: SONNET })
 

@@ -75,30 +75,30 @@ type SkillsNavigatorTreeProps = {
 
 type PendingRename = { collectionId: string; path: string; name: string };
 
-const skillCountLabel = (count: number) => `${count} ${count === 1 ? "skill" : "skills"}`;
+const skillCountLabel = (count: number) => `${count} 个技能`;
 
 const skillLessCollectionLabel = (documentCount: number) =>
-  `${documentCount} ${documentCount === 1 ? "file" : "files"}, no skills. Open collection`;
+  `${documentCount} 个文件，没有技能。打开知识集合`;
 
 // Ownership comes from the viewer's live role, not from which index lists the collection.
 const collectionAccess = ({ source, membership }: EnabledCollectionInfo) => {
   if (source === "public") {
-    return { icon: <Buildings aria-hidden size={12} />, label: "Organization" };
+    return { icon: <Buildings aria-hidden size={12} />, label: "组织" };
   }
   if (!membership || membership.role === "owner") {
     return membership?.shared
-      ? { icon: <Users aria-hidden size={12} />, label: "Shared" }
-      : { icon: <User aria-hidden size={12} />, label: "Private" };
+      ? { icon: <Users aria-hidden size={12} />, label: "已共享" }
+      : { icon: <User aria-hidden size={12} />, label: "私有" };
   }
   return {
     icon: <Users aria-hidden size={12} />,
-    label: `Shared with you · ${COLLECTION_ROLE_LABELS[membership.role]}`,
+    label: `与你共享 · ${COLLECTION_ROLE_LABELS[membership.role]}`,
   };
 };
 
 const relativeUpdatedAt = (date: Date, now: number) => {
   const age = formatSkillUpdatedAt(date, now);
-  return age === "now" ? "just now" : `${age} ago`;
+  return age;
 };
 
 const nodeId = (collectionId: string, node: SkillNavigatorNode) => node.type === "skill"
@@ -146,7 +146,7 @@ const toListItem = (
         <span
           className="flex items-center gap-1"
           aria-label={skillUpdatedAtLabel(node.lastUpdated, now)}
-          title={`Updated ${node.lastUpdated.toLocaleString()}`}
+          title={`更新于 ${node.lastUpdated.toLocaleString("zh-CN")}`}
         >
           <Clock aria-hidden size={12} />
           <span aria-hidden>{relativeUpdatedAt(node.lastUpdated, now)}</span>
@@ -239,7 +239,7 @@ export const SkillsNavigatorTree = ({
       failedCollectionIdsByItemId.set(failureId, collection.id);
       listChildren = [{
         id: failureId,
-        name: "Couldn't load contents, click to try again",
+        name: "无法加载内容，点击重试",
         appearance: "message",
         interactive: true,
       }];
@@ -256,7 +256,7 @@ export const SkillsNavigatorTree = ({
     } else if (children.length === 0) {
       listChildren = [{
         id: `${collection.id}:empty`,
-        name: "No contents",
+        name: "暂无内容",
         appearance: "message",
       }];
     } else {
@@ -287,14 +287,14 @@ export const SkillsNavigatorTree = ({
           {metadata?.content.source === "git" && (
             <span className="flex items-center gap-1">
               <GitBranch aria-hidden size={12} />
-              Git managed
+              由 Git 管理
             </span>
           )}
           {updatedAt && (
             <span
               className="flex items-center gap-1"
               aria-label={skillUpdatedAtLabel(updatedAt, now)}
-              title={`Updated ${updatedAt.toLocaleString()}`}
+              title={`更新于 ${updatedAt.toLocaleString("zh-CN")}`}
             >
               <Clock aria-hidden size={12} />
               <span aria-hidden>{relativeUpdatedAt(updatedAt, now)}</span>
@@ -341,7 +341,7 @@ export const SkillsNavigatorTree = ({
       onChanged();
     } catch (error) {
       toasts.add({
-        title: error instanceof Error ? error.message : "Failed to move skill",
+        title: error instanceof Error ? error.message : "移动技能失败",
         variant: "error",
       });
       throw error;
@@ -378,7 +378,7 @@ export const SkillsNavigatorTree = ({
       onChanged();
     } catch (error) {
       toasts.add({
-        title: error instanceof Error ? error.message : "Failed to rename",
+        title: error instanceof Error ? error.message : "重命名失败",
         variant: "error",
       });
       setPendingRename(null);
@@ -392,11 +392,11 @@ export const SkillsNavigatorTree = ({
     setRefreshingCollectionId(collectionId);
     try {
       await context.syncContextCollectionArtifactSource(collectionId);
-      toasts.add({ title: "Collection refreshed", variant: "success" });
+      toasts.add({ title: "知识集合已刷新", variant: "success" });
       onChanged();
     } catch (error) {
       toasts.add({
-        title: error instanceof Error ? error.message : "Failed to refresh collection",
+        title: error instanceof Error ? error.message : "刷新知识集合失败",
         variant: "error",
       });
     } finally {
@@ -411,7 +411,7 @@ export const SkillsNavigatorTree = ({
       await onRetryCollection(collectionId);
     } catch {
       toasts.add({
-        title: "Couldn't load collection contents",
+        title: "无法加载知识集合内容",
         variant: "error",
       });
     } finally {
@@ -442,7 +442,7 @@ export const SkillsNavigatorTree = ({
             icon={<FolderOpen className="size-3.25" />}
             onClick={() => onOpenCollection(collectionId)}
           >
-            Open collection
+            打开知识集合
           </DropdownMenu.Item>
           {(writable || refreshable) && <DropdownMenu.Separator />}
           {writable && (
@@ -455,7 +455,7 @@ export const SkillsNavigatorTree = ({
                   collectionEditable: false,
                 })}
               >
-                Add skill
+                添加技能
               </DropdownMenu.Item>
               <DropdownMenu.Item
                 icon={<UploadSimple className="size-3.25" />}
@@ -465,7 +465,7 @@ export const SkillsNavigatorTree = ({
                   collectionEditable: false,
                 })}
               >
-                Upload skills
+                上传技能
               </DropdownMenu.Item>
             </>
           )}
@@ -475,7 +475,7 @@ export const SkillsNavigatorTree = ({
               disabled={refreshingCollectionId !== null}
               onClick={() => void handleRefresh(collectionId)}
             >
-              Refresh
+              刷新
             </DropdownMenu.Item>
           )}
           {(editableMetadata || sharable || deletable || leavable) && <DropdownMenu.Separator />}
@@ -484,7 +484,7 @@ export const SkillsNavigatorTree = ({
               icon={<PencilSimple className="size-3.25" />}
               onClick={() => onEditCollection(editableMetadata)}
             >
-              Edit
+              编辑
             </DropdownMenu.Item>
           )}
           {sharable && (
@@ -492,7 +492,7 @@ export const SkillsNavigatorTree = ({
               icon={<ShareNetwork className="size-3.25" />}
               onClick={() => onShareCollection({ id: collectionId, title: collection.title })}
             >
-              Share
+              分享
             </DropdownMenu.Item>
           )}
           {leavable && (
@@ -501,7 +501,7 @@ export const SkillsNavigatorTree = ({
               variant="danger"
               onClick={() => onLeaveCollection({ id: collectionId, title: collection.title })}
             >
-              Leave
+              退出
             </DropdownMenu.Item>
           )}
           {deletable && (
@@ -514,7 +514,7 @@ export const SkillsNavigatorTree = ({
                 name: collection.title,
               })}
             >
-              Delete
+              删除
             </DropdownMenu.Item>
           )}
         </>
@@ -538,7 +538,7 @@ export const SkillsNavigatorTree = ({
                   name: skill.name,
                 })}
               >
-                Rename
+                重命名
               </DropdownMenu.Item>
               <DropdownMenu.Separator />
             </>
@@ -553,7 +553,7 @@ export const SkillsNavigatorTree = ({
               name: skill.name,
             })}
           >
-            Delete
+            删除
           </DropdownMenu.Item>
         </>
       );
@@ -571,7 +571,7 @@ export const SkillsNavigatorTree = ({
               collectionEditable: false,
             })}
           >
-            Add skill
+            添加技能
           </DropdownMenu.Item>
           <DropdownMenu.Item
             icon={<UploadSimple className="size-3.25" />}
@@ -581,7 +581,7 @@ export const SkillsNavigatorTree = ({
               collectionEditable: false,
             })}
           >
-            Upload skills
+            上传技能
           </DropdownMenu.Item>
           <DropdownMenu.Separator />
           <DropdownMenu.Item
@@ -594,7 +594,7 @@ export const SkillsNavigatorTree = ({
               name: directory.name,
             })}
           >
-            Delete
+            删除
           </DropdownMenu.Item>
         </>
       );
@@ -609,7 +609,7 @@ export const SkillsNavigatorTree = ({
           compatibility, but the product is moving away from deeper collection hierarchies. */}
       <HierarchicalList
       items={items}
-      label="Skills"
+      label="技能"
       expandAll={expandAll}
       showTouchDragHandle={false}
       dragAndDrop={{

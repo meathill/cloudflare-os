@@ -235,11 +235,11 @@ function radio(title: string): HTMLInputElement {
   return label.querySelector('input')!
 }
 
-const FOLLOWED = 'Update from Trip planner'
-const SWITCH = 'Advanced: Switch blueprints'
+const FOLLOWED = '从 Trip planner 更新'
+const SWITCH = '高级：切换蓝图'
 
 const referenceInput = () =>
-  container.querySelector<HTMLInputElement>('[aria-label="Blueprint ID or link"]')
+  container.querySelector<HTMLInputElement>('[aria-label="蓝图 ID 或链接"]')
 
 async function paste(text: string) {
   const input = referenceInput()!
@@ -255,7 +255,7 @@ async function switchTo(text: string) {
 }
 
 const reviewerSelect = () =>
-  container.querySelector<HTMLSelectElement>('select[aria-label="Reviewing agent"]')!
+  container.querySelector<HTMLSelectElement>('select[aria-label="审核智能体"]')!
 
 async function pickReviewer(value: string) {
   const select = reviewerSelect()
@@ -275,11 +275,11 @@ describe('UpdateFromBlueprintDialog', () => {
     await open(TRIP_UPSTREAM)
 
     expect(radio(FOLLOWED).checked).toBe(true)
-    expect(radio(FOLLOWED).closest('label')!.textContent).toContain('Update available')
+    expect(radio(FOLLOWED).closest('label')!.textContent).toContain('有可用更新')
     expect(radio(SWITCH).checked).toBe(false)
     expect(referenceInput()).toBeNull()
 
-    await click('Update')
+    await click('更新')
 
     // The model is the one a new chat would start on, which is where the proposal lands.
     expect(applyBlueprint).toHaveBeenCalledExactlyOnceWith('trip', { modelId: 'sonnet' })
@@ -292,8 +292,8 @@ describe('UpdateFromBlueprintDialog', () => {
 
     expect(radio(FOLLOWED).checked).toBe(true)
     const description = radio(FOLLOWED).closest('label')!.textContent
-    expect(description).toContain('Version 2')
-    expect(description).not.toContain('Update available')
+    expect(description).toContain('版本 2')
+    expect(description).not.toContain('有可用更新')
     expect(description).not.toContain('Up to date')
   })
 
@@ -302,7 +302,7 @@ describe('UpdateFromBlueprintDialog', () => {
     applyBlueprint.mockResolvedValue({ outcome: 'proposed', chatId: 7 })
 
     await open(TRIP_UPSTREAM)
-    await click('Update')
+    await click('更新')
 
     expect(applyBlueprint).toHaveBeenCalledExactlyOnceWith('trip', { modelId: null })
   })
@@ -314,10 +314,10 @@ describe('UpdateFromBlueprintDialog', () => {
     await open(TRIP_UPSTREAM)
     expect(reviewerSelect().value).toBe('sonnet')
     expect([...reviewerSelect().options].map(option => option.textContent))
-      .toEqual(['Opus', 'Sonnet', 'No agent'])
+      .toEqual(['Opus', 'Sonnet', '无智能体'])
 
     await pickReviewer('opus')
-    await click('Update')
+    await click('更新')
 
     expect(applyBlueprint).toHaveBeenCalledExactlyOnceWith('trip', { modelId: 'opus' })
     // Like the composer's selector, the pick carries over to the next chat, in any browser.
@@ -330,7 +330,7 @@ describe('UpdateFromBlueprintDialog', () => {
 
     await open(TRIP_UPSTREAM)
     await pickReviewer(NO_AGENT_OPTION_VALUE)
-    await click('Update')
+    await click('更新')
 
     expect(applyBlueprint).toHaveBeenCalledExactlyOnceWith('trip', { modelId: null })
   })
@@ -341,11 +341,11 @@ describe('UpdateFromBlueprintDialog', () => {
     await open(TRIP_UPSTREAM)
     await act(async () => { radio(SWITCH).click() })
     // Nothing is named yet, and the followed blueprint is no longer what Update would apply.
-    expect(button('Update').disabled).toBe(true)
+    expect(button('更新').disabled).toBe(true)
 
     await paste('budget')
     expect(container.textContent).toContain('Budget tracker')
-    await click('Update')
+    await click('更新')
 
     expect(applyBlueprint).toHaveBeenCalledExactlyOnceWith('budget', { modelId: 'opus' })
     expect(onProposed).toHaveBeenCalledExactlyOnceWith(8)
@@ -357,7 +357,7 @@ describe('UpdateFromBlueprintDialog', () => {
     await open(TRIP_UPSTREAM)
     await switchTo('budget')
     await act(async () => { radio(FOLLOWED).click() })
-    await click('Update')
+    await click('更新')
 
     expect(applyBlueprint).toHaveBeenCalledExactlyOnceWith('trip', { modelId: 'opus' })
   })
@@ -367,17 +367,17 @@ describe('UpdateFromBlueprintDialog', () => {
 
     await open(undefined)
     expect(container.querySelector('input[type="radio"]')).toBeNull()
-    expect(button('Update').disabled).toBe(true)
+    expect(button('更新').disabled).toBe(true)
 
     await paste('my blueprint')
-    expect(container.textContent).toContain('That is not a blueprint ID or link.')
+    expect(container.textContent).toContain('这不是有效的蓝图 ID 或链接。')
 
     await paste('https://gadgets.example/blueprint/missing')
-    expect(container.textContent).toContain('No blueprint was found with that ID.')
-    expect(button('Update').disabled).toBe(true)
+    expect(container.textContent).toContain('未找到该 ID 对应的蓝图。')
+    expect(button('更新').disabled).toBe(true)
 
     await paste('https://gadgets.example/blueprint/budget')
-    await click('Update')
+    await click('更新')
     expect(applyBlueprint).toHaveBeenCalledExactlyOnceWith('budget', { modelId: 'opus' })
   })
 
@@ -387,14 +387,14 @@ describe('UpdateFromBlueprintDialog', () => {
 
     await open(TRIP_UPSTREAM)
     await switchTo('budget')
-    await click('Update')
+    await click('更新')
 
     expect(applyBlueprint).toHaveBeenCalledExactlyOnceWith('budget', { modelId: 'opus' })
-    expect(container.textContent).toContain('This gadget shares no history with Budget tracker.')
-    expect(bannerText()).toContain('Your own changes may be undone')
+    expect(container.textContent).toContain('此应用与 Budget tracker 没有共同历史。')
+    expect(bannerText()).toContain('你自己的更改可能会被撤销')
     expect(onProposed).not.toHaveBeenCalled()
 
-    await click('Update anyway')
+    await click('仍然更新')
 
     expect(applyBlueprint).toHaveBeenLastCalledWith('budget', { modelId: 'opus', allowUnrelated: true })
     expect(onProposed).toHaveBeenCalledExactlyOnceWith(11)
@@ -405,8 +405,8 @@ describe('UpdateFromBlueprintDialog', () => {
 
     await open(TRIP_UPSTREAM)
     await switchTo('budget')
-    await click('Update')
-    await click('Back')
+    await click('更新')
+    await click('返回')
 
     expect(applyBlueprint).toHaveBeenCalledTimes(1)
     expect(radio(SWITCH).checked).toBe(true)
@@ -418,9 +418,9 @@ describe('UpdateFromBlueprintDialog', () => {
     applyBlueprint.mockResolvedValue({ outcome: 'upToDate' })
 
     await open(TRIP_UPSTREAM)
-    await click('Update')
+    await click('更新')
 
-    expect(bannerText()).toContain('This gadget already has the latest version of Trip planner.')
+    expect(bannerText()).toContain('此应用已使用 Trip planner 的最新版本。')
     expect(onProposed).not.toHaveBeenCalled()
   })
 
@@ -428,9 +428,9 @@ describe('UpdateFromBlueprintDialog', () => {
     applyBlueprint.mockResolvedValue({ outcome: 'baseUnavailable' })
 
     await open(TRIP_UPSTREAM)
-    await click('Update')
+    await click('更新')
 
-    expect(bannerText()).toContain('its files are not available to merge against')
+    expect(bannerText()).toContain('无法获取该版本的文件来合并')
     expect(onProposed).not.toHaveBeenCalled()
   })
 
@@ -442,12 +442,12 @@ describe('UpdateFromBlueprintDialog', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     await open(TRIP_UPSTREAM)
-    await click('Update')
+    await click('更新')
 
     expect(bannerText()).toContain(gadgetChanged)
     expect(onProposed).not.toHaveBeenCalled()
 
-    await click('Try again')
+    await click('重试')
 
     expect(applyBlueprint).toHaveBeenCalledTimes(2)
     expect(applyBlueprint).toHaveBeenLastCalledWith('trip', { modelId: 'opus' })
@@ -462,11 +462,11 @@ describe('UpdateFromBlueprintDialog', () => {
     applyBlueprint.mockReturnValue(pending.promise)
 
     await open(TRIP_UPSTREAM)
-    await click('Update')
+    await click('更新')
     await click('dismiss dialog')
 
     expect(onClose).not.toHaveBeenCalled()
-    expect(button('Cancel').disabled).toBe(true)
+    expect(button('取消').disabled).toBe(true)
 
     await act(async () => { pending.resolve({ outcome: 'upToDate' }) })
     await click('dismiss dialog')
@@ -480,11 +480,11 @@ describe('UpdateFromBlueprintDialog', () => {
 
     await open(TRIP_UPSTREAM)
 
-    expect(container.textContent).toContain('The blueprint this gadget follows is no longer available')
-    expect(button('Update').disabled).toBe(true)
+    expect(container.textContent).toContain('此应用跟随的蓝图已不可用')
+    expect(button('更新').disabled).toBe(true)
 
     await paste('budget')
-    expect(button('Update').disabled).toBe(false)
+    expect(button('更新').disabled).toBe(false)
   })
 
   it('can reload the followed blueprint after failing to', async () => {
@@ -492,9 +492,9 @@ describe('UpdateFromBlueprintDialog', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     await open(TRIP_UPSTREAM)
-    expect(bannerText()).toContain('The blueprint could not be loaded')
+    expect(bannerText()).toContain('无法加载蓝图')
 
-    await click('Try again')
+    await click('重试')
 
     expect(radio(FOLLOWED).checked).toBe(true)
     consoleError.mockRestore()

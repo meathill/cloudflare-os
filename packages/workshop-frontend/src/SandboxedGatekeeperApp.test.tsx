@@ -259,7 +259,7 @@ describe("SandboxedGatekeeperApp navigation", () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'previous@example.com');
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    const done = () => [...container!.querySelectorAll('button')].find(button => button.textContent === 'Done')!;
+    const done = () => [...container!.querySelectorAll('button')].find(button => button.textContent === '完成')!;
     let second!: Promise<void>;
     await act(async () => {
       done().click();

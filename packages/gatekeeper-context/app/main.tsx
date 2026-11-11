@@ -2,7 +2,7 @@
 // ContextApi RPC capability.
 
 import { createRoot } from 'react-dom/client'
-import { TooltipProvider, Toasty } from '@cloudflare/kumo'
+import { KumoLocaleProvider, TooltipProvider, Toasty } from '@cloudflare/kumo'
 import { RpcTarget, newMessagePortRpcSession } from 'capnweb'
 import type { RpcStub } from 'capnweb'
 import type { ContextApi } from '../src/context-types'
@@ -63,7 +63,7 @@ function main() {
       handled: false, severity: 'fatal', captureMechanism: 'react',
     }),
   }).render(
-    <ErrorBoundary><ContextApiProvider value={host.ui}>
+    <KumoLocaleProvider translations={{ label: { optional: '可选', tooltip: '提示' }, layerDialog: { close: '关闭', cancel: '取消' } }}><ErrorBoundary><ContextApiProvider value={host.ui}>
       <SelectUsersProvider value={selectUsers}>
         <PresentationProvider setPresenting={(active) => host.setPresenting(active)}>
           <TooltipProvider>
@@ -73,7 +73,7 @@ function main() {
           </TooltipProvider>
         </PresentationProvider>
       </SelectUsersProvider>
-    </ContextApiProvider></ErrorBoundary>,
+    </ContextApiProvider></ErrorBoundary></KumoLocaleProvider>,
   )
 }
 

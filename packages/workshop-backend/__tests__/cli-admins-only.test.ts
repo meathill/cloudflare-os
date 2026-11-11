@@ -61,6 +61,7 @@ async function connect(deploymentEnv: Cloudflare.Env, userAgent: string | undefi
   Object.defineProperty(ctx, "exports", { value: Object.create(ctx.exports, {
     AdminSettings: { value: { getByName: () => ({
       ensureBundledBlueprintsInstalled: async () => true,
+      recordUserActivity: async () => {},
       updateAdminConfig: async (patch: object, actor: AdminSettingActor) => {
         configChanges.push({ patch, actor });
       },

@@ -179,9 +179,9 @@ describe('GadgetExportMenu', () => {
     await act(async () => { button('open export menu')?.click() })
     await act(async () => { button('CSV')?.click() })
 
-    const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Export Gadget"]')
+    const trigger = container.querySelector<HTMLButtonElement>('[aria-label="导出应用"]')
     expect(trigger?.disabled).toBe(true)
-    expect(trigger?.closest('[data-tooltip]')?.getAttribute('data-tooltip')).toBe('Exporting to CSV')
+    expect(trigger?.closest('[data-tooltip]')?.getAttribute('data-tooltip')).toBe('正在导出为 CSV')
 
     await act(async () => {
       finishExport()
@@ -189,7 +189,7 @@ describe('GadgetExportMenu', () => {
     })
 
     expect(trigger?.disabled).toBe(false)
-    expect(trigger?.closest('[data-tooltip]')?.getAttribute('data-tooltip')).toBe('Export Gadget')
+    expect(trigger?.closest('[data-tooltip]')?.getAttribute('data-tooltip')).toBe('导出应用')
   })
 
   it('shows an empty state without hiding or disabling the export button', async () => {
@@ -202,14 +202,14 @@ describe('GadgetExportMenu', () => {
     await act(async () => {
       root.render(<GadgetExportMenu gadget={client} gadgetTitle="Report" />)
     })
-    const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Export Gadget"]')
+    const trigger = container.querySelector<HTMLButtonElement>('[aria-label="导出应用"]')
     expect(trigger).not.toBeNull()
     expect(trigger?.disabled).toBe(false)
 
     await act(async () => { button('open export menu')?.click() })
 
-    expect(container.textContent).toContain('This Gadget does not support exports.')
-    expect(container.querySelector('[aria-label="Export Gadget"]')).not.toBeNull()
+    expect(container.textContent).toContain('此应用不支持导出。')
+    expect(container.querySelector('[aria-label="导出应用"]')).not.toBeNull()
   })
 
   it('does not render the control without a selected Gadget', async () => {
@@ -217,7 +217,7 @@ describe('GadgetExportMenu', () => {
       root.render(<GadgetExportMenu gadget={null} gadgetTitle="Gadget" />)
     })
 
-    expect(container.querySelector('[aria-label="Export Gadget"]')).toBeNull()
+    expect(container.querySelector('[aria-label="导出应用"]')).toBeNull()
   })
 
   it('loads fresh formats on every open and ignores a response after close', async () => {
@@ -237,9 +237,9 @@ describe('GadgetExportMenu', () => {
     })
     await act(async () => { button('open export menu')?.click() })
 
-    expect(container.querySelector('[role="status"][aria-label="Loading export formats"]')).not.toBeNull()
+    expect(container.querySelector('[role="status"][aria-label="正在加载导出格式"]')).not.toBeNull()
     await act(async () => { button('close export menu')?.click() })
-    expect(container.querySelector('[role="status"][aria-label="Loading export formats"]')).toBeNull()
+    expect(container.querySelector('[role="status"][aria-label="正在加载导出格式"]')).toBeNull()
 
     await act(async () => { button('open export menu')?.click() })
     expect(container.textContent).toContain('Second sheet')
@@ -274,10 +274,10 @@ describe('GadgetExportMenu', () => {
       })
       await act(async () => { button('open export menu')?.click() })
 
-      expect(container.textContent).toContain('Export formats could not be loaded.')
-      expect(button('Try again')).toBeDefined()
+      expect(container.textContent).toContain('无法加载导出格式。')
+      expect(button('重试')).toBeDefined()
 
-      await act(async () => { button('Try again')?.click() })
+      await act(async () => { button('重试')?.click() })
 
       expect(button('HTML')).toBeDefined()
       expect(getExportFormats).toHaveBeenCalledTimes(2)

@@ -63,15 +63,15 @@ it("gives workspace rows the nav width without reserving separate badge/action c
   await expect.element(page.getByRole("link", {name: /Compact workspace/})
     .getByRole("img", {name: "1 unread message"})).toBeVisible();
 
-  await act(async () => userEvent.click(page.getByRole("button", { name: "Workspace actions" })));
+  await act(async () => userEvent.click(page.getByRole("button", { name: "工作区操作" })));
   await expect.element(page.getByRole("menuitem", { name: "Mark workspace read" })).toBeVisible();
   expect(router.state.location.pathname).toBe("/");
   await act(async () => userEvent.click(page.getByRole("menuitem", { name: "Mark workspace read" })));
   expect(mock.markWorkspaceRead).toHaveBeenCalledExactlyOnceWith("workspace");
 
-  await act(async () => userEvent.click(page.getByRole("button", { name: "Workspace actions" })));
-  await act(async () => userEvent.click(page.getByRole("menuitem", { name: "Mute notifications" })));
-  await act(async () => userEvent.click(page.getByRole("menuitem", { name: "For 1 hour", exact: true })));
+  await act(async () => userEvent.click(page.getByRole("button", { name: "工作区操作" })));
+  await act(async () => userEvent.click(page.getByRole("menuitem", { name: "静音通知" })));
+  await act(async () => userEvent.click(page.getByRole("menuitem", { name: "1 小时", exact: true })));
   expect(mock.setMute).toHaveBeenCalledExactlyOnceWith("workspace", { until: expect.any(Date) });
   expect(mock.onMuteChange).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ id: "workspace" }), { until: expect.any(Date) });

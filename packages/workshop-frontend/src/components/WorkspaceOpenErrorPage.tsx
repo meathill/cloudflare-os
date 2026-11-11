@@ -11,26 +11,26 @@ export type WorkspaceOpenFailureKind =
 
 const CONTENT = {
   'access-denied': {
-    title: "You don't have access to this workspace",
-    message: 'Ask the workspace owner to grant you access, then try again.',
+    title: "你无权访问此工作区",
+    message: '请联系工作区所有者授予访问权限，然后重试。',
     Icon: Lock,
     retryable: true,
   },
   'not-found': {
-    title: 'Workspace not found',
-    message: 'The link may be incorrect, or the workspace may have been deleted.',
+    title: '未找到工作区',
+    message: '链接可能有误，或工作区已被删除。',
     Icon: MagnifyingGlass,
     retryable: false,
   },
   'share-links-disabled': {
-    title: 'Share links are turned off for this workspace',
-    message: 'Ask the workspace owner to add you directly, then try again.',
+    title: '此工作区已关闭分享链接',
+    message: '请联系工作区所有者直接添加你，然后重试。',
     Icon: LinkBreak,
     retryable: true,
   },
   unexpected: {
-    title: "We couldn't load this workspace",
-    message: 'Try again. If the problem continues, return to your workspaces.',
+    title: "无法加载此工作区",
+    message: '请重试。如果问题仍然存在，请返回工作区列表。',
     Icon: WarningCircle,
     retryable: true,
   },
@@ -97,11 +97,11 @@ export default function WorkspaceOpenErrorPage({ kind, onRetry, onGoToWorkspaces
             className="!h-9"
             onClick={onGoToWorkspaces}
           >
-            Go to workspaces
+            前往工作区
           </WorkshopButton>
           {retryable && (
             <WorkshopButton tone="primary" onClick={onRetry}>
-              Try again
+              重试
             </WorkshopButton>
           )}
         </div>

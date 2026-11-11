@@ -128,7 +128,7 @@ class GatekeeperAppHostImpl extends RpcTarget {
       maxCallsPerMinute: 600,
       maxPendingCalls: 128,
       onRateLimit: 'throttle',
-      label: 'Gatekeeper app',
+      label: '连接服务应用',
     })
     this.#ui = ui
     this.#disposeRateLimiter = dispose
@@ -454,7 +454,7 @@ export default function SandboxedGatekeeperApp({ frame, gatekeeperVendorId }: {
         // allow-same-origin (the frame stays an opaque origin), and the app's CSP keeps connect-src 'none'.
         sandbox="allow-scripts allow-modals"
         allow="clipboard-write"
-        title="Gatekeeper app"
+        title="连接服务应用"
         style={iframeStyleForOverlay(overlay)}
       />
       {userPicker && (

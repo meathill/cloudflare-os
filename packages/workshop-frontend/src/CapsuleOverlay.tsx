@@ -105,7 +105,7 @@ export default function CapsuleOverlay({ url, onSelectAccount, onRefine, onDismi
         aria-hidden="true"
         className="m-0 flex items-center justify-end gap-1.5 border-t border-kumo-line px-3.5 py-1.5 text-[11.5px] leading-4 text-kumo-subtle"
       >
-        <KeyHint keyName="Esc" /> to dismiss
+        <KeyHint keyName="Esc" /> 关闭
       </p>
     </div>
   )

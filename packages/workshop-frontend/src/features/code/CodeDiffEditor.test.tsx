@@ -126,10 +126,12 @@ describe('CodeDiffEditor', () => {
   it('re-diffs after locally-authored edits (StrictMode remount must not wedge the rAF)', async () => {
     const session = new FakeSession('hello\nworld')
     await mount(session, 'hello\nworld')
-    expect(container.textContent).toContain('Unchanged')
+    expect(container.textContent).toContain('无更改')
 
     const view = EditorView.findFromDOM(container.querySelector('.cm-editor') as HTMLElement)
     expect(view).not.toBeNull()
+    expect(view!.state.phrase('Find')).toBe('查找')
+    expect(view!.state.phrase('replace all')).toBe('全部替换')
     // A user edit: a plain transaction with no remote annotation, replacing line 2.
     await act(async () => {
       view!.dispatch({ changes: { from: 6, to: 11, insert: 'there' } })
@@ -158,13 +160,13 @@ describe('CodeDiffEditor', () => {
     await flushFrames()
     expect(container.querySelector('.cm-content')?.textContent).toContain('world')
     expect(container.querySelector('.gadgets-deleted-code-zone')).toBeNull()
-    expect(container.textContent).toContain('Unchanged')
+    expect(container.textContent).toContain('无更改')
   })
 
   it('reports an added file with no deletion zones', async () => {
     const session = new FakeSession('brand\nnew')
     await mount(session, null)
-    expect(container.textContent).toContain('Added')
+    expect(container.textContent).toContain('已新增')
     expect(container.textContent).toContain('+2')
     expect(container.querySelector('.gadgets-deleted-code-zone')).toBeNull()
   })
@@ -176,7 +178,7 @@ describe('CodeDiffEditor', () => {
       session.emitRemote({ remove: true })
     })
     await flushFrames()
-    expect(container.textContent).toContain('Deleted')
+    expect(container.textContent).toContain('已删除')
     expect(container.querySelector('.gadgets-deleted-code-zone')?.textContent)
       .toBe('helloworld')
   })
@@ -189,6 +191,6 @@ describe('CodeDiffEditor', () => {
         </ThemeProvider>,
       )
     })
-    expect(container.textContent).toContain('Select a file to view changes')
+    expect(container.textContent).toContain('选择文件以查看更改')
   })
 })

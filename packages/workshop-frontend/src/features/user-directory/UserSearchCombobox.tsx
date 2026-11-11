@@ -132,8 +132,8 @@ export function UserSearchCombobox({
         ref={inputRef}
         type="search"
         role={searchEnabled ? 'combobox' : undefined}
-        placeholder={searchEnabled ? 'Search by name or email' : 'Username or email'}
-        aria-label={searchEnabled ? 'Search people' : 'Username or email'}
+        placeholder={searchEnabled ? '按姓名或邮箱搜索' : '用户名或邮箱'}
+        aria-label={searchEnabled ? '搜索用户' : '用户名或邮箱'}
         aria-autocomplete={searchEnabled ? 'list' : undefined}
         aria-expanded={searchEnabled ? open : undefined}
         aria-controls={open ? listboxId : undefined}
@@ -163,25 +163,25 @@ export function UserSearchCombobox({
       />
       {!searchEnabled && !disabled && !selected && query !== '' && (
         <button type="button" onClick={submitCurrentIdentifier} className="mt-2 text-[13px] underline">
-          Select {query}
+          选择 {query}
         </button>
       )}
       {open && (
         <div
           id={listboxId}
           role="listbox"
-          aria-label="Matching people"
+          aria-label="匹配的用户"
           aria-busy={searchState.status === 'loading'}
           className="mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-kumo-line/70 bg-kumo-base p-2"
         >
           {searchState.status === 'loading' ? (
-            <p role="status" className="px-3 py-2 text-[12px] text-kumo-subtle">Searching…</p>
+            <p role="status" className="px-3 py-2 text-[12px] text-kumo-subtle">正在搜索…</p>
           ) : searchState.status === 'failed' ? (
             <p role="status" className="px-3 py-2 text-[12px] text-kumo-danger">
-              User search is temporarily unavailable.
+              暂时无法搜索用户。
             </p>
           ) : results.length === 0 ? (
-            <p role="status" className="px-3 py-2 text-[12px] text-kumo-subtle">No users found.</p>
+            <p role="status" className="px-3 py-2 text-[12px] text-kumo-subtle">未找到用户。</p>
           ) : results.map((user, index) => (
             <button
               key={user.id}

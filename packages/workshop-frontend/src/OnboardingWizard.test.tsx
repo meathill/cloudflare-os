@@ -71,8 +71,8 @@ const flipSwitch = async (name: string) => {
 
 async function openConnectionsStep() {
   await view.render(<OnboardingWizard onComplete={() => {}} />)
-  await click(/^Next$/)
-  await click(/^Next$/)
+  await click(/^下一步$/)
+  await click(/^下一步$/)
 }
 
 describe('OnboardingWizard built-in tools', () => {
@@ -80,13 +80,13 @@ describe('OnboardingWizard built-in tools', () => {
       async () => {
     const api = fakeApi()
     await openConnectionsStep()
-    await click(/^Next$/)
-    expect(button(/Let.s build/)).toBeUndefined()
+    await click(/^下一步$/)
+    expect(button(/开始创作/)).toBeUndefined()
 
     await api.discovery.resolve(tools)
     await flipSwitch('Web Search')
-    await click(/^Next$/)
-    await click(/Let.s build/)
+    await click(/^下一步$/)
+    await click(/开始创作/)
 
     expect(api.provisionAmbientAccount.mock.calls).toEqual([['scheduler']])
     expect(api.completeOnboarding).toHaveBeenCalledOnce()
@@ -100,11 +100,11 @@ describe('OnboardingWizard built-in tools', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     await openConnectionsStep()
     await api.discovery.resolve(tools)
-    await click(/^Next$/)
-    await click(/Let.s build/)
+    await click(/^下一步$/)
+    await click(/开始创作/)
 
     expect(api.completeOnboarding).toHaveBeenCalledOnce()
     expect(addToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Couldn't turn on Web Search.", variant: 'warning' }))
+      expect.objectContaining({ title: "无法启用 Web Search。", variant: 'warning' }))
   })
 })

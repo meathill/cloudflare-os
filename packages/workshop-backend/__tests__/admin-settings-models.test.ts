@@ -1267,6 +1267,7 @@ describe("AdminSettings.testGatewayProvider", () => {
 
   // pi's Google adapter reports a refusal as the response body alone, which names no status.
   it("reports a refused Google request without a status", async () => {
+    const [model] = Object.keys(SUGGESTED_MODELS.google);
     const { test, fetch: binding } = tested(() => completion("OK"));
     const urls: string[] = [];
     const skipCache: (string | null)[] = [];
@@ -1285,10 +1286,10 @@ describe("AdminSettings.testGatewayProvider", () => {
       // Over HTTPS too, a gateway that caches responses is told to ask the provider.
       expect(skipCache).toEqual(["true"]);
       expect(result).toStrictEqual({
-        model: "gemini-3.6-flash", ok: false,
+        model, ok: false,
         message: '{"error":{"code":401,"message":"API key not valid.","status":"UNAUTHENTICATED"}}',
       });
-      expect(entries).toMatchObject([{ modelId: "gemini-3.6-flash", outcome: "error" }]);
+      expect(entries).toMatchObject([{ modelId: model, outcome: "error" }]);
       expect(entries[0]!.statusCode).toBeUndefined();
     } finally {
       fetched.mockRestore();
@@ -1298,11 +1299,12 @@ describe("AdminSettings.testGatewayProvider", () => {
 
   it("reports a provider that needs a token the deployment lacks, without a request",
       async () => {
+    const [model] = Object.keys(SUGGESTED_MODELS.google);
     const { test, fetch } = tested(() => completion("OK"), { CF_AI_GATEWAY_API_TOKEN: undefined });
     const { result, entries } = await test("google");
-    expect(result).toStrictEqual({ model: "gemini-3.6-flash", ok: false, message: NO_TOKEN });
+    expect(result).toStrictEqual({ model, ok: false, message: NO_TOKEN });
     expect(fetch).not.toHaveBeenCalled();
-    expect(entries).toMatchObject([{ modelId: "gemini-3.6-flash", outcome: "error" }]);
+    expect(entries).toMatchObject([{ modelId: model, outcome: "error" }]);
     expect(entries[0]!.statusCode).toBeUndefined();
   });
 

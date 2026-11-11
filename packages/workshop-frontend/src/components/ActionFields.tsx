@@ -9,7 +9,7 @@ export function entryFields(entry: ActionLogEntry): ActionField[] {
 
 /** A compact count for surfaces that show the prose but leave the fields to a fuller view. */
 export function fieldCountLabel(count: number): string {
-  return `${count} field${count === 1 ? '' : 's'}`
+  return `${count} 个字段`
 }
 
 const SYNTAX_LABELS = { markdown: 'Markdown', html: 'HTML', sql: 'SQL' } as const
@@ -50,7 +50,7 @@ const ExactName = ({ text, className = '' }: { text: string, className?: string 
 }
 
 const formatSize = (size: number) => {
-  const bytes = `${size} byte${size === 1 ? '' : 's'}`
+  const bytes = `${size} 字节`
   return size < 1024 ? bytes : `${formatAttachmentSize(size)} (${bytes})`
 }
 
@@ -58,11 +58,11 @@ const FieldValue = ({ field, uncapped }: { field: ActionField, uncapped?: boolea
   switch (field.kind) {
     case 'inline':
       return field.value === ''
-        ? <Placeholder>(empty)</Placeholder>
+        ? <Placeholder>（空）</Placeholder>
         : <code className={codeClass}>{field.value}</code>
     case 'text':
     case 'json': {
-      if (field.value === '') return <Placeholder>(empty)</Placeholder>
+      if (field.value === '') return <Placeholder>（空）</Placeholder>
       const syntax = field.kind === 'json' ? 'JSON' : field.syntax && SYNTAX_LABELS[field.syntax]
       return (
         <>
@@ -71,14 +71,14 @@ const FieldValue = ({ field, uncapped }: { field: ActionField, uncapped?: boolea
             captions={[
               ...(syntax ? [syntax] : []),
               // A CR renders as nothing, so each CRLF would otherwise read as a plain line break.
-              ...(field.value.includes('\r\n') ? ['CRLF line breaks'] : []),
+              ...(field.value.includes('\r\n') ? ['CRLF 换行符'] : []),
             ]}
           />
         </>
       )
     }
     case 'list':
-      if (field.items.length === 0) return <Placeholder>(none)</Placeholder>
+      if (field.items.length === 0) return <Placeholder>（无）</Placeholder>
       return (
         <ul className="m-0 flex list-none flex-col items-start gap-1 p-0">
           {field.items.map((item, index) => (
@@ -96,13 +96,13 @@ const FieldValue = ({ field, uncapped }: { field: ActionField, uncapped?: boolea
             <ExactName text={field.mediaType} /> · {formatSize(field.size)}
           </p>
           {(UNDISPLAYABLE.test(field.name) || UNDISPLAYABLE.test(field.mediaType)) && (
-            <p className={`m-0 mt-0.5 ${captionClass}`}>Shown escaped: contains invisible characters</p>
+            <p className={`m-0 mt-0.5 ${captionClass}`}>已转义显示：包含不可见字符</p>
           )}
           {field.sha256 && (
             <p className={`m-0 mt-0.5 break-all font-mono ${captionClass}`}>SHA-256 {field.sha256}</p>
           )}
           {field.origin === 'agent' && (
-            <p className="m-0 mt-1 text-[12px] leading-4 text-kumo-warning">Contents not shown</p>
+            <p className="m-0 mt-1 text-[12px] leading-4 text-kumo-warning">内容未显示</p>
           )}
         </div>
       )
@@ -126,13 +126,13 @@ export const ActionFields = ({ fields, uncapped, className = '' }: {
           <dt className="mb-1 text-[12px] font-semibold leading-4 text-kumo-default">{field.label}</dt>
           <dd className="m-0 min-w-0">
             {field.truncated?.shownBytes === 0 ? (
-              <Placeholder>Omitted: description limit reached</Placeholder>
+              <Placeholder>已省略：达到描述长度上限</Placeholder>
             ) : (
               <>
                 <FieldValue field={field} uncapped={uncapped} />
                 {field.truncated && (
                   <p className={`m-0 mt-1 ${captionClass}`}>
-                    Showing {field.truncated.shownBytes} of {field.truncated.totalBytes} bytes
+                    显示 {field.truncated.shownBytes} / {field.truncated.totalBytes} 字节
                   </p>
                 )}
               </>

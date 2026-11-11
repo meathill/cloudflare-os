@@ -110,10 +110,6 @@ function stripFrontmatter(source: string): string {
   return source.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n?/, "");
 }
 
-function pluralize(count: number, noun: string): string {
-  return `${count} ${noun}${count !== 1 ? "s" : ""}`;
-}
-
 // Bounded-concurrency helper for bulk RPC operations.
 async function runWithConcurrency<T>(
   items: T[],
@@ -173,12 +169,12 @@ function CollectionIconTile({
 function formatRelativeTime(date: Date): string {
   const diff = Date.now() - date.getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes} 分钟前`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours} 小时前`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${days} 天前`;
 }
 
 // ---------------------------------------------------------------------------
@@ -273,7 +269,7 @@ function FieldLabel({
   return (
     <label className="mb-1.5 flex items-center gap-1.5 text-[12px] leading-4 font-medium tracking-[-0.2px] text-kumo-subtle">
       <span>{children}</span>
-      {optional ? <span className="font-normal text-kumo-inactive">Optional</span> : null}
+      {optional ? <span className="font-normal text-kumo-inactive">可选</span> : null}
     </label>
   );
 }
@@ -334,7 +330,7 @@ function CollectionNameField({
 }) {
   return (
     <>
-      <FieldLabel>Name</FieldLabel>
+      <FieldLabel>名称</FieldLabel>
       {/* Icon tile + name share one focus-within pill so the emoji reads as part of the input. */}
       <div className="flex items-center gap-2 rounded-xl border-2 border-kumo-line bg-kumo-base p-1.5 transition-[border-color,box-shadow] duration-150 ease-out focus-within:border-kumo-ring focus-within:ring-1 focus-within:ring-kumo-ring/15">
         <CollectionIconPicker value={icon} onChange={onIconChange} variant="inline" />
@@ -344,7 +340,7 @@ function CollectionNameField({
           onKeyDown={(e) => {
             if (e.key === "Enter") onEnter?.();
           }}
-          placeholder="A short name, e.g., Brand guidelines"
+          placeholder="简短的名称，例如品牌指南"
           autoFocus={autoFocus}
           className="h-9 min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 pr-2 text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-default outline-none placeholder:text-kumo-inactive"
         />
@@ -362,12 +358,12 @@ function CollectionDescriptionField({
 }) {
   return (
     <>
-      <FieldLabel optional>Description</FieldLabel>
+      <FieldLabel optional>描述</FieldLabel>
       {/* `ring-0` drops Kumo InputArea's base ring so it matches the name pill's single border. */}
       <WorkshopInputArea
         value={value}
         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
-        placeholder="What it contains and when to use it, e.g., voice and tone rules for customer-facing writing"
+        placeholder="包含什么内容以及何时使用，例如面向客户的写作语气规范"
         rows={4}
         className="w-full border-2 ring-0 !rounded-xl transition-[border-color,box-shadow] duration-150 ease-out"
       />
@@ -396,7 +392,7 @@ function ModalHeader({
       </div>
       <Dialog.Close
         render={(props) => (
-          <WorkshopIconButton {...props} aria-label="Close">
+          <WorkshopIconButton {...props} aria-label="关闭">
             <X size={18} />
           </WorkshopIconButton>
         )}
@@ -416,16 +412,15 @@ function DeletePermanentlyDescription({
 }) {
   return (
     <>
-      This permanently deletes{" "}
+      此操作将永久删除{" "}
       <span className="font-medium text-kumo-default">{name}</span>
       {documents !== undefined ? (
         <>
-          {" "}and all{" "}
-          <span className="font-medium text-kumo-danger">{pluralize(documents, "document")}</span>{" "}
-          inside it
+          {" "}及其中全部{" "}
+          <span className="font-medium text-kumo-danger">{documents} 个文档</span>{" "}
         </>
       ) : null}
-      . This cannot be undone.
+      。此操作不可撤销。
     </>
   );
 }
@@ -541,7 +536,7 @@ function CollectionOverview({
                   {metadata.title}
                 </h1>
                 <p className="mt-1 text-[13px] leading-[18px] tracking-[-0.2px] text-kumo-subtle">
-                  Context collection
+                  知识集合
                 </p>
               </div>
             </div>
@@ -553,7 +548,7 @@ function CollectionOverview({
                   onClick={onRefreshSource}
                   loading={refreshingSource}
                 >
-                  Refresh
+                  刷新
                 </WorkshopButton>
               )}
               <CollectionOptionsMenu
@@ -569,7 +564,7 @@ function CollectionOverview({
           </div>
 
           <div className="mt-9 grid grid-cols-2 gap-x-8 gap-y-5 @xl:grid-cols-4">
-            <MetaField label="Source">
+            <MetaField label="来源">
               <span className="inline-flex items-center gap-1.5">
                 {isPublic
                   ? <Buildings size={12} className="shrink-0" />
@@ -577,25 +572,25 @@ function CollectionOverview({
                   ? <Users size={12} className="shrink-0" />
                   : <User size={12} className="shrink-0" />}
                 {isPublic
-                  ? "Your organization"
+                  ? "你的组织"
                   : sharing && !sharing.hasOwner
-                  ? "No active owner"
+                  ? "没有有效的所有者"
                   : sharedRole
-                  ? `Shared with you · ${COLLECTION_ROLE_LABELS[sharedRole]}`
-                  : "You"}
+                  ? `与你共享 · ${COLLECTION_ROLE_LABELS[sharedRole]}`
+                  : "你"}
               </span>
             </MetaField>
-            <MetaField label="Access">
+            <MetaField label="访问权限">
               {isPublic
-                ? "Everyone (required)"
+                ? "所有人（必选）"
                 : sharing?.everyoneCanView
-                ? "Anyone in your organization"
+                ? "组织内所有人"
                 : sharing && sharing.members.length > 1
-                ? `${sharing.members.length} people`
-                : "Private to you"}
+                ? `${sharing.members.length} 人`
+                : "仅你可见"}
             </MetaField>
-            <MetaField label="Documents">{metadata.documentCount}</MetaField>
-            <MetaField label={isSynced ? "Refreshed" : "Updated"} align="right">
+            <MetaField label="文档">{metadata.documentCount}</MetaField>
+            <MetaField label={isSynced ? "已刷新" : "已更新"} align="right">
               {metadata.content.source === "git"
                 ? formatRelativeTime(metadata.content.lastRefreshedAt)
                 : formatRelativeTime(metadata.lastUpdated)}
@@ -606,17 +601,17 @@ function CollectionOverview({
         {isSynced && !supportsGitCollections && (
           <section className="mt-8 rounded-xl border border-kumo-line bg-kumo-elevated/60 px-5 py-4">
             <p className="text-[13px] font-medium tracking-[-0.2px] text-kumo-default">
-              Git synchronization unavailable
+              Git 同步不可用
             </p>
             <p className="mt-1 text-[13px] leading-5 tracking-[-0.2px] text-kumo-subtle">
-              Git content is read-only and shows its most recently cached version.
+              Git 内容为只读，显示最近缓存的版本。
             </p>
           </section>
         )}
 
         <section className="mt-9 border-t border-kumo-line pt-8">
           <p className="mb-3 text-[13px] font-medium leading-none tracking-[-0.2px] text-kumo-subtle">
-            Description
+            描述
           </p>
           {metadata.description ? (
             <p className="max-w-3xl text-[15px] leading-7 tracking-[-0.2px] text-kumo-default">
@@ -624,7 +619,7 @@ function CollectionOverview({
             </p>
           ) : (
             <p className="text-[13px] italic leading-5 text-kumo-inactive">
-              No description yet.
+              暂无描述。
             </p>
           )}
         </section>
@@ -637,16 +632,16 @@ function CollectionOverview({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-medium tracking-[-0.2px] text-kumo-default">
-                  No files in this collection
+                  此知识集合中没有文件
                 </p>
                 <p className="mt-1 max-w-xl text-[13px] leading-5 tracking-[-0.2px] text-kumo-subtle">
                   {isSynced
                     ? supportsGitCollections
-                      ? "This git mirror is empty. Mirror content from git, then refresh."
-                      : "No Git content was cached before synchronization became unavailable."
+                      ? "Git 镜像为空，请从 Git 镜像内容后刷新。"
+                      : "同步不可用前未缓存 Git 内容。"
                     : permissions.canEdit
-                    ? "Use the + in the Files panel to create or upload skills or files. Agents use the names and descriptions to decide what to read."
-                    : "This collection is empty."}
+                    ? "使用文件面板中的 + 创建或上传技能或文件。智能体会根据名称和描述决定读取哪些内容。"
+                    : "此知识集合为空。"}
                 </p>
               </div>
             </div>
@@ -681,8 +676,8 @@ function CollectionOptionsMenu({
     <KebabMenu
       trigger={
         <WorkshopIconButton
-          aria-label="Collection options"
-          title="Options"
+          aria-label="知识集合选项"
+          title="选项"
           className="!h-9 !w-9 data-[popup-open]:bg-kumo-tint data-[popup-open]:text-kumo-default"
         >
           <DotsThree size={18} weight="bold" />
@@ -695,7 +690,7 @@ function CollectionOptionsMenu({
           onClick={onEditDetails}
           className={MENU_ITEM}
         >
-          Edit details
+          编辑详情
         </DropdownMenu.Item>
       )}
       {canEdit && isSynced && supportsGitCollections && (
@@ -704,7 +699,7 @@ function CollectionOptionsMenu({
           onClick={onManageGitTokens}
           className={MENU_ITEM}
         >
-          Manage git tokens
+          管理 Git 令牌
         </DropdownMenu.Item>
       )}
       {canShare && (
@@ -713,7 +708,7 @@ function CollectionOptionsMenu({
           onClick={onShare}
           className={MENU_ITEM}
         >
-          Share
+          分享
         </DropdownMenu.Item>
       )}
       {canDelete && (canEdit || canShare) && <DropdownMenu.Separator />}
@@ -723,7 +718,7 @@ function CollectionOptionsMenu({
           onClick={onDelete}
           className={`${MENU_ITEM_DANGER} text-kumo-danger`}
         >
-          Delete collection
+          删除知识集合
         </DropdownMenu.Item>
       )}
     </KebabMenu>
@@ -811,17 +806,17 @@ function CollectionSettingsModal({
       return;
     }
     if (!title.trim()) {
-      toasts.add({ title: "Name can't be empty", variant: "error" });
+      toasts.add({ title: "名称不能为空", variant: "error" });
       return;
     }
     setSaving(true);
     try {
       await context.updateContextCollection(collectionId, updates);
-      toasts.add({ title: "Collection updated", variant: "success" });
+      toasts.add({ title: "知识集合已更新", variant: "success" });
       onUpdated();
       onClose();
     } catch {
-      toasts.add({ title: "Failed to update collection", variant: "error" });
+      toasts.add({ title: "更新知识集合失败", variant: "error" });
       setSaving(false);
     }
   };
@@ -830,10 +825,10 @@ function CollectionSettingsModal({
     setDeleting(true);
     try {
       await context.deleteContextCollection(collectionId);
-      toasts.add({ title: "Collection deleted", variant: "success" });
+      toasts.add({ title: "知识集合已删除", variant: "success" });
       onDeleted();
     } catch {
-      toasts.add({ title: "Failed to delete collection", variant: "error" });
+      toasts.add({ title: "删除知识集合失败", variant: "error" });
       setDeleting(false);
     }
   };
@@ -854,7 +849,7 @@ function CollectionSettingsModal({
       >
         {mode === "edit" ? (
           <>
-            <ModalHeader title="Edit collection" />
+            <ModalHeader title="编辑知识集合" />
 
             <div className="space-y-5 px-4 py-5 sm:px-6">
               <div>
@@ -872,7 +867,7 @@ function CollectionSettingsModal({
               </div>
               {metadata.content.source === "git" && supportsGitCollections && (
                 <div>
-                  <FieldLabel>Git branch</FieldLabel>
+                  <FieldLabel>Git 分支</FieldLabel>
                   <WorkshopInput
                     value={branch}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBranch(e.target.value)}
@@ -883,7 +878,7 @@ function CollectionSettingsModal({
                     className="w-full"
                   />
                   <p className="mt-1 text-[12px] leading-4 text-kumo-subtle">
-                    This branch to pull from when refreshing the collection.
+                    刷新知识集合时拉取的分支。
                   </p>
                 </div>
               )}
@@ -891,7 +886,7 @@ function CollectionSettingsModal({
 
             <div className="flex items-center justify-end gap-2 border-t border-kumo-line px-4 py-3 sm:px-6">
               <WorkshopButton tone="secondary" className="!h-9" disabled={saving} onClick={onClose}>
-                Cancel
+                取消
               </WorkshopButton>
               <WorkshopButton
                 tone="primary"
@@ -899,14 +894,14 @@ function CollectionSettingsModal({
                 loading={saving}
                 disabled={!hasChanges || !title.trim()}
               >
-                Save
+                保存
               </WorkshopButton>
             </div>
           </>
         ) : (
           <>
             <ModalHeader
-              title="Delete collection"
+              title="删除知识集合"
               description={
                 <DeletePermanentlyDescription
                   name={metadata.title}
@@ -917,11 +912,11 @@ function CollectionSettingsModal({
 
             <div className="px-4 py-5 sm:px-6">
               <FieldLabel>
-                Type{" "}
+                输入{" "}
                 <span className="font-mono text-kumo-default">
                   {metadata.title}
                 </span>{" "}
-                to confirm
+                以确认
               </FieldLabel>
               <WorkshopInput
                 value={confirmText}
@@ -943,7 +938,7 @@ function CollectionSettingsModal({
                 disabled={!canDelete}
                 loading={deleting}
               >
-                Delete collection
+                删除知识集合
               </WorkshopButton>
             </div>
           </>
@@ -994,7 +989,7 @@ function GitTokenManagementModal({
       const result = await context.listContextCollectionGitTokens(collectionId);
       setGitTokens(result.tokens);
     } catch (err) {
-      toastsRef.current.add({ title: `Failed to load Git tokens: ${(err as Error).message}`, variant: "error" });
+      toastsRef.current.add({ title: `加载 Git 令牌失败：${(err as Error).message}`, variant: "error" });
     } finally {
       setLoadingTokens(false);
     }
@@ -1010,9 +1005,9 @@ function GitTokenManagementModal({
       const token = await context.createContextCollectionGitToken(collectionId);
       setNewGitToken(token);
       await loadGitTokens();
-      toasts.add({ title: "Git token created", variant: "success" });
+      toasts.add({ title: "Git 令牌已创建", variant: "success" });
     } catch (err) {
-      toasts.add({ title: `Failed to create Git token: ${(err as Error).message}`, variant: "error" });
+      toasts.add({ title: `创建 Git 令牌失败：${(err as Error).message}`, variant: "error" });
     } finally {
       setCreatingToken(false);
     }
@@ -1023,9 +1018,9 @@ function GitTokenManagementModal({
     try {
       await context.revokeContextCollectionGitToken(collectionId, tokenId);
       await loadGitTokens();
-      toasts.add({ title: "Git token revoked", variant: "success" });
+      toasts.add({ title: "Git 令牌已撤销", variant: "success" });
     } catch (err) {
-      toasts.add({ title: `Failed to revoke Git token: ${(err as Error).message}`, variant: "error" });
+      toasts.add({ title: `撤销 Git 令牌失败：${(err as Error).message}`, variant: "error" });
     } finally {
       setRevokingToken(null);
     }
@@ -1052,13 +1047,13 @@ function GitTokenManagementModal({
         size="sm"
       >
         <ModalHeader
-          title="Manage git tokens"
+          title="管理 Git 令牌"
         />
 
         <div className="space-y-3 px-4 py-5 sm:px-6">
           <div className="flex items-center justify-between gap-3">
             <p className="max-w-sm text-[12px] leading-4 text-kumo-subtle">
-              Create a token to mirror content from an external git repository.
+              创建令牌以从外部 Git 仓库镜像内容。
             </p>
             <WorkshopButton
               tone="secondary"
@@ -1067,21 +1062,21 @@ function GitTokenManagementModal({
               loading={creatingToken}
               disabled={busy}
             >
-              Create token
+              创建令牌
             </WorkshopButton>
           </div>
 
           {newGitToken && (
             <div className="space-y-3 rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-3 text-[12px] leading-5 text-kumo-subtle">
               <div>
-                <div className="font-medium text-kumo-default">Token created</div>
+                <div className="font-medium text-kumo-default">令牌已创建</div>
                 <p className="mt-0.5">
-                  Use these credentials to push content to your collection. The password is only shown once.
+                  使用这些凭据将内容推送到知识集合。密码仅显示一次。
                 </p>
               </div>
               <div className="space-y-2">
                 <div>
-                  <FieldLabel>Remote URL</FieldLabel>
+                  <FieldLabel>远程 URL</FieldLabel>
                   <div className="mt-1 flex gap-2">
                     <input
                       readOnly
@@ -1091,14 +1086,14 @@ function GitTokenManagementModal({
                     <WorkshopButton
                       tone="secondary"
                       className="h-8!"
-                      onClick={() => copyToClipboard(newGitToken.remote, "Remote URL copied", "Failed to copy remote URL")}
+                      onClick={() => copyToClipboard(newGitToken.remote, "远程 URL 已复制", "复制远程 URL 失败")}
                     >
-                      Copy
+                      复制
                     </WorkshopButton>
                   </div>
                 </div>
                 <div>
-                  <FieldLabel>Password</FieldLabel>
+                  <FieldLabel>密码</FieldLabel>
                   <div className="mt-1 flex gap-2">
                     <input
                       readOnly
@@ -1109,29 +1104,29 @@ function GitTokenManagementModal({
                     <WorkshopButton
                       tone="secondary"
                       className="h-8!"
-                      onClick={() => copyToClipboard(newGitToken.plaintext, "Password copied", "Failed to copy password")}
+                      onClick={() => copyToClipboard(newGitToken.plaintext, "密码已复制", "复制密码失败")}
                     >
-                      Copy
+                      复制
                     </WorkshopButton>
                   </div>
                 </div>
               </div>
               <div className="border-t border-green-500/20 pt-3">
-                <div className="font-medium text-kumo-default">Configure GitLab mirroring</div>
+                <div className="font-medium text-kumo-default">配置 GitLab 镜像</div>
                 <p className="mt-0.5">
-                  These steps are specific to GitLab. Other git providers may use different setup flows.
+                  以下步骤适用于 GitLab，其他 Git 服务的设置流程可能不同。
                 </p>
                 <ol className="mt-2 list-decimal space-y-1.5 pl-4">
-                  <li>Open your GitLab project and go to Settings &gt; Repository &gt; Mirroring repositories</li>
-                  <li>Click "Add new" button to open setup flow</li>
-                  <li>Set Git repository URL to the remote URL above</li>
-                  <li>Set Mirror direction to Push</li>
-                  <li>Set Authentication method to Username and Password</li>
-                  <li>Set Username to "gitlab"</li>
-                  <li>Set Password to the password above</li>
-                  <li>Select Mirror specific branches and type in "{branch}"</li>
-                  <li>Click "Mirror repository" button to finish</li>
-                  <li>Click "Update now" button to trigger an initial push</li>
+                  <li>打开 GitLab 项目，进入 Settings &gt; Repository &gt; Mirroring repositories</li>
+                  <li>点击“Add new”开始设置</li>
+                  <li>将 Git repository URL 设置为上方的远程 URL</li>
+                  <li>将 Mirror direction 设置为 Push</li>
+                  <li>将 Authentication method 设置为 Username and Password</li>
+                  <li>将 Username 设置为“gitlab”</li>
+                  <li>将 Password 设置为上方密码</li>
+                  <li>选择 Mirror specific branches 并输入“{branch}"</li>
+                  <li>点击“Mirror repository”完成设置</li>
+                  <li>点击“Update now”触发首次推送</li>
                 </ol>
               </div>
             </div>
@@ -1139,9 +1134,9 @@ function GitTokenManagementModal({
 
           <div className="rounded-lg border border-kumo-line bg-kumo-base">
             {loadingTokens ? (
-              <div className="px-3 py-2 text-[12px] text-kumo-subtle">Loading tokens...</div>
+              <div className="px-3 py-2 text-[12px] text-kumo-subtle">正在加载令牌…</div>
             ) : gitTokens.length === 0 ? (
-              <div className="px-3 py-2 text-[12px] text-kumo-subtle">No Git tokens yet.</div>
+              <div className="px-3 py-2 text-[12px] text-kumo-subtle">暂无 Git 令牌。</div>
             ) : (
               <div className="divide-y divide-kumo-line">
                 {gitTokens.map((token) => (
@@ -1152,7 +1147,7 @@ function GitTokenManagementModal({
                     <div className="min-w-0">
                       <div className="truncate font-mono text-[11px] text-kumo-default">{token.id}</div>
                       <div className="text-kumo-subtle">
-                        expires {new Date(token.expiresAt).toLocaleDateString()}
+                        过期时间 {new Date(token.expiresAt).toLocaleDateString("zh-CN")}
                       </div>
                     </div>
                     <WorkshopButton
@@ -1162,7 +1157,7 @@ function GitTokenManagementModal({
                       loading={revokingToken === token.id}
                       disabled={revokingToken !== null}
                     >
-                      Revoke
+                      撤销
                     </WorkshopButton>
                   </div>
                 ))}
@@ -1173,7 +1168,7 @@ function GitTokenManagementModal({
 
         <div className="flex items-center justify-end gap-2 border-t border-kumo-line px-4 py-3 sm:px-6">
           <WorkshopButton tone="secondary" className="h-9!" disabled={busy} onClick={onClose}>
-            Close
+            关闭
           </WorkshopButton>
         </div>
       </Dialog>
@@ -1419,10 +1414,10 @@ function FolderView({
                 </span>
                 {isSkill && (
                   <span
-                    title="Contains a valid Agent Skill"
+                    title="包含有效的智能体技能"
                     className="shrink-0 text-[10px] font-medium uppercase leading-none tracking-[0.4px] text-kumo-inactive"
                   >
-                    skill
+                    技能
                   </span>
                 )}
               </>
@@ -1433,7 +1428,7 @@ function FolderView({
               stopPropagation
               trigger={
                 <WorkshopIconButton
-                  aria-label={`Actions for ${folder.name}`}
+                  aria-label={`${folder.name}的操作`}
                   onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   className={TREE_ROW_TRIGGER}
                 >
@@ -1446,21 +1441,21 @@ function FolderView({
                 onClick={() => ctx.startCreate(folder.path, "file")}
                 className={MENU_ITEM}
               >
-                New file
+                新建文件
               </DropdownMenu.Item>
               <DropdownMenu.Item
                 icon={<FolderPlus className="size-3" />}
                 onClick={() => ctx.startCreate(folder.path, "folder")}
                 className={MENU_ITEM}
               >
-                New folder
+                新建文件夹
               </DropdownMenu.Item>
               <DropdownMenu.Item
                 icon={<PencilSimple className="size-3" />}
                 onClick={() => ctx.startRename(folder.path)}
                 className={MENU_ITEM}
               >
-                Rename
+                重命名
               </DropdownMenu.Item>
               <DropdownMenu.Separator />
               <DropdownMenu.Item
@@ -1469,7 +1464,7 @@ function FolderView({
                 onClick={() => ctx.deletePath(folder.path, true)}
                 className={MENU_ITEM_DANGER}
               >
-                Delete
+                删除
               </DropdownMenu.Item>
             </KebabMenu>
           )}
@@ -1559,7 +1554,7 @@ function FileView({
           stopPropagation
           trigger={
             <WorkshopIconButton
-              aria-label={`Actions for ${baseName(doc.path)}`}
+              aria-label={`${baseName(doc.path)}的操作`}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
               className={TREE_ROW_TRIGGER}
             >
@@ -1572,7 +1567,7 @@ function FileView({
             onClick={() => ctx.startRename(doc.path)}
             className={MENU_ITEM}
           >
-            Rename
+            重命名
           </DropdownMenu.Item>
           <DropdownMenu.Item
             icon={<Trash className="size-3" />}
@@ -1580,7 +1575,7 @@ function FileView({
             onClick={() => ctx.deletePath(doc.path, false)}
             className={MENU_ITEM_DANGER}
           >
-            Delete
+            删除
           </DropdownMenu.Item>
         </KebabMenu>
       )}
@@ -1714,9 +1709,9 @@ function CollectionEditor({
     try {
       await context.syncContextCollectionArtifactSource(collectionId);
       await loadDocs();
-      toasts.add({ title: "Collection refreshed", variant: "success" });
+      toasts.add({ title: "知识集合已刷新", variant: "success" });
     } catch (err) {
-      toasts.add({ title: `Failed to refresh: ${(err as Error).message}`, variant: "error" });
+      toasts.add({ title: `刷新失败：${(err as Error).message}`, variant: "error" });
     } finally {
       setRefreshingSource(false);
     }
@@ -1782,7 +1777,7 @@ function CollectionEditor({
       setEditOnOpenPath(filePath);
       setSelectedPath(filePath);
     } catch {
-      toasts.add({ title: "Failed to create file", variant: "error" });
+      toasts.add({ title: "创建文件失败", variant: "error" });
     }
   };
 
@@ -1826,7 +1821,7 @@ function CollectionEditor({
       await relocate(renaming, dest);
     } catch (err) {
       toasts.add({
-        title: `Failed to rename: ${(err as Error).message}`,
+        title: `重命名失败：${(err as Error).message}`,
         variant: "error",
       });
     } finally {
@@ -1843,7 +1838,7 @@ function CollectionEditor({
       await relocate(from, dest);
     } catch (err) {
       toasts.add({
-        title: `Failed to move: ${(err as Error).message}`,
+        title: `移动失败：${(err as Error).message}`,
         variant: "error",
       });
     }
@@ -1894,7 +1889,7 @@ function CollectionEditor({
       setPendingDelete(null);
     } catch {
       toasts.add({
-        title: isDir ? "Failed to delete folder" : "Failed to delete document",
+        title: isDir ? "删除文件夹失败" : "删除文档失败",
         variant: "error",
       });
     } finally {
@@ -1920,7 +1915,7 @@ function CollectionEditor({
       }
     });
     toasts.add({
-      title: `Uploaded ${pluralize(ok, "file")}${failed ? `, ${failed} failed` : ""}`,
+      title: `已上传 ${ok} 个文件${failed ? `，${failed} 个失败` : ""}`,
       variant: failed ? "error" : "success",
     });
     await loadDocs();
@@ -1971,15 +1966,15 @@ function CollectionEditor({
             className="press -ml-1 mb-4 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[13px] font-medium tracking-[-0.25px] text-kumo-subtle transition-colors hover:text-kumo-default"
           >
             <CaretLeft size={14} />
-            Context &amp; Skills
+            知识库与技能
           </button>
           <div className="rounded-xl border border-kumo-line bg-kumo-base px-5 py-10 text-center shadow-[0_1px_2px_rgba(20,17,16,0.03)]">
             <BookOpen size={32} className="mx-auto mb-3 text-kumo-subtle" />
             <p className="m-0 text-[15px] leading-5 font-medium tracking-[-0.25px] text-kumo-default">
-              This collection is no longer available
+              此知识集合已不可用
             </p>
             <p className="mt-1 text-[13px] leading-[18px] font-normal tracking-[-0.25px] text-kumo-subtle">
-              It may have been deleted.
+              它可能已被删除。
             </p>
           </div>
         </div>
@@ -2039,7 +2034,7 @@ function CollectionEditor({
           size="sm"
         >
           <ModalHeader
-            title={pendingDelete?.isDir ? "Delete folder" : "Delete document"}
+            title={pendingDelete?.isDir ? "删除文件夹" : "删除文档"}
             description={
               <DeletePermanentlyDescription
                 name={pendingDelete ? baseName(pendingDelete.path) : ""}
@@ -2058,7 +2053,7 @@ function CollectionEditor({
               disabled={deletingPath}
               onClick={() => setPendingDelete(null)}
             >
-              Cancel
+              取消
             </WorkshopButton>
             <WorkshopButton
               tone="danger"
@@ -2066,7 +2061,7 @@ function CollectionEditor({
               onClick={performDeletePath}
               loading={deletingPath}
             >
-              {pendingDelete?.isDir ? "Delete folder" : "Delete document"}
+              {pendingDelete?.isDir ? "删除文件夹" : "删除文档"}
             </WorkshopButton>
           </div>
         </Dialog>
@@ -2086,7 +2081,7 @@ function CollectionEditor({
             className="press -ml-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[13px] font-medium tracking-[-0.25px] text-kumo-subtle transition-colors hover:text-kumo-default"
           >
             <CaretLeft size={14} />
-            Context &amp; Skills
+            知识库与技能
           </button>
         </div>
           {metadata && (
@@ -2098,7 +2093,7 @@ function CollectionEditor({
               >
                 <button
                   onClick={() => setSelectedPath(null)}
-                  title="Collection overview"
+                  title="知识集合概览"
                   aria-current={selectedPath ? undefined : "page"}
                   className="flex min-w-0 flex-1 transform-none items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring/30 active:scale-100"
                 >
@@ -2124,15 +2119,15 @@ function CollectionEditor({
 
           <div className="flex h-8 shrink-0 items-center justify-between gap-2 px-5">
             <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-kumo-inactive">
-              Files
+              文件
             </span>
             {canEditDocuments && (
               <>
             <KebabMenu
               trigger={
                 <WorkshopIconButton
-                  aria-label="Add"
-                  title="Add file or folder"
+                  aria-label="添加"
+                  title="添加文件或文件夹"
                   className="!h-6 !w-6 text-kumo-subtle hover:bg-kumo-tint hover:text-kumo-default data-[popup-open]:bg-kumo-tint data-[popup-open]:text-kumo-default"
                 >
                   <Plus size={14} weight="bold" />
@@ -2144,14 +2139,14 @@ function CollectionEditor({
                 onClick={() => startCreate("", "file")}
                 className={MENU_ITEM}
               >
-                New file
+                新建文件
               </DropdownMenu.Item>
               <DropdownMenu.Item
                 icon={<FolderPlus className="size-3.25" />}
                 onClick={() => startCreate("", "folder")}
                 className={MENU_ITEM}
               >
-                New folder
+                新建文件夹
               </DropdownMenu.Item>
               <DropdownMenu.Separator />
               <DropdownMenu.Item
@@ -2159,14 +2154,14 @@ function CollectionEditor({
                 onClick={() => fileInputRef.current?.click()}
                 className={MENU_ITEM}
               >
-                Upload files
+                上传文件
               </DropdownMenu.Item>
               <DropdownMenu.Item
                 icon={<Folder className="size-3.25" />}
                 onClick={() => dirInputRef.current?.click()}
                 className={MENU_ITEM}
               >
-                Upload folder
+                上传文件夹
               </DropdownMenu.Item>
             </KebabMenu>
             <input
@@ -2196,14 +2191,14 @@ function CollectionEditor({
           </div>
           <div className="ctx-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3.5 pb-6 pt-0.5">
             {loading ? (
-              <p className="px-2 py-2 text-[13px] text-kumo-subtle">Loading…</p>
+              <p className="px-2 py-2 text-[13px] text-kumo-subtle">加载中…</p>
             ) : docs.length === 0 && pendingFolders.size === 0 && !creating ? (
               <p className="px-2 py-2 text-[12px] leading-5 text-kumo-inactive">
                 {metadata?.content.source === "git"
                   ? supportsGitCollections
-                    ? "No files yet. Mirror content from git, then refresh."
-                    : "No Git content was cached before synchronization became unavailable."
-                  : permissions.canEdit ? "No files yet. Use + to create or upload skills or files." : "No files yet."}
+                    ? "暂无文件。请从 Git 镜像内容后刷新。"
+                    : "同步不可用前未缓存 Git 内容。"
+                  : permissions.canEdit ? "暂无文件。使用 + 创建或上传技能或文件。" : "暂无文件。"}
               </p>
             ) : (
               <FolderView folder={tree} depth={0} ctx={ctx} />
@@ -2221,7 +2216,7 @@ function CollectionEditor({
                 className="flex sm:hidden flex-shrink-0 items-center gap-1 border-b border-kumo-line px-4 py-2.5 text-[13px] text-kumo-subtle transition-colors hover:text-kumo-default"
               >
                 <CaretLeft size={14} />
-                Files
+                文件
               </button>
               <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
                 <DocumentEditor
@@ -2347,7 +2342,7 @@ function MarkdownPreview({
               {content}
             </ReactMarkdown>
           ) : (
-            <p className="italic text-kumo-inactive">This document is empty.</p>
+            <p className="italic text-kumo-inactive">文档为空。</p>
           )}
         </div>
       </div>
@@ -2397,8 +2392,7 @@ function renderDocumentBody({
   if (!isText) {
     return (
       <div className="p-4 text-[13px] text-kumo-subtle">
-        Binary document ({contentType}, {Math.round((body.length * 3) / 4 / 1024)} KB). Use Replace to
-        update it.
+        二进制文档（{contentType}, {Math.round((body.length * 3) / 4 / 1024)} KB）。使用“替换”更新。
       </div>
     );
   }
@@ -2507,7 +2501,7 @@ function DocumentEditor({
       if (cancelled) return;
       setLoading(false);
       toasts.add({
-        title: `Failed to load document: ${(err as Error).message}`,
+        title: `加载文档失败：${(err as Error).message}`,
         variant: "error",
       });
     });
@@ -2544,10 +2538,10 @@ function DocumentEditor({
       setContentType(saved?.contentType ?? overrides?.contentType ?? contentType);
       setSkillName(saved?.skillName ?? null);
       setDirty(false);
-      toasts.add({ title: "Saved", variant: "success" });
+      toasts.add({ title: "已保存", variant: "success" });
       onChanged();
     } catch {
-      toasts.add({ title: "Failed to save", variant: "error" });
+      toasts.add({ title: "保存失败", variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -2561,7 +2555,7 @@ function DocumentEditor({
       return;
     }
     if (trimmed.includes("/")) {
-      toasts.add({ title: "File name can't contain '/'", variant: "error" });
+      toasts.add({ title: "文件名不能包含“/”", variant: "error" });
       setFilename(baseName(path));
       return;
     }
@@ -2572,7 +2566,7 @@ function DocumentEditor({
       await context.moveContextDocument(collectionId, path, newPath);
       onRenamed(newPath);
     } catch (err) {
-      toasts.add({ title: `Rename failed: ${(err as Error).message}`, variant: "error" });
+      toasts.add({ title: `重命名失败：${(err as Error).message}`, variant: "error" });
       setFilename(baseName(path));
     } finally {
       setRenaming(false);
@@ -2588,7 +2582,7 @@ function DocumentEditor({
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-kumo-subtle">
-        Loading…
+        加载中…
       </div>
     );
   }
@@ -2613,7 +2607,7 @@ function DocumentEditor({
             }}
             className="w-full bg-transparent text-[18px] font-semibold leading-6 tracking-[-0.4px] text-kumo-default focus:outline-none"
             placeholder="file-name.md"
-            title="File name — edit to rename (the extension sets the type)"
+            title="编辑文件名以重命名（扩展名决定文件类型）"
           />
 
         </div>
@@ -2628,12 +2622,12 @@ function DocumentEditor({
             loading={saving}
             disabled={!dirty}
           >
-            Save
+            保存
           </WorkshopButton>
         )}
         {!readOnly && !isText && mode === "edit" && (
           <label className="press flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-kumo-line px-2.5 text-[12px] font-medium text-kumo-subtle transition-colors hover:bg-kumo-tint hover:text-kumo-default">
-            <UploadSimple size={14} /> Replace
+            <UploadSimple size={14} /> 替换
             <input
               type="file"
               className="hidden"
@@ -2648,8 +2642,8 @@ function DocumentEditor({
         {showModeToggle && (
           <div className="inline-flex h-8 shrink-0 items-center rounded-lg border border-kumo-line bg-kumo-fill p-0.5">
             {[
-              { m: "read" as const, Icon: Eye, label: "View" },
-              { m: "edit" as const, Icon: readOnly ? Code : PencilSimple, label: readOnly ? "Source" : "Edit" },
+              { m: "read" as const, Icon: Eye, label: "查看" },
+              { m: "edit" as const, Icon: readOnly ? Code : PencilSimple, label: readOnly ? "源代码" : "编辑" },
             ].map(({ m, Icon, label }) => (
               <button
                 key={m}
@@ -2675,7 +2669,7 @@ function DocumentEditor({
           <span className="mx-0.5 h-5 w-px shrink-0 bg-kumo-line" aria-hidden="true" />
           <button
             onClick={onRequestDelete}
-            title="Delete document"
+            title="删除文档"
             className="press flex h-8 w-8 items-center justify-center rounded-md text-kumo-subtle transition-colors hover:bg-kumo-tint hover:text-kumo-danger"
           >
             <Trash size={16} />
@@ -2688,23 +2682,23 @@ function DocumentEditor({
           declare their own description show it read-only; otherwise the author writes it. */}
       <div className="border-b border-kumo-line px-6 py-3.5 sm:px-10">
         <label className="mb-1.5 block text-[12px] font-medium tracking-[-0.15px] text-kumo-subtle">
-          When to use this
+          使用时机
           {skillName && (
             <span className="ml-1 font-mono text-kumo-brand">· /{skillName}</span>
           )}
           {extractedDescription !== null && (
             <span
               className="ml-1 text-kumo-inactive"
-              title="Defined in this file; edit it in the document below."
+              title="在此文件中定义，请在下方文档中编辑。"
             >
-              · from file
+              · 来自文件
             </span>
           )}
         </label>
         {extractedDescription !== null ? (
           <p className="max-w-3xl text-[14px] leading-5 tracking-[-0.2px] text-kumo-default">
             {effectiveDescription || (
-              <span className="italic text-kumo-inactive">No description in this file yet.</span>
+              <span className="italic text-kumo-inactive">此文件中暂无描述。</span>
             )}
           </p>
         ) : descriptionIsEditable ? (
@@ -2715,13 +2709,13 @@ function DocumentEditor({
               setDescription(nextDescription);
               setDirty(documentIsDirty(nextDescription, body));
             }}
-            placeholder="Describe what this document contains and when an agent should use it…"
+            placeholder="描述文档内容以及智能体应在何时使用…"
             className="w-full bg-transparent text-[14px] leading-5 tracking-[-0.2px] text-kumo-default placeholder:text-kumo-inactive focus:outline-none"
           />
         ) : (
           <p className="max-w-3xl text-[14px] leading-5 tracking-[-0.2px] text-kumo-default">
             {description || (
-              <span className="italic text-kumo-inactive">No description yet.</span>
+              <span className="italic text-kumo-inactive">暂无描述。</span>
             )}
           </p>
         )}
@@ -2951,6 +2945,7 @@ function SourceEditor({
           indentOnInput(),
           bracketMatching(),
           EditorView.lineWrapping,
+          EditorState.phrases.of({ "Selection deleted": "选区已删除", "Control character": "控制字符", close: "关闭" }),
           themeComp.current.of(editorThemeExtensions(themeModeRef.current)),
           languageForPath(path),
           keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),

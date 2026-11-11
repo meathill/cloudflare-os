@@ -76,7 +76,7 @@ it.each([10, 0, undefined])("only offers the useful thread read action (unread c
   const {server, markRead, markUnread} = await renderChat(chat, count === undefined ? undefined : [{
     workspaceId: "workspace", chatId: 1, readThroughSequence: 0, unreadMessageCount: count,
   }]);
-  const trigger = document.querySelector<HTMLButtonElement>('[aria-label="Actions for Unread test"]')!;
+  const trigger = document.querySelector<HTMLButtonElement>('[aria-label="Unread test的操作"]')!;
   await act(async () => trigger.click());
   const item = (label: string) => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
     .find(element => element.textContent === label)!;

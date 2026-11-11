@@ -31,8 +31,8 @@ export default function ResourceConfiguratorHost({
   /** The resource types the caller will accept a URL of from the configurator. */
   acceptedResourceUrlPatterns: readonly string[]
 }) {
-  if (disabled) return <Placeholder>Choose an account before selecting a resource.</Placeholder>
-  if (loading) return <Placeholder>Loading configurator...</Placeholder>
+  if (disabled) return <Placeholder>选择资源前，请先选择账号。</Placeholder>
+  if (loading) return <Placeholder>正在加载配置器…</Placeholder>
   if (error) return <Placeholder>{error}</Placeholder>
   if (!frame) return null
 

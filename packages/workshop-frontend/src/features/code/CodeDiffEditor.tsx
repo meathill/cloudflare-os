@@ -1,3 +1,4 @@
+import { editorPhrases } from './editorPhrases'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Columns, Rows } from '@phosphor-icons/react'
 import { Compartment, EditorState } from '@codemirror/state'
@@ -205,6 +206,7 @@ export default function CodeDiffEditor({
   // coexists with wrapping.)
   const baseExtensions = useCallback((forFilename: string): Extension[] => [
     // Split documents only on "\n"; see CodeEditor for why this matters to the OT stream.
+    editorPhrases,
     EditorState.lineSeparator.of('\n'),
     highlightSpecialChars(),
     drawSelection(),
@@ -417,7 +419,7 @@ export default function CodeDiffEditor({
         className="flex items-center justify-center bg-kumo-base text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-subtle"
         style={{ height }}
       >
-        {!filename ? 'Select a file to view changes' : 'Loading diff...'}
+        {!filename ? '选择文件以查看更改' : '正在加载差异…'}
       </div>
     )
   }
@@ -433,8 +435,8 @@ export default function CodeDiffEditor({
             <button
               type="button"
               className={layoutButtonClass(diffLayoutPreference === 'stacked')}
-              title="Stacked diff"
-              aria-label="Use stacked diff layout"
+              title="上下对比"
+              aria-label="使用上下对比布局"
               aria-pressed={diffLayoutPreference === 'stacked'}
               onClick={() => setDiffLayoutPreference('stacked')}
             >
@@ -443,8 +445,8 @@ export default function CodeDiffEditor({
             <button
               type="button"
               className={layoutButtonClass(diffLayoutPreference === 'split' && canSplitDiff, !canSplitDiff)}
-              title={canSplitDiff ? 'Split diff' : 'Split diff needs more space'}
-              aria-label="Use split diff layout"
+              title={canSplitDiff ? '左右对比' : '左右对比需要更多空间'}
+              aria-label="使用左右对比布局"
               aria-pressed={diffLayoutPreference === 'split' && canSplitDiff}
               disabled={!canSplitDiff}
               onClick={() => setDiffLayoutPreference('split')}
@@ -457,7 +459,7 @@ export default function CodeDiffEditor({
             style={{ fontFamily: monoFont }}
           >
             {summary.status !== 'Modified' && (
-              <span className="text-[10px] font-medium text-kumo-subtle">{summary.status}</span>
+              <span className="text-[10px] font-medium text-kumo-subtle">{{ Added: '已新增', Deleted: '已删除', Unchanged: '无更改', Modified: '已修改' }[summary.status]}</span>
             )}
             <span className="text-kumo-danger">-{summary.deletions}</span>
             <span className="text-kumo-success">+{summary.additions}</span>

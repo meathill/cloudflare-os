@@ -13,14 +13,14 @@ import { readPopupHandoff, ticketFromHandoffFragment } from './connectHandoff'
 type Outcome = { title: string; detail: string; failed?: true }
 
 const INVALID: Outcome = {
-  title: "This link isn't valid",
-  detail: 'Reload the Workshop and start the connection again.',
+  title: "链接无效",
+  detail: '请刷新工作台并重新开始连接。',
 }
 const SIGNED_OUT: Outcome = {
-  title: "You're signed out",
-  detail: 'Sign in to the Workshop and start the connection again.',
+  title: "你已退出登录",
+  detail: '请登录工作台并重新开始连接。',
 }
-const CLOSE_HINT = 'You can close this window.'
+const CLOSE_HINT = '现在可以关闭此窗口。'
 
 /**
  * The page a finished connect / sign-in popup lands on (HANDOFF_PATH), with the single-use ticket
@@ -77,13 +77,13 @@ export default function BrowserConnectHandoffPage() {
       if (isLoading || authenticatedApi === null) return
       api = authenticatedApi
       redeem = () => authenticatedApi.completeConnectHandoff(ticket, handoff.nonce)
-      done = { title: 'Connected', detail: CLOSE_HINT }
-      failed = 'Could not complete the connection'
+      done = { title: '已连接', detail: CLOSE_HINT }
+      failed = '无法完成连接'
     } else {
       api = rpcStub
       redeem = () => rpcStub.confirmLogin(ticket, handoff.nonce)
-      done = { title: 'Signed in', detail: CLOSE_HINT }
-      failed = 'Could not sign in'
+      done = { title: '已登录', detail: CLOSE_HINT }
+      failed = '无法登录'
     }
     if (sentWithRef.current === api) return
     if (sentWithRef.current !== null && !result?.failed) return
@@ -116,7 +116,7 @@ export default function BrowserConnectHandoffPage() {
 
   return (
     <div className="flex min-h-full flex-col items-center justify-center gap-2 bg-kumo-base p-6 text-center">
-      <h1 className="text-lg font-semibold text-kumo-default">{outcome?.title ?? 'Finishing up…'}</h1>
+      <h1 className="text-lg font-semibold text-kumo-default">{outcome?.title ?? '正在完成…'}</h1>
       {outcome && <p className="text-sm text-kumo-subtle">{outcome.detail}</p>}
     </div>
   )

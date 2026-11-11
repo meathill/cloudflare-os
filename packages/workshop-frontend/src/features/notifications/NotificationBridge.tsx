@@ -215,10 +215,10 @@ export const NotificationBridge = ({
         let completed = kind === "taskCompleted";
         addToast.current({
           id,
-          title: `${chatTitle || "Task"} ${completed ? "completed" : "needs permission"}`,
+          title: `${chatTitle || "任务"}${completed ? "已完成" : "需要许可"}`,
           variant: completed ? "success" : "info",
           actions: [{
-            children: "Open task",
+            children: "打开任务",
             onClick: () => router.navigate({
               to: "/workspace/$id",
               params: { id: workspaceId },

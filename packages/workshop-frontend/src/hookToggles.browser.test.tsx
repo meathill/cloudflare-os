@@ -29,7 +29,7 @@ vi.unstubAllGlobals()
 
 const TITLE = 'Watch acme/widgets on GitHub'
 const refusal = "GitHub refused to add a webhook to acme/widgets: only the repository's admins can."
-const hookSwitch = () => page.getByRole('switch', { name: `Hook: ${TITLE}` })
+const hookSwitch = () => page.getByRole('switch', { name: `钩子：${TITLE}` })
 
 let root: Root | undefined
 let container: HTMLElement | undefined
@@ -125,7 +125,7 @@ describe('on the Connections page', () => {
 
     await input(() => userEvent.click(hookSwitch()))
 
-    await expect.element(page.getByText('Failed to enable hook')).toBeVisible()
+    await expect.element(page.getByText('启用钩子失败')).toBeVisible()
     await expect.element(page.getByText(refusal)).toBeVisible()
     await expect.element(hookSwitch()).toHaveAttribute('aria-checked', 'false')
   })

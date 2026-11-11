@@ -32,7 +32,7 @@ const ProviderRow = ({ entry, busy, test, move, onEnabledChange, onTest }: {
           <p className="text-sm font-medium text-kumo-default">{label}</p>
           {locked && (
             <p id={lockedNote} className="mt-0.5 text-xs text-kumo-subtle">
-              Set by <code className="font-mono">CF_AI_GATEWAY_PROVIDERS</code>
+              由 <code className="font-mono">CF_AI_GATEWAY_PROVIDERS</code> 设置
             </p>
           )}
         </div>
@@ -54,8 +54,7 @@ const ProviderRow = ({ entry, busy, test, move, onEnabledChange, onTest }: {
           size="sm"
           description={
             <>
-              Needs <code className="font-mono">CF_AI_GATEWAY_API_TOKEN</code>: requests to this
-              provider fail until the deployment sets it.
+              需要 <code className="font-mono">CF_AI_GATEWAY_API_TOKEN</code>；部署设置此令牌之前，对该服务商的请求会失败。
             </>
           }
         />
@@ -90,12 +89,8 @@ export const GatewayProviders = ({ providers, busy, onEnabledChange, onOrderChan
   return (
     <>
       <p className="mb-2 text-sm text-kumo-subtle">
-        The providers whose models this deployment can offer through its AI Gateway. The ones
-        listed in <code className="font-mono text-xs">CF_AI_GATEWAY_PROVIDERS</code> are always on;
-        the others can be turned on here. Provider keys or credits are stored in the gateway, where
-        this page cannot see them, so use Test to find out whether a provider answers. The model
-        pickers list the providers in this order, and a new user or chat gets the first enabled
-        model.
+        此部署通过 AI Gateway 提供以下服务商的模型。列入{' '}
+        <code className="font-mono text-xs">CF_AI_GATEWAY_PROVIDERS</code> 的服务商始终启用；其他服务商可以在这里开启。服务商密钥或额度保存在网关中，此页面无法查看，请使用“测试”确认服务商是否响应。模型选择器按此顺序列出服务商，新用户或新对话使用第一个启用的模型。
       </p>
       <ul className="flex flex-col gap-2">
         {providers.map((entry, index) => (

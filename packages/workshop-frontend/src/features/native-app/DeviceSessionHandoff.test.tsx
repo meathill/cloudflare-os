@@ -96,8 +96,8 @@ describe('native device-session handoff', () => {
     )
     const page = await render(begin)
     expect(begin).not.toHaveBeenCalled()
-    expect(page.textContent).toContain('Continue only if you started this sign-in')
-    expect(page.textContent).toContain('Signed in as Alice (alice@example.com)')
+    expect(page.textContent).toContain('仅当你从 Cloudflare OS 应用发起此次登录时才继续')
+    expect(page.textContent).toContain('登录为 Alice（alice@example.com）')
 
     await act(async () => {
       page.querySelector('button')!.click()
@@ -105,12 +105,12 @@ describe('native device-session handoff', () => {
     expect(begin).toHaveBeenCalledOnce()
     expect(begin).toHaveBeenCalledWith(publicKey, state)
     expect(submit).toHaveBeenCalledOnce()
-    expect(page.textContent).toContain('Finishing sign-in')
+    expect(page.textContent).toContain('正在完成登录')
   })
 
   it('shows malformed attempts and staging failures instead of the Workshop', async () => {
     let page = await render(vi.fn<Begin>(), '?cfos_native_state=bad')
-    expect(page.textContent).toContain('This device-session request is invalid')
+    expect(page.textContent).toContain('设备会话请求无效')
     act(() => root?.unmount())
     page.remove()
     root = undefined
@@ -135,7 +135,7 @@ describe('native device-session handoff', () => {
     await act(async () => {
       page.querySelector('button')!.click()
     })
-    expect(page.textContent).toContain('Could not prepare this device session. Try again.')
+    expect(page.textContent).toContain('无法准备设备会话，请重试。')
     expect(logged).toHaveBeenCalledWith('Failed to prepare a device session:', failure)
     expect(page.querySelector('button')).not.toBeNull()
   })
@@ -146,7 +146,7 @@ describe('native device-session handoff', () => {
     const begin = vi.fn<Begin>()
     const page = await render(begin, undefined, () => identity)
     expect((page.querySelector('button') as HTMLButtonElement).disabled).toBe(true)
-    expect(page.textContent).toContain('Checking your account')
+    expect(page.textContent).toContain('正在检查账号')
 
     await act(async () => confirm(user))
     expect((page.querySelector('button') as HTMLButtonElement).disabled).toBe(false)
@@ -156,7 +156,7 @@ describe('native device-session handoff', () => {
   it('does not offer a transfer when the stored session is rejected', async () => {
     const begin = vi.fn<Begin>()
     const page = await render(begin, undefined, async () => { throw new Error('session expired') })
-    expect(page.textContent).toContain('Could not confirm your account')
+    expect(page.textContent).toContain('无法确认你的账号')
     expect(page.querySelector('[role="alert"]')).not.toBeNull()
     expect(page.querySelector('button')).toBeNull()
     expect(begin).not.toHaveBeenCalled()

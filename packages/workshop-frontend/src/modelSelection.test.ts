@@ -304,3 +304,15 @@ describe('persistSelectedModel', () => {
     await vi.waitFor(() => expect(saved).toEqual(['sonnet', null]))
   })
 })
+
+describe('getStoredSelectedModel defaults', () => {
+  const GEMINI: AiChatAuthorInfo = { type: 'agent', id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' }
+
+  it('默认优先使用已配置的 Gemini 3.8 Flash', () => {
+    expect(getStoredSelectedModel('alice', [OPUS, GEMINI])).toBe(GEMINI.id)
+  })
+
+  it('没有配置模型时不产生无效的模型 ID', () => {
+    expect(getStoredSelectedModel('alice', [])).toBeNull()
+  })
+})
