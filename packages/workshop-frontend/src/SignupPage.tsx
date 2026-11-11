@@ -111,8 +111,11 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
 
   const authVendors = serverConfig.authVendors ?? [];
   const signupsEnabled = serverConfig.signupsEnabled;
-  // The password create-account form requires both password auth AND open signups.
-  const passwordAuthEnabled = serverConfig.passwordAuthEnabled && signupsEnabled;
+  const signupAllowlistEnabled = serverConfig.signupAllowlistEnabled;
+  // The password create-account form requires password auth, open signups, and no email allowlist:
+  // with an allowlist on, only listed emails may register, and password accounts carry no email.
+  const passwordAuthEnabled =
+    serverConfig.passwordAuthEnabled && signupsEnabled && !signupAllowlistEnabled;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col items-center justify-start overflow-y-auto bg-kumo-base px-4 py-8">
@@ -151,6 +154,16 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
             className="mb-4"
           >
             此部署目前已关闭新账号注册。
+          </Banner>
+        )}
+
+        {signupsEnabled && signupAllowlistEnabled && (
+          <Banner
+            variant="default"
+            title="仅限受邀注册"
+            className="mb-4"
+          >
+            此部署只允许名单内的邮箱注册。请回到登录页，使用邮箱验证码登录或注册。
           </Banner>
         )}
 

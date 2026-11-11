@@ -5,6 +5,7 @@ interface __BaseEnv_Env {
 	BLUEPRINTS: KVNamespace;
 	AVATARS: KVNamespace;
 	BLUEPRINT_CONTENT: R2Bucket;
+	INVITE_EMAIL: SendEmail;
 	LOADER: WorkerLoader;
 	BROWSER: BrowserRun;
 	CF_VERSION_METADATA: WorkerVersionMetadata;
@@ -12,7 +13,7 @@ interface __BaseEnv_Env {
 declare namespace Cloudflare {
 	interface GlobalProps {
 		mainModule: typeof import("./src/server");
-		durableNamespaces: "UserDurableObject" | "OverseerDurableObject" | "AdminSettings" | "PendingLogin" | "UserDirectoryDurableObject" | "AdminAuditDurableObject";
+		durableNamespaces: "UserDurableObject" | "OverseerDurableObject" | "AdminSettings" | "PendingLogin" | "UserDirectoryDurableObject" | "AdminAuditDurableObject" | "EmailOtp";
 	}
 	interface Env extends __BaseEnv_Env {}
 }

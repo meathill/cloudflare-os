@@ -341,6 +341,11 @@ export class SharingManager {
     return result;
   }
 
+  /** Whether `profileId` already has a collaborator record (on any grant). */
+  hasCollaborator(profileId: string): boolean {
+    return this.storage.collaborators.get(profileId) !== undefined;
+  }
+
   /**
    * Grant `profile` access with a `user` edge from the caller, adding them as a collaborator if
    * they aren't one. The caller is responsible for resolving `profile` (via RPC) and for any policy

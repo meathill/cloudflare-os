@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react'
+import { useEffect, useState, FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { RpcStub } from 'capnweb'
 import { PublicApi } from '@gadgets/workshop-shared/api'
@@ -21,6 +21,11 @@ interface LoginPageProps {
 export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [otpSending, setOtpSending] = useState(false)
+  const [otpVerifying, setOtpVerifying] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const serverConfig = useServerConfig()
@@ -28,6 +33,55 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
   const siteName = useSiteName()
   const connectionLost = useConnectionLost()
   useDocumentTitle('登录')
+
+  // The resend cooldown ticks down once a second while it runs.
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setTimeout(() => setCooldown(value => value - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [cooldown])
+
+  const finishLogin = (token: string) => {
+    localStorage.setItem('authToken', token)
+    if (onLoginSuccess) {
+      onLoginSuccess()
+    } else {
+      window.location.reload()
+    }
+  }
+
+  const handleSendCode = async () => {
+    if (!email || otpSending || cooldown > 0) return
+    setOtpSending(true)
+    setError(null)
+    try {
+      await rpcStub.requestEmailOtp(email)
+      setCooldown(60)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '验证码发送失败')
+    } finally {
+      setOtpSending(false)
+    }
+  }
+
+  const handleVerifyCode = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!email || !code || otpVerifying) return
+    setOtpVerifying(true)
+    setError(null)
+    try {
+      const token = await rpcStub.verifyEmailOtp(email, code)
+      if (token) {
+        finishLogin(token)
+      } else {
+        setError('验证码无效或已过期，请重新获取')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '验证码登录失败')
+    } finally {
+      setOtpVerifying(false)
+    }
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -39,12 +93,7 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
       const passwordHash = await hashPassword(username, password)
       const token = await rpcStub.login(username, passwordHash)
       if (token) {
-        localStorage.setItem('authToken', token)
-        if (onLoginSuccess) {
-          onLoginSuccess()
-        } else {
-          window.location.reload()
-        }
+        finishLogin(token)
       } else {
         setError('用户名或密码错误')
       }
@@ -85,6 +134,7 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
 
   const authVendors = serverConfig.authVendors ?? []
   const passwordAuthEnabled = serverConfig.passwordAuthEnabled
+  const emailOtpEnabled = serverConfig.emailOtpEnabled
 
   return (
     <div className="relative flex h-full min-h-0 flex-col items-center justify-start overflow-y-auto bg-kumo-base px-4 py-8">
@@ -111,6 +161,64 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
           <p className="text-sm text-kumo-subtle mt-1">登录账号</p>
         </div>
 
+        {error && (
+          <Banner variant="error" title={error} className="mb-4" />
+        )}
+
+        {emailOtpEnabled && (
+          <form onSubmit={handleVerifyCode} className="space-y-4">
+            <Input
+              className="w-full"
+              type="email"
+              label="邮箱"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              disabled={otpVerifying}
+              placeholder="you@example.com"
+            />
+            <div className="flex items-end gap-2">
+              <Input
+                className="w-full"
+                label="验证码"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                disabled={otpVerifying}
+                placeholder="6 位数字"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleSendCode}
+                disabled={!email || otpSending || cooldown > 0}
+                loading={otpSending}
+                className="shrink-0"
+              >
+                {cooldown > 0 ? `${cooldown}s 后重发` : '发送验证码'}
+              </Button>
+            </div>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={!email || !code}
+              loading={otpVerifying}
+              className="w-full justify-center"
+            >
+              邮箱登录 / 注册
+            </Button>
+          </form>
+        )}
+
+        {emailOtpEnabled && (passwordAuthEnabled || authVendors.length > 0) && (
+          <div className="flex items-center gap-3 my-6">
+            <div className="h-px flex-1 bg-kumo-line" />
+            <span className="text-xs text-kumo-subtle">或</span>
+            <div className="h-px flex-1 bg-kumo-line" />
+          </div>
+        )}
+
         {passwordAuthEnabled && (
           <>
             {/* Username / password form */}
@@ -136,10 +244,6 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
                 disabled={loading}
                 placeholder="••••••••"
               />
-
-              {error && (
-                <Banner variant="error" title={error} />
-              )}
 
               <Button
                 type="submit"
@@ -174,9 +278,6 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
                 <span className="text-xs text-kumo-subtle">或</span>
                 <div className="h-px flex-1 bg-kumo-line" />
               </div>
-            )}
-            {!passwordAuthEnabled && error && (
-              <Banner variant="error" title={error} className="mb-4" />
             )}
             <OAuthButtons rpcStub={rpcStub} vendors={authVendors} onSuccess={onLoginSuccess} />
           </div>

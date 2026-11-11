@@ -624,6 +624,24 @@ describe('ShareModal', () => {
     expect(toastAdd).toHaveBeenCalledWith({ title: 'Added Grace Hopper as a collaborator.', variant: 'success' })
   })
 
+  it('says when the invitation email went out', async () => {
+    const addCollaborator = vi.fn<NonNullable<OverseerOverrides['addCollaborator']>>(
+      async (userId, grant) => ({ ...profileFor(userId, grant, 'Grace Hopper'), emailSent: true }))
+    const rendered = await render(
+      fakeOverseer({ addCollaborator }),
+      fakeAuthenticatedApi({ searchUsers: async () => [] }),
+      METADATA,
+      { userSearchEnabled: false },
+    )
+    const input = rendered.querySelector<HTMLInputElement>('input[aria-label="用户名或邮箱"]')!
+    await typeInto(input, 'grace@example.com')
+    await click(button(rendered, '邀请'))
+
+    expect(rendered.textContent).toContain('邀请邮件已发送至 Grace Hopper 的邮箱')
+    // The link stays available: email may not have reached them.
+    expect(button(rendered, '复制链接')).toBeDefined()
+  })
+
   it('tells apart two staged accounts with one display name', async () => {
     const rendered = await render(fakeOverseer(), fakeAuthenticatedApi({
       searchUsers: async (_query, excludeIds) => [

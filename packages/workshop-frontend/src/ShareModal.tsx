@@ -733,6 +733,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, target, 
       const settled = await Promise.allSettled(
         recipients.map(recipient => overseer.addCollaborator(recipient.id, grantFor(gadgetId), undefined)))
       const added: AiChatAuthorInfo[] = []
+      const emailed: string[] = []
       const failed: StagedRecipient[] = []
       settled.forEach((outcome, index) => {
         const recipient = recipients[index]
@@ -746,6 +747,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, target, 
           failed.push({ ...recipient, error: '未找到此用户名或邮箱对应的账号。' })
         } else {
           added.push(outcome.value.profile)
+          if (outcome.value.emailSent) emailed.push(outcome.value.profile.name)
         }
       })
       // Touch only the chips this batch sent: drop the added, keep the failed with their reason,
@@ -763,6 +765,9 @@ export default function ShareModal({ open, onClose, overseer, metadata, target, 
         showLandedRow('person', added.map(profile => profile.id))
         toasts.add({
           title: `已将 ${NAME_LIST.format(names)} 添加为协作者。`,
+          description: emailed.length > 0
+            ? `邀请邮件已发送至 ${NAME_LIST.format(emailed)} 的邮箱。`
+            : undefined,
           variant: 'success',
         })
       }
