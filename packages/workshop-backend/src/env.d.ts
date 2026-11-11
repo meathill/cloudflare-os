@@ -29,10 +29,7 @@ declare global {
       // Durable Object regional proximity location hint (e.g. "apac-ne", "apac")
       DO_LOCATION_HINT?: string;
 
-      // 固定模式：设为 "true" 时部署只提供 Gemini 3.8 Flash 一个模型（人工聊天仍可用）。
-      GEMINI_ONLY?: string;
-
-      // 事务邮件的发件地址。未设置时用 noreply@<PUBLIC_BASE_URL 的域名>。
+      // 事务邮件的发件地址。默认 no-reply@xiaoniaoshuo.com，其他部署可用它覆盖。
       INVITE_EMAIL_FROM?: string;
 
       // 注册白名单：逗号分隔或 JSON 数组的邮箱列表。非空时只有名单内邮箱能注册/首登开号，

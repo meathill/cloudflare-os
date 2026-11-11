@@ -17,7 +17,6 @@ import { chatKey, chatKeyPrefix } from "./storage-schema/overseer-storage.js";
 import { recordAnalytics } from "./analytics";
 import { createWorkshopLogger } from "./observability";
 import { getGatewayModels, type GatewayModels } from "./ai-gateway.js";
-import { GEMINI_3_8_FLASH_FALLBACK } from "./gemini-pricing.js";
 import { utcDayKey, nextUtcMidnightIso, DailyQuotaResult } from "./ai-gateway-billing/limits/config.js";
 import { isCloudflareLimitsEnabled } from "./ai-gateway-billing/config.js";
 import type { AdminSettings } from "./admin-settings.js";
@@ -1337,24 +1336,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     this.storage.profile.put(profile);
   }
 
-  // 固定模式（GEMINI_ONLY）下部署只提供一个模型：Gemini 3.8 Flash。
-  #geminiOnly(): boolean {
-    return this.env.GEMINI_ONLY === "true";
-  }
-
-  #geminiOnlyRecord(): UserAiModelRecord {
-    return {
-      profile: {
-        type: "agent", id: GEMINI_3_8_FLASH_FALLBACK.id, name: GEMINI_3_8_FLASH_FALLBACK.name,
-      },
-      config: { provider: "google", model: GEMINI_3_8_FLASH_FALLBACK.id, apiToken: "" },
-    };
-  }
-
   async listModels(kind: ModelKind = "language"): Promise<AiChatAuthorInfo[]> {
-    if (this.#geminiOnly()) {
-      return kind === "language" ? [this.#geminiOnlyRecord().profile] : [];
-    }
     return this.#listModels(await getGatewayModels(this.env), kind);
   }
 
@@ -1469,20 +1451,10 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   async getPreferredModel(): Promise<string | null> {
-    if (this.#geminiOnly()) {
-      return this.storage.preferredModel.get() ?? GEMINI_3_8_FLASH_FALLBACK.id;
-    }
     return this.storage.preferredModel.get();
   }
 
   async setPreferredModel(id: string | null): Promise<void> {
-    if (this.#geminiOnly()) {
-      if (id !== null && id !== GEMINI_3_8_FLASH_FALLBACK.id) {
-        throw new Error(`No such model: ${id}`);
-      }
-      this.storage.preferredModel.put(id);
-      return;
-    }
     if (id !== null) {
       // Any model that resolves is accepted, hidden ones included (see getExternalMessageChatContext()).
       if (!this.#resolveModel(id, await getGatewayModels(this.env))) {
@@ -1629,9 +1601,6 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
    * stored model resolves on a gateway deployment whose users may not add their own.
    */
   #resolveModel(id: string, models: GatewayModels | null): UserAiModelRecord | undefined {
-    if (this.#geminiOnly()) {
-      return id === GEMINI_3_8_FLASH_FALLBACK.id ? this.#geminiOnlyRecord() : undefined;
-    }
     if (models?.get(id)) return models.resolve(id);
     return models && !models.userModels ? undefined : this.storage.aiModels.get(id);
   }
