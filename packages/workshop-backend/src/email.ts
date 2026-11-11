@@ -23,16 +23,17 @@ export function publicBaseUrl(env: Cloudflare.Env): URL | undefined {
   }
 }
 
-/** The address a deployment sends from: INVITE_EMAIL_FROM, else noreply@ its public host. */
-function senderAddress(env: Cloudflare.Env): string | undefined {
-  if (env.INVITE_EMAIL_FROM) return env.INVITE_EMAIL_FROM;
-  let base = publicBaseUrl(env);
-  return base ? `noreply@${base.host}` : undefined;
+/** The product's verified sending address; other deployments override with INVITE_EMAIL_FROM. */
+const DEFAULT_FROM = "no-reply@xiaoniaoshuo.com";
+
+/** The address a deployment sends from: INVITE_EMAIL_FROM when set, else the product's own. */
+function senderAddress(env: Cloudflare.Env): string {
+  return env.INVITE_EMAIL_FROM || DEFAULT_FROM;
 }
 
-/** Whether this deployment can send email at all (the binding and a sender are configured). */
+/** Whether this deployment can send email at all (the Email Sending binding is configured). */
 export function emailEnabled(env: Cloudflare.Env): boolean {
-  return Boolean(env.INVITE_EMAIL) && senderAddress(env) !== undefined;
+  return Boolean(env.INVITE_EMAIL);
 }
 
 /**
@@ -41,12 +42,11 @@ export function emailEnabled(env: Cloudflare.Env): boolean {
  */
 export async function sendEmail(
     env: Cloudflare.Env, message: TransactionalEmail): Promise<boolean> {
-  let from = senderAddress(env);
-  if (!env.INVITE_EMAIL || !from) return false;
+  if (!env.INVITE_EMAIL) return false;
   try {
     await env.INVITE_EMAIL.send({
       to: message.to,
-      from,
+      from: senderAddress(env),
       subject: message.subject,
       text: message.text,
       html: message.html,

@@ -12,12 +12,12 @@ function configured(patch: Record<string, unknown> = {}): Cloudflare.Env {
 }
 
 describe("sendEmail", () => {
-  it("sends from noreply@ the public host", async () => {
+  it("sends from the product's no-reply address by default", async () => {
     const env = configured();
     expect(emailEnabled(env)).toBe(true);
     expect(await sendEmail(env, MESSAGE)).toBe(true);
     expect(env.INVITE_EMAIL!.send).toHaveBeenCalledWith({
-      ...MESSAGE, from: "noreply@writer.example",
+      ...MESSAGE, from: "no-reply@xiaoniaoshuo.com",
     });
   });
 
@@ -35,14 +35,10 @@ describe("sendEmail", () => {
     expect(await sendEmail(env, MESSAGE)).toBe(false);
   });
 
-  it("sends nothing without an origin or a sender", async () => {
+  it("is enabled by the binding alone: no public origin is needed to send", async () => {
     const env = configured({ PUBLIC_BASE_URL: undefined });
-    expect(emailEnabled(env)).toBe(false);
-    expect(await sendEmail(env, MESSAGE)).toBe(false);
-    // An explicit sender is enough on its own.
-    expect(emailEnabled(configured({
-      PUBLIC_BASE_URL: undefined, INVITE_EMAIL_FROM: "invite@brand.example",
-    }))).toBe(true);
+    expect(emailEnabled(env)).toBe(true);
+    expect(await sendEmail(env, MESSAGE)).toBe(true);
   });
 
   it("reports a refused send without throwing", async () => {
