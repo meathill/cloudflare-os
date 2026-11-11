@@ -119,6 +119,8 @@ export interface WranglerConfig {
   services?: ServiceBinding[];
   /** Browser Rendering binding (Gadget PDF exports). */
   browser?: BindingDecl;
+  /** Email Sending binding (transactional invitations and codes). Placeholder-free. */
+  send_email?: { name: string }[];
   /** This Worker version's metadata (the backend's, so a session can tell it is out of date). */
   version_metadata?: BindingDecl;
   /**
@@ -264,6 +266,9 @@ const HANDLED_CONFIG_KEYS = new Set([
   "ai",
   // The Worker version's metadata. Placeholder-free, like browser.
   "version_metadata",
+  // Email Sending (workspace invitation / OTP emails). Placeholder-free, like browser; sends to
+  // arbitrary recipients additionally need the deployment's domain onboarded to Email Sending.
+  "send_email",
   // gatekeeper-context's Artifacts binding is closed-beta and cannot be provisioned in arbitrary
   // user accounts; it is dropped from customer manifests (the gatekeeper degrades gracefully).
   "artifacts",
@@ -459,6 +464,10 @@ export function buildWorkerEntry(
   }
   for (const loader of config.worker_loaders ?? []) {
     bindings.push({ type: "worker_loader", name: loader.binding });
+  }
+  for (const email of config.send_email ?? []) {
+    // `remote` is dev-only wrangler behavior; the deployed binding is just { type, name }.
+    bindings.push({ type: "send_email", name: email.name });
   }
   for (const svc of config.services ?? []) {
     bindings.push({

@@ -1472,6 +1472,10 @@
           "type": "worker_loader"
         },
         {
+          "name": "INVITE_EMAIL",
+          "type": "send_email"
+        },
+        {
           "name": "WORKERS_AI",
           "type": "ai"
         }
@@ -1524,6 +1528,12 @@
             "AdminAuditDurableObject"
           ],
           "tag": "v4"
+        },
+        {
+          "new_sqlite_classes": [
+            "EmailOtp"
+          ],
+          "tag": "v5"
         }
       ],
       "modules": [

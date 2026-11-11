@@ -47,6 +47,12 @@ export default defineGadgetsWorker({
     // This version's id, which the frontend compares with the one new requests reach, to notice a
     // session still connected to an older version after a deploy.
     CF_VERSION_METADATA: bindings.versionMetadata(),
+
+    // Transactional email (workspace invitations, email OTP codes) through Cloudflare Email
+    // Sending. Arbitrary recipients need the domain onboarded to Email Sending and a Workers Paid
+    // plan; without it sends fail and the features degrade to no email. Not a remote dev binding:
+    // local dev keeps working without an account selected, and sends simply fail there.
+    INVITE_EMAIL: bindings.sendEmail(),
   },
 
   // When deploying to prod, you may want to bundle the frontend as assets on the backend, like so.
@@ -80,4 +86,6 @@ export const migrations: DurableObjectMigration[] = [
   { tag: "v3", new_sqlite_classes: ["UserDirectoryDurableObject"] },
   // The deployment-wide admin audit log (admin-audit.ts).
   { tag: "v4", new_sqlite_classes: ["AdminAuditDurableObject"] },
+  // Email OTP codes, one instance per email address (email-otp.ts).
+  { tag: "v5", new_sqlite_classes: ["EmailOtp"] },
 ];

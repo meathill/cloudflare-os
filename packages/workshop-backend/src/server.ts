@@ -5,7 +5,7 @@ import { PublicApi, ROUTER_TAG_PROBE_PATH, VERSION_PATH, AuthenticatedApi, Overs
 import type { UiFeatureFlags } from "@gadgets/workshop-shared/feature-flags";
 import type { UnreadStateScope } from "@gadgets/workshop-shared/api";
 import { backendVersion, getServerConfig } from "./deployment-config.js";
-import { isDeploymentAdmin, isPasswordAuthEnabled, getAuthGatekeeperAllowlist } from "./auth/config.js";
+import { isDeploymentAdmin, isPasswordAuthEnabled, isSignupAllowed, signupAllowlistEnabled, getAuthGatekeeperAllowlist } from "./auth/config.js";
 import { getAuthVendorBinding } from "./auth/auth-vendors.js";
 import { getUsageInfo } from "./ai-gateway-billing/limits/usage-checker.js";
 import { listConnectedAccounts, selectAccount } from "./ai-gateway-billing/cloudflare/connection-service.js";
@@ -15,6 +15,8 @@ import { deploymentOutputForBlueprint, listFormatOffers, readAdminConfig } from 
 
 // Re-export the optional-feature Durable Objects + entrypoints so they can be bound in wrangler.
 export { PendingLogin, LoginConnectCallbackImpl };
+export { EmailOtp } from "./email-otp.js";
+import { emailEnabled, sendEmail } from "./email.js";
 import { GatekeeperUiFrame, GatekeeperUserSelection } from "@gadgets/workshop-shared/gatekeeper";
 import { DecisionModelGatekeeper, LanguageModelGatekeeper } from "./ai-models";
 import { getGatewayModels } from "./ai-gateway.js";
@@ -757,6 +759,27 @@ class LoginAttemptImpl extends RpcTarget implements LoginAttempt {
   }
 }
 
+/** A six-digit email code, drawn uniformly enough for a five-attempt window. */
+function newEmailOtpCode(): string {
+  return String(crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000).padStart(6, "0");
+}
+
+/** The stored form of a code: SHA-256 over its address and digits, never the digits alone. */
+async function hashEmailOtp(email: string, code: string): Promise<string> {
+  let digest = await crypto.subtle.digest(
+      "SHA-256", new TextEncoder().encode(`${email}\n${code}`));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/** Normalize and validate a sign-in email address. */
+function normalizeEmailAddress(email: string): string {
+  let address = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+$/.test(address)) {
+    throw new Error("请输入有效的邮箱地址。");
+  }
+  return address;
+}
+
 @validateRpc()
 class PublicApiImpl extends RpcTarget implements PublicApi {
   users: DurableObjectNamespace<UserDurableObject>;
@@ -866,7 +889,8 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     this.#limitCli(userId);
     let signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
     let accountCreated =
-        await this.users.get(userId, this.#doOptions).authenticateFromCfAccess(email, signupsEnabled);
+        await this.users.get(userId, this.#doOptions).authenticateFromCfAccess(
+            email, signupsEnabled && isSignupAllowed(this.env, email));
     if (accountCreated) {
       recordAnalytics(this.ctx, this.env, {
         event_name: "account_created",
@@ -907,6 +931,58 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     return `${username}:${token}`;
   }
 
+  async requestEmailOtp(email: string): Promise<void> {
+    if (this.env.EMAIL_OTP_ENABLED !== "true" || !emailEnabled(this.env)) {
+      throw new Error("此部署未启用邮箱验证码登录。");
+    }
+    let address = normalizeEmailAddress(email);
+    let user = this.users.get(this.users.idFromName(address), this.#doOptions);
+    let exists = (await user.whoamiIfExists()) !== null;
+    // Existing accounts may sign in by code whenever the feature is on; a new account is created
+    // only when signups are open and its address is allowlisted (if an allowlist is configured).
+    let signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
+    if (!exists && (!signupsEnabled || !isSignupAllowed(this.env, address))) {
+      throw new Error("该邮箱不在允许注册的名单内。");
+    }
+    let code = newEmailOtpCode();
+    let otp = this.ctx.exports.EmailOtp.get(
+        this.ctx.exports.EmailOtp.idFromName(address), this.#doOptions);
+    // Stage first: a resend inside the cooldown is refused before any email leaves.
+    await otp.request(await hashEmailOtp(address, code));
+    let sent = await sendEmail(this.env, {
+      to: address,
+      subject: "登录验证码",
+      text: `你的验证码是 ${code}，10 分钟内有效。\n如果不是你本人操作，请忽略这封邮件。`,
+      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;` +
+          `max-width:480px;margin:0 auto;padding:32px 24px;color:#14110f">` +
+          `<h1 style="font-size:18px;line-height:26px;margin:0 0 16px">登录验证码</h1>` +
+          `<p style="font-size:14px;line-height:22px;margin:0 0 8px;color:#525256">你的验证码是</p>` +
+          `<p style="font-size:32px;line-height:40px;margin:0 0 16px;font-weight:700;` +
+          `letter-spacing:6px">${code}</p>` +
+          `<p style="font-size:12px;line-height:18px;margin:0;color:#8a8a8e">` +
+          `10 分钟内有效。如果不是你本人操作，请忽略这封邮件。</p></div>`,
+    });
+    if (!sent) throw new Error("验证码邮件发送失败，请稍后再试。");
+  }
+
+  async verifyEmailOtp(email: string, code: string): Promise<string | null> {
+    if (this.env.EMAIL_OTP_ENABLED !== "true" || !emailEnabled(this.env)) {
+      throw new Error("此部署未启用邮箱验证码登录。");
+    }
+    let address = normalizeEmailAddress(email);
+    let otp = this.ctx.exports.EmailOtp.get(
+        this.ctx.exports.EmailOtp.idFromName(address), this.#doOptions);
+    if (!await otp.verify(await hashEmailOtp(address, code.trim()))) return null;
+    let user = this.users.get(this.users.idFromName(address), this.#doOptions);
+    let signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
+    let secret = await user.loginOrCreateViaEmailOtp(
+        address, signupsEnabled && isSignupAllowed(this.env, address));
+    if (secret === null) return null;
+    this.ctx.waitUntil(this.ctx.exports.AdminSettings.getByName("", this.#doOptions)
+        .recordUserActivity(address, address, 0, 0, false, false));
+    return `${address}:${secret}`;
+  }
+
   async createAccount(username: string, displayName: string, passwordHash: Uint8Array)
       : Promise<string | null> {
     this.#limitCli();
@@ -918,6 +994,11 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     }
     if (!(await readAdminConfig(this.env)).signupsEnabled) {
       throw new Error("New signups are currently disabled on this deployment.");
+    }
+    // Password accounts carry no email, so an email allowlist cannot decide their fate: with the
+    // allowlist on, password signup is closed and email OTP becomes the way in.
+    if (signupAllowlistEnabled(this.env)) {
+      throw new Error("密码注册已关闭：此部署只允许名单内的邮箱通过邮箱验证码注册。");
     }
 
     username = normalizeUsername(username);

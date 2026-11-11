@@ -605,6 +605,20 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
    * returns null instead of creating one — existing users can still sign in.
    */
   async loginOrCreateViaGatekeeper(email: string, allowCreate: boolean): Promise<string | null> {
+    return this.#loginOrCreateEmailAccount(email, allowCreate, "gatekeeper");
+  }
+
+  /**
+   * A verified email-code sign-in: like a gatekeeper sign-in, the address is the account. The code
+   * itself was verified by the EmailOtp DO before this is called.
+   */
+  async loginOrCreateViaEmailOtp(email: string, allowCreate: boolean): Promise<string | null> {
+    return this.#loginOrCreateEmailAccount(email, allowCreate, "email_otp");
+  }
+
+  async #loginOrCreateEmailAccount(
+      email: string, allowCreate: boolean,
+      source: "gatekeeper" | "email_otp"): Promise<string | null> {
     if (!this.storage.created.get()) {
       if (!allowCreate) return null;
       this.storage.created.put(true);
@@ -616,13 +630,13 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       recordAnalytics(this.ctx, this.env, {
         event_name: "account_created",
         user_id: this.ctx.id.toString(),
-        source: "gatekeeper",
+        source,
       });
     }
     recordAnalytics(this.ctx, this.env, {
       event_name: "user_authenticated",
       user_id: this.ctx.id.toString(),
-      source: "gatekeeper",
+      source,
     });
     return this.#newSessionToken();
   }

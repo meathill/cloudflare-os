@@ -23,6 +23,44 @@ export function hasAuthGatekeepers(env: Cloudflare.Env): boolean {
 }
 
 /**
+ * Parse SIGNUP_ALLOWLIST into lowercased email entries: a JSON array, or the same as a JSON string
+ * (a secret binding's form), or a comma-separated string. An empty list turns the allowlist off.
+ */
+export function getSignupAllowlist(env: Cloudflare.Env): string[] {
+  let raw: unknown = env.SIGNUP_ALLOWLIST;
+  if (!raw) return [];
+  let entries: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      entries = JSON.parse(raw);
+    } catch {
+      entries = raw.split(",");
+    }
+  }
+  if (!Array.isArray(entries)) return [];
+  return entries
+      .filter((entry): entry is string => typeof entry === "string")
+      .map(entry => entry.trim().toLowerCase())
+      .filter(Boolean);
+}
+
+/** Whether the deployment restricts account creation to its email allowlist. */
+export function signupAllowlistEnabled(env: Cloudflare.Env): boolean {
+  return getSignupAllowlist(env).length > 0;
+}
+
+/**
+ * Whether `name` may create an account: always without an allowlist, and only when listed with one.
+ * First sign-in and OTP registration pass an email; password accounts have no email, so enabling
+ * the allowlist closes password signup entirely (see createAccount()).
+ */
+export function isSignupAllowed(env: Cloudflare.Env, name: string): boolean {
+  let allowlist = getSignupAllowlist(env);
+  if (allowlist.length === 0) return true;
+  return allowlist.includes(name.trim().toLowerCase());
+}
+
+/**
  * Whether the user `name` is one of the deployment admins the ADMINS binding lists. Names match
  * regardless of the case of ASCII letters, as Cloudflare Access matches its email rules: the
  * list is typed by hand, while a sign-in names its user by the email as the identity provider

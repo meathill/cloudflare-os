@@ -85,6 +85,7 @@ import {
 import { AutoApprovalDrainer, autoApprovalRule } from "./auto-approval";
 import { collectSlashCommands, invokeSlashCommand } from "./slash-commands";
 import { createWorkshopLogger, obsContext } from "./observability";
+import { sendWorkspaceInviteEmail } from "./invite-email";
 import { traceAgentTurn, traceToolApproval } from "./agent-tracing";
 import { isLoopLimitError, retryOnDoReset, shouldRetryAfterReset, wrapDoStubForTelemetry } from "./do-retry";
 import type { ChatGatewayRpcTarget, SubmitExternalMessageResult } from "@gadgets/workshop-shared/external-message-gateway";
@@ -13334,7 +13335,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
   }
 
   async addCollaborator(username: string, grant: CollaboratorGrant, note?: string)
-      : Promise<CollaboratorInfo | null> {
+      : Promise<(CollaboratorInfo & {emailSent?: boolean}) | null> {
     // Look up the user DO to check if the account exists.
     let userDoId = this.impl.users.idFromName(username);
     let userDo = this.impl.users.get(userDoId);
@@ -13343,12 +13344,36 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
       return null;
     }
 
-    return (await this.impl.getSharingManager()).addCollaborator({
+    let sharing = await this.impl.getSharingManager();
+    let firstInvite = !sharing.hasCollaborator(profile.id);
+    let info = sharing.addCollaborator({
       caller: this.#sharingCaller(),
       profile,
       grant,
       note,
     });
+
+    // Tell a first-time collaborator by email. Upstream sharing deliberately has no in-product
+    // notification (the sharer sends the link out of band); the email is our extension, and it
+    // must never decide the invitation: no email configured, a non-email account ID, or a refused
+    // send just leaves `emailSent` false.
+    let emailSent = false;
+    if (firstInvite && profile.id.includes("@")) {
+      let inviterName = "工作区所有者";
+      try {
+        inviterName = (await retryOnDoReset(
+            () => (this.isOwner ? this.#owner : this.#clientUser).whoami(), this.impl.logger)).name;
+      } catch {
+        // Keep the fallback name rather than failing the invitation.
+      }
+      emailSent = await sendWorkspaceInviteEmail(this.impl.env, {
+        to: profile.id,
+        inviterName,
+        workspaceTitle: this.impl.storage.title.get(),
+        workspaceId: this.impl.ctx.id.toString(),
+      });
+    }
+    return { ...info, emailSent };
   }
 
   async previewRemoveCollaborator(profileId: string, gadgetId?: WorkpieceId)

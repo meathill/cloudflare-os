@@ -317,6 +317,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, target, 
   const [newShareLinkId, setNewShareLinkId] = useState<string | null>(null)
   const [newShareLinkCopied, setNewShareLinkCopied] = useState(false)
   const [invitedNames, setInvitedNames] = useState<string[]>([])
+  const [invitedByEmail, setInvitedByEmail] = useState<string[]>([])
   const [invitedLinkCopied, setInvitedLinkCopied] = useState(false)
   const [requirements, setRequirements] = useState<ObserverBindingNeed[] | null>(null)
   const [requirementsFailed, setRequirementsFailed] = useState(false)
@@ -488,6 +489,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, target, 
         setNewShareLinkId(null)
         setNewShareLinkCopied(false)
         setInvitedNames([])
+        setInvitedByEmail([])
         setInvitedLinkCopied(false)
         setNewLinkNote('')
         setShowLinkComposer(false)
@@ -643,6 +645,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, target, 
       const settled = await Promise.allSettled(
         recipients.map(recipient => overseer.addCollaborator(recipient.id, grantFor(gadgetId), undefined)))
       const added: AiChatAuthorInfo[] = []
+      const emailed: string[] = []
       const failed: StagedRecipient[] = []
       settled.forEach((outcome, index) => {
         const recipient = recipients[index]
@@ -656,6 +659,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, target, 
           failed.push({ ...recipient, error: '未找到此用户名或邮箱对应的账号。' })
         } else {
           added.push(outcome.value.profile)
+          if (outcome.value.emailSent) emailed.push(outcome.value.profile.name)
         }
       })
       // Touch only the chips this batch sent: drop the added, keep the failed with their reason,
@@ -670,6 +674,7 @@ export default function ShareModal({ open, onClose, overseer, metadata, target, 
       if (added.length > 0) {
         const names = added.map(profile => profile.name)
         setInvitedNames(names)
+        setInvitedByEmail(emailed)
         setInvitedLinkCopied(false)
         await loadData()
         showLandedRow('person', added.map(profile => profile.id))
@@ -1129,7 +1134,11 @@ export default function ShareModal({ open, onClose, overseer, metadata, target, 
                     已添加 {NAME_LIST.format(invitedNames)}
                   </p>
                   <span className="text-[11px] leading-4 text-kumo-inactive">
-                    {invitedLinkCopied ? '链接已复制到剪贴板' : '将链接发给他们以打开工作区'}
+                    {invitedLinkCopied
+                      ? '链接已复制到剪贴板'
+                      : invitedByEmail.length > 0
+                        ? `邀请邮件已发送至 ${NAME_LIST.format(invitedByEmail)} 的邮箱`
+                        : '将链接发给他们以打开工作区'}
                   </span>
                 </div>
                 <p className="truncate font-mono text-[11px] leading-4 text-kumo-subtle">{invitedUrl}</p>
@@ -1140,7 +1149,11 @@ export default function ShareModal({ open, onClose, overseer, metadata, target, 
               </WorkshopButton>
               <WorkshopIconButton
                 aria-label="关闭已添加协作者提示"
-                onClick={() => { setInvitedNames([]); setInvitedLinkCopied(false) }}
+                onClick={() => {
+                  setInvitedNames([])
+                  setInvitedByEmail([])
+                  setInvitedLinkCopied(false)
+                }}
               >
                 <X size={14} />
               </WorkshopIconButton>

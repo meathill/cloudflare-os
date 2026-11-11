@@ -32,6 +32,16 @@ declare global {
       // 固定模式：设为 "true" 时部署只提供 Gemini 3.8 Flash 一个模型（人工聊天仍可用）。
       GEMINI_ONLY?: string;
 
+      // 事务邮件的发件地址。未设置时用 noreply@<PUBLIC_BASE_URL 的域名>。
+      INVITE_EMAIL_FROM?: string;
+
+      // 注册白名单：逗号分隔或 JSON 数组的邮箱列表。非空时只有名单内邮箱能注册/首登开号，
+      // 密码注册整体关闭（密码账号没有邮箱，无法核验归属）。
+      SIGNUP_ALLOWLIST?: string | string[];
+
+      // 邮箱验证码（OTP）注册/登录总开关，默认关闭。实际可用还需 INVITE_EMAIL binding。
+      EMAIL_OTP_ENABLED?: string;
+
       // Workers AI binding (injected by generate-wrangler-prod / run-dev-server; not in base wrangler.jsonc).
       WORKERS_AI: Ai;
 

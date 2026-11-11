@@ -140,6 +140,21 @@ export interface PublicApi extends RpcTarget {
   login(username: string, passwordHash: Uint8Array): Promise<string | null>;
 
   /**
+   * Send a one-time code to `email` for passwordless sign-in or, with a configured allowlist,
+   * first-time registration. Requires the deployment to enable email OTP (EMAIL_OTP_ENABLED) and
+   * to have a working email sender; throws when either is missing, when the address may not
+   * register, when a code was just sent, or when the email cannot be delivered.
+   */
+  requestEmailOtp(email: string): Promise<void>;
+
+  /**
+   * Verify a one-time code from requestEmailOtp(). Returns a session token to store and pass to
+   * authenticate(), or null when the code is wrong, expired, or out of attempts. Creates the
+   * account when the email may register and has none yet.
+   */
+  verifyEmailOtp(email: string, code: string): Promise<string | null>;
+
+  /**
    * Create a new account. Returns a token to store in local storage and pass to `authenticate()`
    * in the future.
    *
@@ -2229,6 +2244,18 @@ export type ServerConfig = {
   signupsEnabled: boolean;
 
   /**
+   * Whether the deployment restricts account creation to an email allowlist (SIGNUP_ALLOWLIST).
+   * The signup page then explains that registration is invite-only.
+   */
+  signupAllowlistEnabled: boolean;
+
+  /**
+   * Whether email OTP registration/login is available: EMAIL_OTP_ENABLED and a configured email
+   * sender. The login page offers the email-code form only then.
+   */
+  emailOtpEnabled: boolean;
+
+  /**
    * Whether users may search the user directory to find collaborators. When not explicitly
    * configured, this defaults to the opposite of `signupsEnabled`. When false the share UI offers
    * only an exact username/email field.
@@ -4063,9 +4090,13 @@ export interface Overseer extends RpcTarget {
    * A grant the caller already gave them covers (e.g. a gadget, after "build") changes nothing but
    * the note; one that covers the caller's earlier grants to them replaces those. Returns the
    * collaborator's info, or null if the username doesn't correspond to an existing account.
+   *
+   * `emailSent` reports whether the invitation email for a first-time collaborator went out; it is
+   * false when email is not configured, the account has no email address, or the provider refused
+   * it. The invitation itself stands either way.
    */
   addCollaborator(username: string, grant: CollaboratorGrant,
-                  note?: string): Promise<CollaboratorInfo | null>;
+                  note?: string): Promise<(CollaboratorInfo & {emailSent?: boolean}) | null>;
 
   /**
    * Stop sharing this workspace with a user (unshare it): remove a collaborator, identified by
