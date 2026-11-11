@@ -15,7 +15,7 @@ const GADGETS: GadgetSummary[] = [
 ]
 
 // `role="img"` is what makes the label reachable; a bare span would be named nothing.
-const HOOK_BADGE = '[role="img"][aria-label="Hooks enabled"]'
+const HOOK_BADGE = '[role="img"][aria-label="已启用钩子"]'
 
 // Right-clicks `target` and picks Delete from the menu that opens.
 const chooseDelete = async (target: Element) => {

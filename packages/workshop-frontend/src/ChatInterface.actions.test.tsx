@@ -199,7 +199,7 @@ const clampedDescription = () => document.querySelector('[class*="max-h-[200px]"
 
 // The text a screen reader announces as the Approve button's description.
 function approveDescribedBy(): string | null {
-  const approve = [...document.querySelectorAll('button')].find(b => b.textContent === 'Approve')
+  const approve = [...document.querySelectorAll('button')].find(b => b.textContent === '批准')
   if (!approve) throw new Error('No Approve button rendered')
   const ids = approve.getAttribute('aria-describedby')
   if (ids === null) return null
@@ -344,7 +344,7 @@ describe('send and retry failures', () => {
     const textarea = await sendFromComposer('Summarize the report')
 
     expect(addToast).toHaveBeenCalledExactlyOnceWith(
-        { title: 'Failed to send message', description: disabledModel, variant: 'error' })
+        { title: '发送消息失败', description: disabledModel, variant: 'error' })
     expect(textarea.value).toBe('Summarize the report')
   })
 
@@ -359,7 +359,7 @@ describe('send and retry failures', () => {
     const textarea = await sendFromComposer('Summarize the report')
 
     expect(addToast).toHaveBeenCalledExactlyOnceWith(
-        { title: 'Failed to start conversation', description: disabledModel, variant: 'error' })
+        { title: '开始对话失败', description: disabledModel, variant: 'error' })
     expect(textarea.value).toBe('Summarize the report')
   })
 
@@ -393,7 +393,7 @@ describe('send and retry failures', () => {
       type: 'error',
       message: 'The model request failed.',
     })
-    const retry = [...document.querySelectorAll('button')].find(b => b.textContent === 'Retry')
+    const retry = [...document.querySelectorAll('button')].find(b => b.textContent === '重试')
     if (!retry) throw new Error('No Retry button rendered')
     await act(async () => retry.click())
   }
@@ -402,14 +402,14 @@ describe('send and retry failures', () => {
     await retryAfterError(async () => { throw new Error(disabledModel) })
 
     expect(addToast).toHaveBeenCalledExactlyOnceWith(
-        { title: 'Failed to retry agent', description: disabledModel, variant: 'error' })
+        { title: '重试智能体失败', description: disabledModel, variant: 'error' })
   })
 
   it('reports a retry the connection dropped without the transport message', async () => {
     await retryAfterError(async () => { throw new Error('Peer closed WebSocket: 1006 ') })
 
     expect(addToast).toHaveBeenCalledExactlyOnceWith(
-        { title: 'Failed to retry agent', description: undefined, variant: 'error' })
+        { title: '重试智能体失败', description: undefined, variant: 'error' })
   })
 
   it('shows a turn the user stopped as stopped, not as an error, and offers Continue', async () => {
@@ -427,12 +427,12 @@ describe('send and retry failures', () => {
     })
 
     const text = document.body.textContent ?? ''
-    expect(text).toContain('Stopped')
-    expect(text).not.toContain('Error:')
+    expect(text).toContain('已停止')
+    expect(text).not.toContain('错误：')
     expect(text).not.toContain('The user stopped the agent.')
     const buttons = [...document.querySelectorAll('button')].map(b => b.textContent)
-    expect(buttons).toContain('Continue')
-    expect(buttons).not.toContain('Retry')
+    expect(buttons).toContain('继续')
+    expect(buttons).not.toContain('重试')
   })
 })
 
@@ -501,7 +501,7 @@ describe('hook toggles', () => {
       await clickHookSwitch(TITLE)
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
-        title: `Failed to ${done === 'enabled' ? 'enable' : 'disable'} hook`, description, variant: 'error',
+        title: `${done === 'enabled' ? '启用' : '禁用'}钩子失败`, description, variant: 'error',
       })
       expect(isOn()).toBe(enabled)
     })
@@ -552,7 +552,7 @@ describe('queued steers', () => {
     expect(text.indexOf('And bigger.')).toBeGreaterThan(text.indexOf('Make it dark.'))
     expect(text).toContain('Collaborator')
 
-    const stop = document.querySelector<HTMLButtonElement>('[aria-label="Stop agent"]')
+    const stop = document.querySelector<HTMLButtonElement>('[aria-label="停止智能体"]')
     if (!stop) throw new Error('No Stop button rendered')
     await act(async () => stop.click())
 

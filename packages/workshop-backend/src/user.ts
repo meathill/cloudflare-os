@@ -17,6 +17,7 @@ import { chatKey, chatKeyPrefix } from "./storage-schema/overseer-storage.js";
 import { recordAnalytics } from "./analytics";
 import { createWorkshopLogger } from "./observability";
 import { getGatewayModels, type GatewayModels } from "./ai-gateway.js";
+import { GEMINI_3_8_FLASH_FALLBACK } from "./gemini-pricing.js";
 import { utcDayKey, nextUtcMidnightIso, DailyQuotaResult } from "./ai-gateway-billing/limits/config.js";
 import { isCloudflareLimitsEnabled } from "./ai-gateway-billing/config.js";
 import type { AdminSettings } from "./admin-settings.js";
@@ -1322,7 +1323,24 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     this.storage.profile.put(profile);
   }
 
+  // 固定模式（GEMINI_ONLY）下部署只提供一个模型：Gemini 3.8 Flash。
+  #geminiOnly(): boolean {
+    return this.env.GEMINI_ONLY === "true";
+  }
+
+  #geminiOnlyRecord(): UserAiModelRecord {
+    return {
+      profile: {
+        type: "agent", id: GEMINI_3_8_FLASH_FALLBACK.id, name: GEMINI_3_8_FLASH_FALLBACK.name,
+      },
+      config: { provider: "google", model: GEMINI_3_8_FLASH_FALLBACK.id, apiToken: "" },
+    };
+  }
+
   async listModels(kind: ModelKind = "language"): Promise<AiChatAuthorInfo[]> {
+    if (this.#geminiOnly()) {
+      return kind === "language" ? [this.#geminiOnlyRecord().profile] : [];
+    }
     return this.#listModels(await getGatewayModels(this.env), kind);
   }
 
@@ -1437,10 +1455,20 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   async getPreferredModel(): Promise<string | null> {
+    if (this.#geminiOnly()) {
+      return this.storage.preferredModel.get() ?? GEMINI_3_8_FLASH_FALLBACK.id;
+    }
     return this.storage.preferredModel.get();
   }
 
   async setPreferredModel(id: string | null): Promise<void> {
+    if (this.#geminiOnly()) {
+      if (id !== null && id !== GEMINI_3_8_FLASH_FALLBACK.id) {
+        throw new Error(`No such model: ${id}`);
+      }
+      this.storage.preferredModel.put(id);
+      return;
+    }
     if (id !== null) {
       // Any model that resolves is accepted, hidden ones included (see getExternalMessageChatContext()).
       if (!this.#resolveModel(id, await getGatewayModels(this.env))) {
@@ -1555,8 +1583,6 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       result.aiModel = this.#resolveModel(modelId, models);
       if (!result.aiModel) {
         models?.refuseDisabled(modelId);
-        // No gateway model has the ID, so a stored model with it is one the deployment keeps
-        // users from running.
         let stored = this.storage.aiModels.get(modelId);
         if (stored) models?.refuseUserModel(stored.profile.name);
         throw new Error(`No such model: ${modelId}`);
@@ -1572,9 +1598,6 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   async getExternalMessageChatContext(existingChatModelId: string | null): Promise<UserChatContext> {
-    // An existing chat keeps its model while it still resolves, even once no longer offered. A new
-    // conversation takes the user's preferred model only while it is still offered, as the web
-    // composer does with its stored choice, and otherwise the first available model.
     let models = await getGatewayModels(this.env);
     let selectedModelId = existingChatModelId;
     if (selectedModelId === null || !this.#resolveModel(selectedModelId, models)) {
@@ -1592,6 +1615,9 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
    * stored model resolves on a gateway deployment whose users may not add their own.
    */
   #resolveModel(id: string, models: GatewayModels | null): UserAiModelRecord | undefined {
+    if (this.#geminiOnly()) {
+      return id === GEMINI_3_8_FLASH_FALLBACK.id ? this.#geminiOnlyRecord() : undefined;
+    }
     if (models?.get(id)) return models.resolve(id);
     return models && !models.userModels ? undefined : this.storage.aiModels.get(id);
   }
@@ -2143,6 +2169,23 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     });
   }
 
+  // An auto-provisioned account is never reconnected, so without this the description stored when it
+  // was minted would never pick up a gatekeeper upgrade (e.g. a newly declared management UI).
+  // Best-effort: a failing describe() keeps the stored description.
+  async #refreshAccountDescription(record: ConnectedAccountRecord): Promise<void> {
+    try {
+      let description = await record.account.describe();
+      if (JSON.stringify(description) === JSON.stringify(record.description)) return;
+      let current = this.storage.connectedAccounts.get(record.id);
+      if (current) this.storage.connectedAccounts.put({ ...current, description });
+    } catch (err) {
+      logger.warn("failed to refresh an auto-provisioned account description", {
+        event: "account.auto.describe.refresh.failed",
+        vendorId: record.vendorId, accountId: record.id, error: err,
+      });
+    }
+  }
+
   // Dedup concurrent #ensureAutoProvisionedAccounts() calls. The provisioning loop awaits cross-worker
   // RPCs (describe/createAccount), which releases the DO input gate; without this, two overlapping
   // calls (e.g. the nav listing apps while a gadget opens) could both see "not provisioned" and
@@ -2162,9 +2205,13 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   async #provisionMissingAccounts(): Promise<void> {
     // Which vendors already have an auto-provisioned account?
     let provisioned = new Set<string>();
+    let refreshes: Promise<void>[] = [];
     for (let rec of this.#connectedAccountRecords()) {
-      if (rec.autoProvisioned) provisioned.add(rec.vendorId);
+      if (!rec.autoProvisioned) continue;
+      provisioned.add(rec.vendorId);
+      refreshes.push(this.#refreshAccountDescription(rec));
     }
+    await Promise.all(refreshes);
 
     let config = await readAdminConfig(this.env);
     for (let {vendorId, vendor} of await this.#ambientVendors()) {

@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES, DEFAULT_UPDATE_MINIMUM_AGE_HOURS, DEFAULT_UPDATE_NOTICE_SNOOZE_HOURS, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, type GatewayModel, DEFAULT_ADMIN_AUDIT_RETENTION_DAYS, MAX_ADMIN_AUDIT_ARG_LENGTH, MAX_ADMIN_AUDIT_RETENTION_DAYS } from "@gadgets/workshop-shared/api";
-import { adminConfigSeed, changesModelSettings, defaultOutputFormatId, effectiveAdminConfig, isUpdateCheckInterval, isUpdateHours, normalizeAdminConfig, parseAdminConfig, parseAdminConfigSeed, readAdminConfig, parseRestrictedWebFetchHosts, reorderFormats, resolveFormatOutput, sanitizeAddedModel, sanitizeModelSettings, sanitizeOutputOverrides, serializeAdminConfig, diffAdminConfig } from "../src/admin-config.js";
+import { DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES, DEFAULT_UPDATE_MINIMUM_AGE_HOURS, DEFAULT_UPDATE_NOTICE_SNOOZE_HOURS, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, type GatewayModel, DEFAULT_ADMIN_AUDIT_RETENTION_DAYS, MAX_ADMIN_AUDIT_ARG_LENGTH, MAX_ADMIN_AUDIT_RETENTION_DAYS, resolveSiteName } from "@gadgets/workshop-shared/api";
+import { adminConfigSeed, changesModelSettings, defaultOutputFormatId, effectiveAdminConfig, isUpdateCheckInterval, isUpdateHours, normalizeAdminConfig, parseAdminConfig, parseAdminConfigSeed, readAdminConfig, parseRestrictedWebFetchHosts, reorderFormats, resolveFormatOutput, sanitizeAddedModel, sanitizeModelSettings, sanitizeOutputOverrides, serializeAdminConfig, diffAdminConfig, SCRIPT_WRITING_DEFAULT_INSTRUCTIONS, formatInstanceInstructions } from "../src/admin-config.js";
 import { DEFAULT_ADMIN_CONFIG, type AdminConfig, type FormatCuration } from "../src/storage-schema/admin-settings-storage.js";
 
 describe("parseAdminConfig", () => {
+  it("未配置站点名时使用有缘心之助，并保留管理员自定义名称", () => {
+    expect(resolveSiteName(undefined)).toBe("有缘心之助");
+    expect(resolveSiteName(parseAdminConfig("{}").siteName)).toBe("有缘心之助");
+    expect(resolveSiteName(parseAdminConfig(JSON.stringify({ siteName: "创作团队" })).siteName))
+      .toBe("创作团队");
+  });
+
   it("backfills fields missing from a config persisted before they existed", () => {
     // A config written before `formats` was added. Every consumer indexes into these, so a missing
     // field must come back as its default rather than undefined.
@@ -779,5 +786,28 @@ describe("diffAdminConfig", () => {
         configWith({ disabledResources: { ["k".repeat(300)]: ["x"] } }));
     expect(cut.key).toHaveLength(MAX_ADMIN_AUDIT_ARG_LENGTH);
     expect(cut.key!.endsWith("…")).toBe(true);
+  });
+});
+
+describe("formatInstanceInstructions", () => {
+  it("injects 有缘心之助 guardrails when instructions are empty", () => {
+    let result = formatInstanceInstructions("");
+    expect(result).toContain(SCRIPT_WRITING_DEFAULT_INSTRUCTIONS);
+    expect(result).toContain("有缘心之助剧本创作协作平台");
+    expect(result).toContain("绝对禁止调用 `createGadget` 去手写任何 client.js / server.js 游戏引擎或网页应用代码");
+    expect(result).toContain("format.script");
+    expect(result).toContain("format.outline");
+    expect(result).toContain("必须先问用户");
+    expect(result).not.toContain("互动分支");
+    expect(result).toContain("skills/short-drama-skill-codex/SKILL.md");
+    expect(result).toContain("readDramaDocument");
+    expect(result).toContain("env.CUSTOM.getPlaybook()");
+    expect(result).toContain("env.CUSTOM.recordFeedback(");
+  });
+
+  it("prepends guardrails when custom admin instructions are provided", () => {
+    let result = formatInstanceInstructions("Custom admin rule 123");
+    expect(result).toContain(SCRIPT_WRITING_DEFAULT_INSTRUCTIONS);
+    expect(result).toContain("Custom admin rule 123");
   });
 });

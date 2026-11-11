@@ -68,7 +68,7 @@ export const CreationAccountModal = ({ overseer, gatekeeperId, onChoose, onCance
     load().catch(err => {
       if (cancelled) return
       console.error('Failed to load the creation:', err)
-      toasts.add({ title: 'Failed to load the creation', variant: 'error' })
+      toasts.add({ title: '加载创建信息失败', variant: 'error' })
       onCancel()
     })
     return () => { cancelled = true }
@@ -96,7 +96,7 @@ export const CreationAccountModal = ({ overseer, gatekeeperId, onChoose, onCance
     subscription.catch(err => {
       if (cancelled) return
       console.error('Failed to subscribe to connected accounts:', err)
-      toasts.add({ title: 'Failed to load your connected accounts', variant: 'error' })
+      toasts.add({ title: '加载已连接账号失败', variant: 'error' })
     })
     return () => {
       cancelled = true
@@ -113,7 +113,7 @@ export const CreationAccountModal = ({ overseer, gatekeeperId, onChoose, onCance
     } catch (err) {
       if (err instanceof AuthPopupCancelledError) return
       console.error('Failed to start connection flow:', err)
-      toasts.add({ title: err instanceof Error ? err.message : 'Could not complete connection flow', variant: 'error' })
+      toasts.add({ title: err instanceof Error ? err.message : '无法完成连接流程', variant: 'error' })
     } finally {
       setStarting(null)
     }
@@ -144,7 +144,7 @@ export const CreationAccountModal = ({ overseer, gatekeeperId, onChoose, onCance
       .catch((err: unknown) => {
         console.error('Failed to start the creation configurator:', err)
         if (cancelled) return
-        const error = err instanceof Error ? err.message : 'Could not start configurator.'
+        const error = err instanceof Error ? err.message : '无法启动配置器。'
         setConfigurator({ accountId: configuratorAccountId, error })
       })
     return () => {
@@ -177,7 +177,7 @@ export const CreationAccountModal = ({ overseer, gatekeeperId, onChoose, onCance
     } catch (err) {
       if (collectAttempt.current !== attempt) return
       console.error('Failed to read the creation settings:', err)
-      toasts.add({ title: 'Failed to read the creation settings', variant: 'error' })
+      toasts.add({ title: '读取创建设置失败', variant: 'error' })
       setCollecting(false)
       return
     }
@@ -189,8 +189,8 @@ export const CreationAccountModal = ({ overseer, gatekeeperId, onChoose, onCance
       <Dialog className="responsive-dialog !top-[clamp(24px,10vh,80px)] !flex !max-h-[calc(100vh-clamp(24px,10vh,80px)-24px)] !-translate-y-0 flex-col overflow-hidden p-0 sm:w-[480px]" size="base">
         <Dialog.Title className="shrink-0 px-6 pt-6 text-lg font-semibold">
           {configuratorPattern === null
-            ? 'Choose an account to create it in'
-            : 'Choose where to create it'}
+            ? '选择用于创建的账号'
+            : '选择创建位置'}
         </Dialog.Title>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
@@ -236,13 +236,13 @@ export const CreationAccountModal = ({ overseer, gatekeeperId, onChoose, onCance
         </div>
 
         <div className="flex shrink-0 justify-end gap-2 border-t border-kumo-line px-6 py-4">
-          <WorkshopButton onClick={onCancel}>Cancel</WorkshopButton>
+          <WorkshopButton onClick={onCancel}>取消</WorkshopButton>
           <WorkshopButton
             tone="primary"
             onClick={() => selected && void approve(selected.id)}
             disabled={!selected || !usable(selected) || !configured || collecting}
           >
-            Approve
+            批准
           </WorkshopButton>
         </div>
       </Dialog>

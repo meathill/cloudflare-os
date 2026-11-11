@@ -83,9 +83,9 @@ export const SkillsNavigatorPage = ({ onSelectSkill, onOpenCollection }: SkillsN
     <main className="h-full overflow-y-auto bg-kumo-base px-5 py-8 sm:px-10 sm:py-10">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
         <header>
-          <Text as="h1" variant="heading" size="lg">Skills</Text>
+          <Text as="h1" variant="heading" size="lg">技能</Text>
           <Text variant="secondary" size="sm" DANGEROUS_className="mt-1 max-w-2xl">
-            Skills your agents can use, organized by collection.
+            智能体可使用的技能，按知识集合组织。
           </Text>
         </header>
 
@@ -97,10 +97,10 @@ export const SkillsNavigatorPage = ({ onSelectSkill, onOpenCollection }: SkillsN
               className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-kumo-inactive"
             />
             <Input
-              aria-label="Search skills"
+              aria-label="搜索技能"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search skills"
+              placeholder="搜索技能"
               className="w-full pl-9"
             />
           </div>
@@ -109,14 +109,14 @@ export const SkillsNavigatorPage = ({ onSelectSkill, onOpenCollection }: SkillsN
               render={(
                 <Button variant="primary">
                   <PlusIcon size={16} weight="bold" />
-                  Add
+                  添加
                 </Button>
               )}
             />
             <DropdownMenu.Content align="end" sideOffset={6}>
               {writableCollections.length === 0 ? (
                 <Tooltip
-                  content="Add an editable collection before adding a skill."
+                  content="添加技能前请先添加可编辑的知识集合。"
                   render={(
                     <DropdownMenu.Item
                       icon={<PlusIcon className="size-3.25" />}
@@ -124,21 +124,21 @@ export const SkillsNavigatorPage = ({ onSelectSkill, onOpenCollection }: SkillsN
                     />
                   )}
                 >
-                  Add skill
+                  添加技能
                 </Tooltip>
               ) : (
                 <DropdownMenu.Item
                   icon={<PlusIcon className="size-3.25" />}
                   onClick={startAddSkillFromMenu}
                 >
-                  Add skill
+                  添加技能
                 </DropdownMenu.Item>
               )}
               <DropdownMenu.Item
                 icon={<FolderPlus className="size-3.25" />}
                 onClick={() => setPendingAddCollection(true)}
               >
-                Add collection
+                添加知识集合
               </DropdownMenu.Item>
               <DropdownMenu.Separator />
               <DropdownMenu.Item
@@ -150,7 +150,7 @@ export const SkillsNavigatorPage = ({ onSelectSkill, onOpenCollection }: SkillsN
                   collectionEditable: true,
                 })}
               >
-                Upload skills
+                上传技能
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu>
@@ -160,15 +160,15 @@ export const SkillsNavigatorPage = ({ onSelectSkill, onOpenCollection }: SkillsN
           {status === "loading" ? (
             <LayerCard
               role="status"
-              aria-label="Loading skills"
+              aria-label="正在加载技能"
               className="flex min-h-[240px] items-center justify-center bg-kumo-control p-1"
             >
               <Loader size="lg" />
             </LayerCard>
           ) : status === "error" ? (
             <LayerCard className="flex min-h-[240px] flex-col items-center justify-center gap-3 bg-kumo-control p-1">
-              <Text variant="secondary" size="sm">Skills could not be loaded.</Text>
-              <Button variant="secondary" onClick={reload}>Retry</Button>
+              <Text variant="secondary" size="sm">无法加载技能。</Text>
+              <Button variant="secondary" onClick={reload}>重试</Button>
             </LayerCard>
           ) : navigator.length > 0 ? (
             <SkillsNavigatorTree
@@ -193,7 +193,7 @@ export const SkillsNavigatorPage = ({ onSelectSkill, onOpenCollection }: SkillsN
           ) : (
             <LayerCard className="flex min-h-[240px] items-center justify-center bg-kumo-control p-1">
               <Text variant="secondary" size="sm">
-                {query.trim() ? "No skills match your search." : "No skills are available."}
+                {query.trim() ? "没有符合搜索条件的技能。" : "暂无可用技能。"}
               </Text>
             </LayerCard>
           )}

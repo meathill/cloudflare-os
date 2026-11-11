@@ -1,9 +1,9 @@
 import { DropdownMenu } from "@cloudflare/kumo";
-import { CaretDown, Check } from "@phosphor-icons/react";
+import { CaretDownIcon, CheckIcon } from "@phosphor-icons/react";
 import type { AiChatAuthorInfo } from "@gadgets/workshop-shared/api";
 
 /**
- * The composer's model, or null for "No agent". `name` labels it when `models` doesn't offer it,
+ * The composer's model, or null for "无智能体". `name` labels it when `models` doesn't offer it,
  * such as a hidden model an existing chat last ran on; the raw id is shown when that is absent too.
  */
 export type SelectedModel = { id: string; name?: string } | null;
@@ -20,7 +20,7 @@ export const ComposerModelSelector = ({
   onModelChange,
 }: ComposerModelSelectorProps) => {
   const selectedModelLabel = selectedModel == null
-    ? "No agent"
+    ? "无智能体"
     : models.find((model) => model.id === selectedModel.id)?.name ??
       selectedModel.name ?? selectedModel.id;
 
@@ -31,10 +31,10 @@ export const ComposerModelSelector = ({
           <button
             type="button"
             className="group inline-flex h-10 min-w-0 max-w-[110px] cursor-pointer items-center gap-1.5 rounded-lg px-2 text-[14px] leading-5 text-kumo-subtle transition-[background-color,color,transform] duration-150 ease-out hover:bg-kumo-tint hover:text-kumo-default focus-visible:bg-kumo-tint focus-visible:text-kumo-default focus-visible:outline-none active:scale-[0.97] data-[popup-open]:bg-kumo-tint data-[popup-open]:text-kumo-default sm:h-8 sm:max-w-[180px] sm:text-[13px]"
-            aria-label="Select model"
+            aria-label="选择模型"
           >
             <span className="min-w-0 truncate">{selectedModelLabel}</span>
-            <CaretDown
+            <CaretDownIcon
               size={12}
               weight="bold"
               className="flex-shrink-0 text-kumo-inactive transition-transform duration-150 ease-out group-data-[popup-open]:rotate-180"
@@ -60,7 +60,7 @@ export const ComposerModelSelector = ({
                 )}
               </span>
               {active && (
-                <Check
+                <CheckIcon
                   size={12}
                   weight="bold"
                   className="ml-1 flex-shrink-0 text-kumo-inactive"
@@ -74,9 +74,9 @@ export const ComposerModelSelector = ({
           onClick={() => onModelChange(null)}
           className="!h-auto rounded-xl !px-2 !py-1.5 text-[12px] leading-4 font-normal tracking-[-0.15px] text-kumo-subtle transition-colors data-highlighted:bg-kumo-tint/70 data-highlighted:text-kumo-default"
         >
-          <span className="min-w-0 flex-1 truncate">No agent</span>
+          <span className="min-w-0 flex-1 truncate">无智能体</span>
           {selectedModel == null && (
-            <Check
+            <CheckIcon
               size={12}
               weight="bold"
               className="ml-1 flex-shrink-0 text-kumo-inactive"

@@ -189,7 +189,7 @@ const resolveStart = async (index: number) => {
 
 const button = (matches: (button: HTMLButtonElement) => boolean) =>
   [...document.querySelectorAll<HTMLButtonElement>('button')].find(matches)!
-const approveButton = () => button(b => b.textContent === 'Approve')
+const approveButton = () => button(b => b.textContent === '批准')
 const accountButton = (name: string) => button(b => b.textContent?.startsWith(name) ?? false)
 
 const reportReady = () => act(() => testState.reportReady!(true))
@@ -283,7 +283,7 @@ describe('CreationAccountModal', () => {
     reportReady()
 
     act(() => approveButton().click())
-    act(() => button(b => b.textContent === 'Cancel').click())
+    act(() => button(b => b.textContent === '取消').click())
     expect(onCancel).toHaveBeenCalled()
     unmount()
     // Disposing the frame shuts down its session, rejecting the pending collect.

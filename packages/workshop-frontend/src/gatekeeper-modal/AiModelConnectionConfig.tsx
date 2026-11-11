@@ -19,21 +19,21 @@ export function AiModelConnectionConfig({
   selectContainer,
 }: AiModelConnectionConfigProps) {
   const groups = [
-    { label: 'Language models', models: chatModels },
-    { label: 'Decision models', models: decisionModels },
+    { label: '语言模型', models: chatModels },
+    { label: '决策模型', models: decisionModels },
   ].filter(group => group.models.length > 0)
 
   return (
     <section className="grid gap-3">
       <ConnectionConfigField
-        label="Model"
-        description="Language models write text. Decision models answer questions with probabilities."
+        label="模型"
+        description="语言模型生成文本，决策模型通过概率回答问题。"
       >
         <Select
-          aria-label="Select an AI model"
+          aria-label="选择 AI 模型"
           className="w-full text-sm [&_button]:!h-9"
           container={selectContainer}
-          placeholder="Select an AI model"
+          placeholder="选择 AI 模型"
           value={selectedModelId}
           onValueChange={(v) => onSelectedModelIdChange(v as string | undefined)}
           renderValue={(id) => [...chatModels, ...decisionModels].find((m) => m.id === id)?.name ?? id}

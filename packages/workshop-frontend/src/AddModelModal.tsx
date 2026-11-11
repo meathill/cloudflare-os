@@ -104,7 +104,7 @@ function buildOptions(gatewayMode: boolean, enabledProviders: Set<string> | null
 
     options.push({
       value: encodeSelection(provider),
-      label: `Other ${PROVIDER_LABELS[provider] || provider}...`,
+      label: `其他 ${PROVIDER_LABELS[provider] || provider}…`,
       provider,
     })
   }
@@ -198,7 +198,7 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
     const newErrors: Record<string, string> = {}
 
     if (!selection) {
-      newErrors.selection = gatewayMode ? 'Please select a provider' : 'Please select a model'
+      newErrors.selection = gatewayMode ? '请选择服务商' : '请选择模型'
     }
 
     if (selection?.type === 'custom') {
@@ -216,30 +216,30 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
 
     if (showCredentials && selection && isTokenRequired(selection.provider, headerRows) && effectiveApiToken?.trim() === '') {
       newErrors.apiToken = apiToken === null
-        ? 'Please re-enter your API token, since the API URL changed'
-        : 'Please enter your API token'
+        ? 'API 地址已更改，请重新输入 API 令牌'
+        : '请输入 API 令牌'
     }
 
     if (showCredentials && isCloudflare && !accountId.trim()) {
-      newErrors.accountId = 'Please enter your Cloudflare account ID'
+      newErrors.accountId = '请输入 Cloudflare 账号 ID'
     }
 
     if (showCredentials && isOllama && !apiUrl.trim()) {
-      newErrors.apiUrl = 'Please enter the Ollama API URL'
+      newErrors.apiUrl = '请输入 Ollama API 地址'
     }
 
     if (parseTokenLimit(contextWindow) === null) {
-      newErrors.contextWindow = 'Please enter a positive whole number of tokens'
+      newErrors.contextWindow = '请输入大于零的整数 token 数'
     }
     if (parseTokenLimit(outputLimit) === null) {
-      newErrors.outputLimit = 'Please enter a positive whole number of tokens'
+      newErrors.outputLimit = '请输入大于零的整数 token 数'
     }
 
     const newHeaderErrors = showCredentials ? validateHeaderRows(headerRows) : {}
     if (showCredentials && !storedSecretsUsable) {
       for (const row of headerRows) {
         if (row.value === null && !newHeaderErrors[row.id]) {
-          newHeaderErrors[row.id] = "Please re-enter this header's value, since the API URL changed"
+          newHeaderErrors[row.id] = "API 地址已更改，请重新输入此请求头的值"
         }
       }
     }
@@ -288,12 +288,12 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
       } else {
         await authenticatedApi.addModel(profile, config, source?.profile.id)
       }
-      toasts.add({ title: editing ? 'AI model updated successfully' : 'AI model added successfully', variant: 'success' })
+      toasts.add({ title: editing ? 'AI 模型更新成功' : 'AI 模型添加成功', variant: 'success' })
       onSuccess()
     } catch (error: any) {
       console.error('Failed to save model:', error)
       toasts.add({
-        title: editing ? 'Failed to update model' : 'Failed to add model',
+        title: editing ? '更新模型失败' : '添加模型失败',
         description: error?.message,
         variant: 'error',
       })
@@ -333,15 +333,15 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
           {/* Model / Provider selection */}
           {source ? (
             <Input
-              label="Provider"
+              label="服务商"
               value={PROVIDER_LABELS[source.config.provider] || source.config.provider}
               disabled
             />
           ) : (
           <Select
-            label={gatewayMode ? 'Select Provider' : 'Select Model'}
+            label={gatewayMode ? '选择服务商' : '选择模型'}
             className="w-full text-sm"
-            placeholder={gatewayMode ? 'Choose a provider...' : 'Choose an AI model...'}
+            placeholder={gatewayMode ? '选择服务商…' : '选择 AI 模型…'}
             value={selectValue}
             onValueChange={(v) => handleModelSelect(v as string)}
             error={errors.selection}
@@ -372,9 +372,9 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
           {showCustomFields && (
             <>
               <Input
-                label="Model ID"
+                label="模型 ID"
                 placeholder={`e.g., ${example!.modelId}`}
-                description={`The model identifier as specified by the provider (e.g., '${example!.modelId}')`}
+                description={`服务商指定的模型标识，例如 ${example!.modelId}`}
                 value={modelId}
                 disabled={editing}
                 onChange={(e) => { setModelId(e.target.value); setErrors(prev => ({ ...prev, modelId: '' })) }}
@@ -383,9 +383,9 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
               />
 
               <Input
-                label="Display Name"
+                label="显示名称"
                 placeholder={`e.g., ${example!.name}`}
-                description="Human-readable name shown in the UI"
+                description="界面中显示的名称"
                 value={displayName}
                 onChange={(e) => { setDisplayName(e.target.value); setErrors(prev => ({ ...prev, displayName: '' })) }}
                 error={errors.displayName}
@@ -397,9 +397,9 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
           {/* Cloudflare account ID (the Workers AI REST endpoint is account-scoped) */}
           {showCredentials && isCloudflare && (
             <Input
-              label="Cloudflare Account ID"
-              placeholder="e.g., 0123456789abcdef0123456789abcdef"
-              description="The Cloudflare account to bill for Workers AI usage"
+              label="Cloudflare 账号 ID"
+              placeholder="例如：0123456789abcdef0123456789abcdef"
+              description="用于支付 Workers AI 用量的 Cloudflare 账号"
               value={accountId}
               onChange={(e) => { setAccountId(e.target.value); setErrors(prev => ({ ...prev, accountId: '' })) }}
               error={errors.accountId}
@@ -410,17 +410,17 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
           {/* API Token */}
           {showCredentials && selection && (
             <StoredSecretInput
-              label="API Token"
+              label="API 令牌"
               stored={storedSecretsUsable && source!.config.apiToken === null}
-              placeholder={tokenRequired ? API_TOKEN_PLACEHOLDERS[selection.provider] : '(optional)'}
+              placeholder={tokenRequired ? API_TOKEN_PLACEHOLDERS[selection.provider] : '（可选）'}
               description={
                 isOllama
-                  ? 'Optional for local Ollama access'
+                  ? '本地访问 Ollama 时可不填'
                   : isCloudflare
-                  ? 'An API token with Workers AI Read + Edit permissions (in the dashboard: Workers AI > Use REST API > Create a Workers AI API Token)'
+                  ? '具有 Workers AI 读取和编辑权限的 API 令牌（在控制台选择 Workers AI > Use REST API > Create a Workers AI API Token）'
                   : TOKEN_OPTIONAL_WITH_HEADERS.has(selection.provider)
-                  ? `Your ${PROVIDER_LABELS[selection.provider]} API token for billing. Leave blank if the extra headers under Advanced Settings authenticate you to a proxy that supplies its own key.`
-                  : `Your ${PROVIDER_LABELS[selection.provider]} API token for billing`
+                  ? `用于计费的 ${PROVIDER_LABELS[selection.provider]} API 令牌。如果高级设置中的额外请求头已向提供密钥的代理完成身份验证，可留空。`
+                  : `用于计费的 ${PROVIDER_LABELS[selection.provider]} API 令牌`
               }
               value={effectiveApiToken}
               onValueChange={(v) => { setApiToken(v); setErrors(prev => ({ ...prev, apiToken: '' })) }}
@@ -431,9 +431,9 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
           {/* Ollama API URL (always visible for Ollama) */}
           {showCredentials && isOllama && (
             <Input
-              label="API URL"
+              label="API 地址"
               placeholder="http://localhost:11434"
-              description="URL of your Ollama server"
+              description="你的 Ollama 服务器地址"
               value={apiUrl}
               onChange={(e) => { setApiUrl(e.target.value); setErrors(prev => ({ ...prev, apiUrl: '' })) }}
               error={errors.apiUrl}
@@ -446,15 +446,15 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
               open={advancedOpen}
               onOpenChange={setAdvancedOpen}
             >
-              <Collapsible.DefaultTrigger>Advanced Settings</Collapsible.DefaultTrigger>
+              <Collapsible.DefaultTrigger>高级设置</Collapsible.DefaultTrigger>
               <Collapsible.DefaultPanel>
                 <div className="space-y-4">
                   {/* Ollama shows its API URL above; Workers AI's endpoint is derived from the account ID. */}
                   {showCredentials && !isOllama && !isCloudflare && (
                     <Input
-                      label="API URL"
+                      label="API 地址"
                       placeholder="https://..."
-                      description="Override the default API endpoint (useful for proxies like Cloudflare AI Gateway)"
+                      description="覆盖默认 API 端点（适用于 Cloudflare AI Gateway 等代理）"
                       value={apiUrl}
                       onChange={(e) => setApiUrl(e.target.value)}
                     />
@@ -473,20 +473,20 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
                     />
                   )}
                   <Input
-                    label="Context Window"
+                    label="上下文窗口"
                     inputMode="numeric"
-                    placeholder="(default)"
-                    description="The maximum tokens one request may total. Leave blank to use the model's built-in default."
+                    placeholder="（默认）"
+                    description="单次请求允许的最大 token 数。留空则使用模型内置默认值。"
                     value={contextWindow}
                     onChange={(e) => { setContextWindow(e.target.value); setErrors(prev => ({ ...prev, contextWindow: '' })) }}
                     error={errors.contextWindow}
                     variant={errors.contextWindow ? 'error' : 'default'}
                   />
                   <Input
-                    label="Output Limit"
+                    label="输出上限"
                     inputMode="numeric"
-                    placeholder="(default)"
-                    description="The maximum tokens in one response, also reserved out of the context window. Leave blank to use the model's built-in default."
+                    placeholder="（默认）"
+                    description="单次响应的最大 token 数，也会从上下文窗口中预留。留空则使用模型内置默认值。"
                     value={outputLimit}
                     onChange={(e) => { setOutputLimit(e.target.value); setErrors(prev => ({ ...prev, outputLimit: '' })) }}
                     error={errors.outputLimit}
@@ -502,7 +502,7 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
         <div className="mt-6 flex justify-end gap-2">
           <Dialog.Close render={(props) => (
             <Button variant="secondary" {...props} disabled={loading}>
-              Cancel
+              取消
             </Button>
           )} />
           <Button
@@ -511,7 +511,7 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
             loading={loading}
             disabled={!selection}
           >
-            {editing ? 'Save Changes' : 'Add Model'}
+            {editing ? '保存更改' : '添加模型'}
           </Button>
         </div>
       </Dialog>

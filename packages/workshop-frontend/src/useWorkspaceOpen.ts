@@ -48,7 +48,7 @@ class ObserverConfigTarget extends RpcTarget implements ObserverConfigCallback {
 export function observerOpenFailureMessage(caught: unknown, subject: 'workspace' | 'gadget'): string | null {
   const message = caught instanceof Error ? caught.message : ''
   if (message.includes(OBSERVER_CANCELLED)) {
-    return `To open this ${subject}, you must choose connected accounts for the services it uses.`
+    return `打开此${subject === 'workspace' ? '工作区' : '应用'}前，请为其使用的服务选择已连接的账号。`
   }
   if (message.includes('permitted to observe') ||
       message.includes('no longer connected') ||

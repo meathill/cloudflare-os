@@ -115,23 +115,23 @@ describe('AddModelModal', () => {
 
   it.each([false, true])('adds a decision model typed as a custom model only without chatModelsOnly (chatModelsOnly: %s)', async (chatModelsOnly) => {
     const { addModel } = await render({ type: 'add' }, chatModelsOnly)
-    await choose('Other Cloudflare Workers AI...')
-    await type(labeledInput('Model ID'), '@cf/cloudflare/clef')
-    await type(labeledInput('Display Name'), 'Clef')
-    await type(labeledInput('Cloudflare Account ID'), 'account-id')
-    await type(labeledInput('API Token'), 'token')
-    await click(button('Add Model'))
+    await choose('其他 Cloudflare Workers AI…')
+    await type(labeledInput('模型 ID'), '@cf/cloudflare/clef')
+    await type(labeledInput('显示名称'), 'Clef')
+    await type(labeledInput('Cloudflare 账号 ID'), 'account-id')
+    await type(labeledInput('API 令牌'), 'token')
+    await click(button('添加模型'))
 
     expect(addModel).toHaveBeenCalledTimes(chatModelsOnly ? 0 : 1)
   })
 
   it('sends withheld secrets back as null when they are left untouched', async () => {
     const { updateModel } = await render({ type: 'edit', source: { profile: PROFILE, config: CONFIG } })
-    expect(labeledInput('API Token').value).toBe('')
-    expect(labeledInput('API Token').placeholder).toBe('********')
+    expect(labeledInput('API 令牌').value).toBe('')
+    expect(labeledInput('API 令牌').placeholder).toBe('********')
 
-    await type(labeledInput('Display Name'), 'Gemma 4')
-    await click(button('Save Changes'))
+    await type(labeledInput('显示名称'), 'Gemma 4')
+    await click(button('保存更改'))
 
     expect(updateModel).toHaveBeenCalledWith(
       { ...PROFILE, name: 'Gemma 4' },
@@ -142,14 +142,14 @@ describe('AddModelModal', () => {
   it('sends a secret only once the user replaces it', async () => {
     const { updateModel } = await render({ type: 'edit', source: { profile: PROFILE, config: CONFIG } })
 
-    const token = labeledInput('API Token')
+    const token = labeledInput('API 令牌')
     act(() => token.focus())
     await type(token, 'new-token')
     // The first keystroke must not swap in a different element, taking focus with it.
-    expect(document.activeElement).toBe(labeledInput('API Token'))
-    await click(button('Advanced Settings'))
-    await type(input('input[aria-label="Header value"]'), 'new-key')
-    await click(button('Save Changes'))
+    expect(document.activeElement).toBe(labeledInput('API 令牌'))
+    await click(button('高级设置'))
+    await type(input('input[aria-label="请求头值"]'), 'new-key')
+    await click(button('保存更改'))
 
     expect(updateModel).toHaveBeenCalledWith(PROFILE, { ...CONFIG, apiToken: 'new-token', extraHeaders: { 'X-Key': 'new-key' } })
   })
@@ -157,10 +157,10 @@ describe('AddModelModal', () => {
   it('returns to keeping a stored value after starting to replace it', async () => {
     const { updateModel } = await render({ type: 'edit', source: { profile: PROFILE, config: CONFIG } })
 
-    await type(labeledInput('API Token'), 'oops')
-    await click(button('Keep stored value'))
-    expect(labeledInput('API Token').placeholder).toBe('********')
-    await click(button('Save Changes'))
+    await type(labeledInput('API 令牌'), 'oops')
+    await click(button('保留已存储的值'))
+    expect(labeledInput('API 令牌').placeholder).toBe('********')
+    await click(button('保存更改'))
 
     expect(updateModel).toHaveBeenCalledWith(PROFILE, CONFIG)
   })
@@ -168,13 +168,13 @@ describe('AddModelModal', () => {
   it('requires withheld header values to be re-entered once the API URL changes', async () => {
     const { updateModel } = await render({ type: 'edit', source: { profile: PROFILE, config: CONFIG } })
 
-    await type(labeledInput('API URL'), 'https://elsewhere.example')
-    expect(labeledInput('API Token').value).toBe('')
-    await click(button('Save Changes'))
+    await type(labeledInput('API 地址'), 'https://elsewhere.example')
+    expect(labeledInput('API 令牌').value).toBe('')
+    await click(button('保存更改'))
     expect(updateModel).not.toHaveBeenCalled()
 
-    await type(input('input[aria-label="Header value"]'), 'key')
-    await click(button('Save Changes'))
+    await type(input('input[aria-label="请求头值"]'), 'key')
+    await click(button('保存更改'))
     expect(updateModel).toHaveBeenCalledWith(PROFILE, {
       ...CONFIG, apiUrl: 'https://elsewhere.example', apiToken: '', extraHeaders: { 'X-Key': 'key' },
     })
@@ -183,9 +183,9 @@ describe('AddModelModal', () => {
   it('clones with the source as the origin of withheld secrets', async () => {
     const { addModel } = await render({ type: 'clone', source: { profile: PROFILE, config: CONFIG } })
 
-    await type(labeledInput('Model ID'), 'qwen')
-    await type(labeledInput('Display Name'), 'Qwen')
-    await click(button('Add Model'))
+    await type(labeledInput('模型 ID'), 'qwen')
+    await type(labeledInput('显示名称'), 'Qwen')
+    await click(button('添加模型'))
 
     expect(addModel).toHaveBeenCalledWith(
       { type: 'agent', id: 'qwen', name: 'Qwen' },

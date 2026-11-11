@@ -37,12 +37,12 @@ export const UpdateAvailableNotice = () => {
     let closingOwnToast = false
     // No fixed id: Kumo drops an add whose id is still live or ending, which a remount would hit.
     const id: string = toastsRef.current.add({
-      title: 'Update available',
-      description: 'A newer release is available for this deployment.',
+      title: '有可用更新',
+      description: '此部署有新版本可用。',
       variant: 'info',
       timeout: 0,
       actions: [{
-        children: 'View update',
+        children: '查看更新',
         variant: 'primary',
         onClick: () => { void navigateRef.current({ to: '/admin', search: { tab: 'updates' } }) },
       }],

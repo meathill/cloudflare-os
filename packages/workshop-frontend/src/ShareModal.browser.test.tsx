@@ -29,7 +29,7 @@ let container: HTMLElement | undefined
 let previousViewport: { width: number, height: number } | undefined
 
 const countButton = (count = 2) => page.getByRole('button', { name: new RegExp(`^${count} gadgets`) })
-const dialog = () => page.getByRole('dialog', { name: 'Invite to “Trip planner”' })
+const dialog = () => page.getByRole('dialog', { name: '邀请加入“Trip planner”' })
 
 // Importing Playwright's CDP augmentation would add Node globals to the browser TS project.
 const sendCdp = async (method: string, params: object) => {
@@ -144,7 +144,7 @@ it('opens after mounting closed and exposes the gadget list to keyboard and assi
 it.each(['click', 'touch'] as const)('toggles the gadget list with %s and dismisses it outside without closing sharing', async (method) => {
   renderModal()
   await expect.element(countButton()).toBeVisible()
-  const heading = page.getByRole('heading', { name: 'Invite to “Trip planner”' })
+  const heading = page.getByRole('heading', { name: '邀请加入“Trip planner”' })
   await userEvent.hover(heading)
   await expect.element(page.getByRole('tooltip')).not.toBeInTheDocument()
   const activate = (element: Element) => method === 'touch' ? touch(element) : userEvent.click(element)

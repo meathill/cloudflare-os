@@ -217,10 +217,10 @@ async function click(name: string) {
 
 /** Which of the phone layout's views is showing: the chat, or what the pane holds. */
 const currentView = () =>
-  ['Chat', 'Preview', 'Activity'].filter(name => button(name).getAttribute('aria-current') === 'page')
+  ['对话', '预览', '活动'].filter(name => button(name).getAttribute('aria-current') === 'page')
 
 async function proposeUpdate() {
-  await click('Update from blueprint…')
+  await click('从蓝图更新…')
   await click('propose update')
 }
 
@@ -244,7 +244,7 @@ afterEach(() => {
 
 describe('GadgetEditor, offering an update from a blueprint', () => {
   const offers = () => [...container.querySelectorAll('button')]
-    .filter(candidate => candidate.textContent === 'Update from blueprint…').length
+    .filter(candidate => candidate.textContent === '从蓝图更新…').length
 
   // Once in the toolbar's Blueprints menu and once in the phone layout's menu.
   it('offers it for a gadget that follows a blueprint, and for one of unknown origin', async () => {
@@ -264,7 +264,7 @@ describe('GadgetEditor, offering an update from a blueprint', () => {
     await openEditor('desktop')
 
     expect(offers()).toBe(0)
-    expect(button('Publish as blueprint…')).toBeTruthy()
+    expect(button('发布为蓝图…')).toBeTruthy()
   })
 })
 
@@ -282,39 +282,39 @@ describe('GadgetEditor, once a blueprint update is proposed', () => {
   // A phone shows the chat or the pane, never both, so selecting the chat does not show it.
   it('shows that chat on a phone, in place of the gadget it was applied from', async () => {
     await openEditor('phone')
-    expect(currentView()).toEqual(['Preview'])
+    expect(currentView()).toEqual(['预览'])
 
     await proposeUpdate()
 
-    expect(currentView()).toEqual(['Chat'])
+    expect(currentView()).toEqual(['对话'])
   })
 
   it('shows that chat on a phone, in place of the Activity pane', async () => {
     await openEditor('phone')
-    await click('Activity')
-    expect(currentView()).toEqual(['Activity'])
+    await click('活动')
+    expect(currentView()).toEqual(['活动'])
 
     await proposeUpdate()
 
-    expect(currentView()).toEqual(['Chat'])
+    expect(currentView()).toEqual(['对话'])
   })
 
   // Side by side with the chat, the pane is where the proposal is previewed.
   it('leaves the gadget pane open on a wider screen', async () => {
     await openEditor('desktop')
-    expect(currentView()).toEqual(['Preview'])
+    expect(currentView()).toEqual(['预览'])
 
     await proposeUpdate()
 
-    expect(currentView()).toEqual(['Preview'])
+    expect(currentView()).toEqual(['预览'])
   })
 })
 
 // A notification's "Open task" arrives as ?showChat.
 describe('GadgetEditor, opening a chat from a notification', () => {
   it.each([
-    { screen: 'phone', view: 'Chat' },
-    { screen: 'desktop', view: 'Preview' },
+    { screen: 'phone', view: '对话' },
+    { screen: 'desktop', view: '预览' },
   ] as const)('shows the chat on a $screen, then drops the request', async ({ screen, view }) => {
     mocks.search = { chat: 3, showChat: true }
 
@@ -329,7 +329,7 @@ describe('GadgetEditor, opening a chat from a notification', () => {
   it('leaves full-screen preview, which would cover the chat', async () => {
     window.history.replaceState(null, '', '#fullscreen')
     await openEditor('desktop')
-    const fullScreen = () => container.querySelector('[aria-label="Gadget full screen"]')
+    const fullScreen = () => container.querySelector('[aria-label="应用全屏"]')
     expect(fullScreen()).not.toBeNull()
 
     // The router drops the hash with history.pushState, which fires no hashchange.
@@ -345,7 +345,7 @@ describe('GadgetEditor, opening a chat from a notification', () => {
     mocks.search = { chat: 3 }
     await openEditor('phone')
     expect(isChatVisible('workspace', 3)).toBe(false)
-    await click('Chat')
+    await click('对话')
     expect(isChatVisible('workspace', 3)).toBe(true)
 
     act(() => root.unmount())

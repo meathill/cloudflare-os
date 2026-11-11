@@ -315,7 +315,7 @@ class DeletionZoneWidget extends WidgetType {
         button.type = 'button'
         button.className = 'gadgets-deleted-code-row gadgets-deleted-omitted-row'
         button.textContent =
-          `Show ${row.hidden} hidden deleted line${row.hidden === 1 ? '' : 's'}`
+          `显示隐藏的 ${row.hidden} 行已删除内容`
         button.addEventListener('click', () => this.onExpand(this.run.key))
         zone.append(button)
         continue

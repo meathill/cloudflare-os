@@ -31,12 +31,12 @@ export const PageUpdateNotice = () => {
       notified.current = {
         entryScript: latest,
         toastId: toastsRef.current.add({
-          title: `${siteName} was updated`,
-          description: 'Reload to use the new version.',
+          title: `${siteName} 已更新`,
+          description: '刷新以使用新版本。',
           variant: 'info',
           timeout: 0,
           actions: [{
-            children: 'Reload',
+            children: '刷新',
             variant: 'primary',
             onClick: reloadPage,
           }],

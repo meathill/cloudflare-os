@@ -226,7 +226,7 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     const connect = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Connect')
+      .find(button => button.textContent === '连接')
     expect(connect).toBeDefined()
     await act(async () => connect!.click())
 
@@ -246,19 +246,19 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     const verify = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Verify and open')
+      .find(button => button.textContent === '验证并打开')
     const grant = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Grant the access needed to verify this resource')
+      .find(button => button.textContent === '授予验证此资源所需的访问权限')
     expect(verify?.disabled).toBe(true)
     expect(grant).toBeDefined()
-    expect(rendered.textContent).not.toContain('Ready')
+    expect(rendered.textContent).not.toContain('已就绪')
 
     await act(async () => grant!.click())
 
     expect(ensureAccountResources).toHaveBeenCalledWith(1, [DOC_RESOURCE.urlPattern])
     expect(window.open).toHaveBeenCalledWith('', expect.stringMatching(/^gadgets-connect-/), 'popup,width=520,height=680')
     expect(popup.location.replace).toHaveBeenCalledWith('https://accounts.google.test/oauth')
-    expect(rendered.textContent).not.toContain('Ready')
+    expect(rendered.textContent).not.toContain('已就绪')
     expect(verify?.disabled).toBe(true)
   })
 
@@ -273,9 +273,9 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     const verify = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Verify and open')
+      .find(button => button.textContent === '验证并打开')
     const grant = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Grant the access needed to verify this resource')
+      .find(button => button.textContent === '授予验证此资源所需的访问权限')
     expect(verify?.disabled).toBe(true)
     expect(grant).toBeDefined()
 
@@ -296,13 +296,13 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     const grant = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Grant the access needed to verify this resource')
+      .find(button => button.textContent === '授予验证此资源所需的访问权限')
     await act(async () => grant!.click())
 
     const verify = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Verify and open')
+      .find(button => button.textContent === '验证并打开')
     expect(ensureAccountResources).toHaveBeenCalledWith(1, [DOC_RESOURCE.urlPattern])
-    expect(rendered.textContent).toContain('Ready')
+    expect(rendered.textContent).toContain('已就绪')
     expect(verify?.disabled).toBe(false)
   })
 
@@ -312,9 +312,9 @@ describe('ObserverConfigModal account selection', () => {
     const rendered = await render([granted], { onConfirm })
 
     const verify = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Verify and open')
+      .find(button => button.textContent === '验证并打开')
     expect(verify?.disabled).toBe(false)
-    expect(rendered.textContent).toContain('Ready')
+    expect(rendered.textContent).toContain('已就绪')
 
     await act(async () => verify!.click())
     expect(onConfirm).toHaveBeenCalledWith([{ gatekeeperId: 12, accountId: 1 }])
@@ -330,10 +330,10 @@ describe('ObserverConfigModal account selection', () => {
     mockConnectPopup()
     const rendered = await render([], { api: fakeApi([], { connectAccount }) })
 
-    await act(async () => findButton(rendered, 'Connect')!.click())
-    expect(findButton(rendered, 'Connect')?.disabled).toBe(false)
+    await act(async () => findButton(rendered, '连接')!.click())
+    expect(findButton(rendered, '连接')?.disabled).toBe(false)
 
-    await act(async () => findButton(rendered, 'Connect')!.click())
+    await act(async () => findButton(rendered, '连接')!.click())
     expect(connectAccount).toHaveBeenCalledTimes(2)
   })
 
@@ -344,7 +344,7 @@ describe('ObserverConfigModal account selection', () => {
     const expired = account(1, 'dan@cloudflare.com', [DOC_RESOURCE.urlPattern], false)
     const rendered = await render([expired], { api: fakeApi([expired], { reconnectAccount }) })
     const reauthenticate = () =>
-      findButton(rendered, 'This account has expired — click to re-authenticate')
+      findButton(rendered, '此账号已过期，点击重新验证')
 
     await act(async () => reauthenticate()!.click())
     expect(reauthenticate()?.disabled).toBe(false)
@@ -362,7 +362,7 @@ describe('ObserverConfigModal account selection', () => {
     const rendered = await render([underScoped], {
       api: fakeApi([underScoped], { ensureAccountResources }),
     })
-    const grant = () => findButton(rendered, 'Grant the access needed to verify this resource')
+    const grant = () => findButton(rendered, '授予验证此资源所需的访问权限')
 
     await act(async () => grant()!.click())
     expect(grant()?.disabled).toBe(false)
@@ -379,11 +379,11 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     expect(rendered.textContent).toContain(refusal)
-    expect(rendered.textContent).not.toContain('Ready')
-    expect(rendered.textContent).toContain('ask the workspace owner')
+    expect(rendered.textContent).not.toContain('已就绪')
+    expect(rendered.textContent).toContain('请工作区所有者分享')
     // Checking again stays possible (the owner may since have shared it), and re-authenticating
     // stays on offer for a gatekeeper that refused on an auth error without reporting the expiry.
-    expect(findButton(rendered, 'Verify again')?.disabled).toBe(false)
-    expect(findButton(rendered, 'Re-authenticate this account')).toBeDefined()
+    expect(findButton(rendered, '重新验证')?.disabled).toBe(false)
+    expect(findButton(rendered, '重新验证此账号')).toBeDefined()
   })
 })

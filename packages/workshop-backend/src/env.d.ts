@@ -26,6 +26,12 @@ declare global {
       // environment variable so that a compromised admin session cannot shorten it.
       ADMIN_AUDIT_RETENTION_MIN_DAYS?: string;
 
+      // Durable Object regional proximity location hint (e.g. "apac-ne", "apac")
+      DO_LOCATION_HINT?: string;
+
+      // 固定模式：设为 "true" 时部署只提供 Gemini 3.8 Flash 一个模型（人工聊天仍可用）。
+      GEMINI_ONLY?: string;
+
       // Workers AI binding (injected by generate-wrangler-prod / run-dev-server; not in base wrangler.jsonc).
       WORKERS_AI: Ai;
 

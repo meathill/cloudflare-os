@@ -173,7 +173,7 @@ export default function ResourcePicker({
         const unavailable = vendorList.filter(v => v.unavailable)
         if (unavailable.length > 0) {
           toasts.add({
-            title: `Some services are temporarily unavailable: ${unavailable.map(v => v.id).join(', ')}`,
+            title: `部分服务暂时不可用：${unavailable.map(v => v.id).join('、')}`,
             variant: 'warning',
           })
         }
@@ -184,7 +184,7 @@ export default function ResourcePicker({
         })))
       } catch (error) {
         console.error('Failed to load vendors:', error)
-        toasts.add({ title: 'Failed to load available services', variant: 'error' })
+        toasts.add({ title: '加载可用服务失败', variant: 'error' })
       } finally {
         setVendorsLoading(false)
       }
@@ -406,7 +406,7 @@ export default function ResourcePicker({
     } catch (error) {
       if (error instanceof AuthPopupCancelledError) return
       console.error('Failed to initiate connection:', error)
-      toasts.add({ title: error instanceof Error ? error.message : 'Could not complete connection flow', variant: 'error' })
+      toasts.add({ title: error instanceof Error ? error.message : '无法完成连接流程', variant: 'error' })
     } finally {
       setConnectingVendor(null)
     }
@@ -421,12 +421,12 @@ export default function ResourcePicker({
       const flow = await authenticatedApi.ensureAccountResources(accountId, resourceUrlPatterns)
       if (flow) {
         const outcome = await openConnectWindow(flow, authenticatedApi)
-        toasts.add({ title: outcome === 'connected' ? 'Access granted.' : 'Grant the additional access in the pop-up window.', variant: 'success' })
+        toasts.add({ title: outcome === 'connected' ? '已授予访问权限。' : '请在弹出窗口中授予额外权限。', variant: 'success' })
       }
     } catch (error) {
       if (error instanceof AuthPopupCancelledError) return
       console.error('Failed to request additional access:', error)
-      toasts.add({ title: error instanceof Error ? error.message : 'Failed to request additional access', variant: 'error' })
+      toasts.add({ title: error instanceof Error ? error.message : '请求额外权限失败', variant: 'error' })
     } finally {
       setGrantingAccount(current => current === accountId ? null : current)
     }
@@ -443,7 +443,7 @@ export default function ResourcePicker({
     } catch (error) {
       if (error instanceof AuthPopupCancelledError) { setReconnectingAccount(null); return }
       console.error('Failed to initiate reconnection:', error)
-      toasts.add({ title: error instanceof Error ? error.message : 'Could not complete re-authentication flow', variant: 'error' })
+      toasts.add({ title: error instanceof Error ? error.message : '无法完成重新验证流程', variant: 'error' })
       setReconnectingAccount(null)
     }
   }, [authenticatedApi])
@@ -460,9 +460,9 @@ export default function ResourcePicker({
     <div style={style}>
       <div className="overflow-y-auto" style={{ maxHeight }}>
         {!ready ? (
-          <p className={PICKER_EMPTY}>Loading connections…</p>
+          <p className={PICKER_EMPTY}>正在加载连接…</p>
         ) : matchedResources.length === 0 ? (
-          <p className={PICKER_EMPTY}>No matching resources.</p>
+          <p className={PICKER_EMPTY}>没有匹配的资源。</p>
         ) : (() => {
           let itemIdx = 0
           return matchedResources.map(({ resource, vendor, classification, suffix, replaceSearch, accountsOnly }, i) => {
@@ -574,19 +574,19 @@ export default function ResourcePicker({
                       </span>
                       {unfilledPlaceholder ? (
                         <span className="flex-shrink-0 text-[11.5px] leading-4 text-kumo-subtle">
-                          Fill in <span className="font-mono">{unfilledPlaceholder}</span> first
+                          请填写 <span className="font-mono">{unfilledPlaceholder}</span> 后继续
                         </span>
                       ) : isReconnecting || isGranting ? (
                         <div className="h-3 w-3 flex-shrink-0 animate-spin rounded-full border-2 border-kumo-brand border-t-transparent" />
                       ) : isExpired ? (
                         <span className="flex flex-shrink-0 items-center gap-1">
                           <Warning size={12} className="text-kumo-warning" />
-                          <span className="text-[11.5px] leading-4 text-kumo-warning">Expired — click to re-authenticate</span>
+                          <span className="text-[11.5px] leading-4 text-kumo-warning">已过期，点击重新授权</span>
                         </span>
                       ) : needsAccess ? (
                         <span className="flex flex-shrink-0 items-center gap-1">
                           <Warning size={12} className="text-kumo-warning" />
-                          <span className="text-[11.5px] leading-4 text-kumo-warning">Grant access</span>
+                          <span className="text-[11.5px] leading-4 text-kumo-warning">授予访问权限</span>
                         </span>
                       ) : isActive ? (
                         <KeyHint keyName="Tab" />
@@ -618,7 +618,7 @@ export default function ResourcePicker({
                       )}
                     </span>
                     <span className="flex-1 text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-subtle">
-                      {connectingVendor === vendor.id ? 'Opening…' : 'Connect new account'}
+                      {connectingVendor === vendor.id ? '正在打开…' : '连接新账号'}
                     </span>
                     {isActive && <KeyHint keyName="Tab" />}
                   </div>

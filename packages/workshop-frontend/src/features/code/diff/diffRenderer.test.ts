@@ -148,7 +148,7 @@ describe('diffRenderExtension (modified side)', () => {
     })
     const dom = widgets(collapsed)[0].widget.toDOM(null as unknown as EditorView) as HTMLElement
     const button = dom.querySelector('button')!
-    expect(button.textContent).toBe('Show 34 hidden deleted lines') // 130 - 2*48
+    expect(button.textContent).toBe('显示隐藏的 34 行已删除内容') // 130 - 2*48
     expect(dom.children.length).toBe(97) // 48 + button + 48
     button.dispatchEvent(new MouseEvent('click'))
     expect(expanded).toBe(diffModel.changes[0].key)

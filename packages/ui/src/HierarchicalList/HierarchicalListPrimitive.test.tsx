@@ -202,7 +202,7 @@ describe("HierarchicalListPrimitive", () => {
     expect(source.style.touchAction).not.toBe("none");
     expect(source.getAttribute("aria-keyshortcuts"))
       .toBe("Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight");
-    expect(source.getAttribute("aria-description")).toBe("Move with Alt plus an arrow key.");
+    expect(source.getAttribute("aria-description")).toBe("按 Alt 加方向键移动。");
     expect(target.hasAttribute("aria-keyshortcuts")).toBe(false);
     expect(target.hasAttribute("aria-description")).toBe(false);
     source.getBoundingClientRect = () => DOMRect.fromRect({ y: 0, width: 300, height: 40 });
@@ -269,7 +269,7 @@ describe("HierarchicalListPrimitive", () => {
     expect(document.activeElement?.closest("[data-item-id='folder']")).not.toBeNull();
     expect(onSelectionClear).toHaveBeenCalledOnce();
     expect(container!.querySelector('[role="status"]')?.textContent).toBe(
-      "Movable moved to position 1 in Folder.",
+      "Movable已移动到Folder的第 1 位。",
     );
   });
 
@@ -482,7 +482,7 @@ describe("HierarchicalListPrimitive", () => {
     });
 
     expect(container!.querySelector('[role="status"]')?.textContent).toBe(
-      "Source moved to position 2 in Resources.",
+      "Source已移动到Resources的第 2 位。",
     );
   });
 
@@ -519,12 +519,12 @@ describe("HierarchicalListPrimitive", () => {
     await act(async () => resolvers.get("second")?.());
     expect([...container!.querySelectorAll('[role="status"]')]
       .map((status) => status.textContent).join(""))
-      .toBe("Second moved to position 1 in Resources.");
+      .toBe("Second已移动到Resources的第 1 位。");
 
     await act(async () => resolvers.get("first")?.());
     expect([...container!.querySelectorAll('[role="status"]')]
       .map((status) => status.textContent).join(""))
-      .toBe("Second moved to position 1 in Resources.");
+      .toBe("Second已移动到Resources的第 1 位。");
   });
 
   it("announces an older move when every newer move fails", async () => {
@@ -567,7 +567,7 @@ describe("HierarchicalListPrimitive", () => {
 
     expect([...container!.querySelectorAll('[role="status"]')]
       .map((status) => status.textContent).join(""))
-      .toBe("First moved to position 2 in Resources.");
+      .toBe("First已移动到Resources的第 2 位。");
   });
 
   it("mutates a live region for identical consecutive move announcements", () => {
@@ -592,7 +592,7 @@ describe("HierarchicalListPrimitive", () => {
     act(moveDown);
     const announcements = container!.querySelectorAll('[role="status"]');
     expect([...announcements].map((status) => status.textContent).join(""))
-      .toBe("Source moved to position 2 in Resources.");
+      .toBe("Source已移动到Resources的第 2 位。");
     const observer = new MutationObserver(() => {});
     for (const announcement of announcements) {
       observer.observe(announcement, { childList: true, characterData: true, subtree: true });
@@ -602,7 +602,7 @@ describe("HierarchicalListPrimitive", () => {
 
     expect(observer.takeRecords().length).toBeGreaterThan(0);
     expect([...announcements].map((status) => status.textContent).join(""))
-      .toBe("Source moved to position 2 in Resources.");
+      .toBe("Source已移动到Resources的第 2 位。");
     observer.disconnect();
   });
 

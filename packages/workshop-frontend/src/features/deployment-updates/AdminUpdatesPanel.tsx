@@ -18,10 +18,10 @@ type AdminUpdatesPanelProps = {
 }
 
 const CARD = 'bg-kumo-elevated border border-kumo-line rounded-xl p-6'
-const CHECKS_LABEL = 'Check for updates automatically'
-const CHECK_INTERVAL_LABEL = 'Check for updates every (minutes)'
-const MINIMUM_AGE_LABEL = 'Minimum release age (hours)'
-const SNOOZE_LABEL = 'Hide a closed notice for (hours)'
+const CHECKS_LABEL = '自动检查更新'
+const CHECK_INTERVAL_LABEL = '检查更新间隔（分钟）'
+const MINIMUM_AGE_LABEL = '版本发布后的最短等待时间（小时）'
+const SNOOZE_LABEL = '关闭通知后隐藏时长（小时）'
 
 // The link comes from the service that installed this deployment; anything but a web URL (a
 // `javascript:` one, say) is not rendered as a link.
@@ -34,23 +34,23 @@ const webUrl = (raw: string): string | null => {
   }
 }
 
-const WORKER_LIST = new Intl.ListFormat('en', { type: 'conjunction' })
+const WORKER_LIST = new Intl.ListFormat('zh-CN', { type: 'conjunction' })
 
 // The Workers the status names, in words: "backend", "router", or a gatekeeper's install slug.
 const workerList = (workers: string[]): string =>
   WORKER_LIST.format(workers.map((worker) =>
-    worker === 'backend' || worker === 'router' ? `the ${worker}` : `the “${worker}” gatekeeper`))
+    worker === 'backend' ? '后端' : worker === 'router' ? '路由器' : `“${worker}”连接服务`))
 
 const updateAvailability = (status: DeploymentUpdateStatus): string => {
-  if (status.updateAvailable) return 'Yes'
-  return status.checkedAt === undefined ? 'Not known until a check succeeds' : 'No'
+  if (status.updateAvailable) return '是'
+  return status.checkedAt === undefined ? '检查成功后才能确定' : '否'
 }
 
 // What a check found, announced since the rows it changes are not a live region.
 const checkOutcome = (status: DeploymentUpdateStatus): string =>
   status.updateAvailable && status.latestReleaseId !== undefined
-    ? `Update available: release ${status.latestReleaseId}`
-    : 'No update available: this deployment runs the newest release'
+    ? `有可用更新：版本 ${status.latestReleaseId}`
+    : '没有可用更新：此部署运行的是最新版本'
 
 /** The admin Updates tab: which release this deployment runs, the newest one, and a way to update. */
 export const AdminUpdatesPanel = ({ admin, status, onChanged }: AdminUpdatesPanelProps) => {
@@ -97,7 +97,7 @@ export const AdminUpdatesPanel = ({ admin, status, onChanged }: AdminUpdatesPane
       await onChanged()
       return true
     } catch (err) {
-      reportFailure('Couldn’t reload the update status', err)
+      reportFailure('无法重新加载更新状态', err)
       return false
     }
   }
@@ -106,7 +106,7 @@ export const AdminUpdatesPanel = ({ admin, status, onChanged }: AdminUpdatesPane
     rememberFocus()
     setSavingChecks(true)
     try {
-      const reread = await change(`Couldn’t update “${CHECKS_LABEL}”`, async () => {
+      const reread = await change(`无法更新“${CHECKS_LABEL}”`, async () => {
         await admin.setUpdateChecksEnabled(enabled)
         setWrittenChecks({ enabled, over: status })
       })
@@ -120,7 +120,7 @@ export const AdminUpdatesPanel = ({ admin, status, onChanged }: AdminUpdatesPane
     rememberFocus()
     setChecking(true)
     try {
-      await change('Couldn’t check for updates', async () => {
+      await change('无法检查更新', async () => {
         await probeRouterTag()
         const checked = await admin.checkForUpdates()
         if (checked !== null) toasts.add({ title: checkOutcome(checked), variant: 'success' })
@@ -137,33 +137,31 @@ export const AdminUpdatesPanel = ({ admin, status, onChanged }: AdminUpdatesPane
           role="alert"
           variant="error"
           icon={<Warning />}
-          title="This deployment was changed outside the deploy flow"
+          title="此部署在部署流程外发生了更改"
           description={
-            `Not running what the deploy flow installed: ${workerList(status.modifiedWorkers)}. The ` +
-            'deploy flow will refuse to upgrade this deployment until that change is undone.'
+            `以下组件运行的版本与部署流程安装的版本不一致：${workerList(status.modifiedWorkers)}。撤销这些更改前，部署流程将拒绝升级。`
           }
         />
       )}
 
       <div className={CARD}>
-        <h2 className="text-lg font-semibold text-kumo-strong mb-1">Release</h2>
+        <h2 className="text-lg font-semibold text-kumo-strong mb-1">版本</h2>
         <p className="text-sm text-kumo-subtle mb-5">
-          New releases are installed through the deploy flow, where anyone with access to this
-          deployment&rsquo;s Cloudflare account can finish the upgrade.
+          新版本通过部署流程安装，任何有权访问此部署的 Cloudflare 账号的人都可以完成升级。
         </p>
 
         <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-          <dt className="text-kumo-subtle">Running release</dt>
+          <dt className="text-kumo-subtle">当前版本</dt>
           <dd className="font-mono text-kumo-default">{status.currentReleaseId}</dd>
-          <dt className="text-kumo-subtle">Newest release</dt>
+          <dt className="text-kumo-subtle">最新版本</dt>
           <dd className={status.latestReleaseId === undefined ? 'text-kumo-default' : 'font-mono text-kumo-default'}>
-            {status.latestReleaseId ?? 'No check has succeeded yet'}
+            {status.latestReleaseId ?? '尚无成功的检查'}
           </dd>
-          <dt className="text-kumo-subtle">Last checked</dt>
+          <dt className="text-kumo-subtle">上次检查</dt>
           <dd className="text-kumo-default">
-            {status.checkedAt === undefined ? 'Never' : formatFullTimestamp(status.checkedAt)}
+            {status.checkedAt === undefined ? '从未' : formatFullTimestamp(status.checkedAt)}
           </dd>
-          <dt className="text-kumo-subtle">Update available</dt>
+          <dt className="text-kumo-subtle">有可用更新</dt>
           <dd className="text-kumo-default">{updateAvailability(status)}</dd>
         </dl>
 
@@ -172,42 +170,39 @@ export const AdminUpdatesPanel = ({ admin, status, onChanged }: AdminUpdatesPane
             variant="alert"
             icon={<ArrowsClockwise />}
             className="mt-4"
-            title="An update did not finish"
+            title="更新未完成"
             description={
-              `Still running another release of this deployment: ${workerList(status.unfinishedWorkers)}. ` +
+              `以下组件仍在运行此部署的其他版本：${workerList(status.unfinishedWorkers)}。` +
               (status.modifiedWorkers.length > 0
-                ? 'The deploy flow can finish the update once the Workers changed outside it are restored.'
-                : 'The deploy flow can finish the update.')
+                ? '恢复在部署流程外更改的 Worker 后，即可通过部署流程完成更新。'
+                : '可通过部署流程完成更新。')
             }
           />
         )}
 
         <div className="flex flex-wrap items-center justify-end gap-2 mt-4">
           <Button variant="secondary" size="sm" loading={checking} disabled={checking} onClick={checkNow}>
-            Check now
+            立即检查
           </Button>
           {updateUrl !== null && (
             <LinkButton href={updateUrl} external variant="primary" size="sm" icon={ArrowSquareOut}>
-              Update
+              更新
             </LinkButton>
           )}
         </div>
       </div>
 
       <div className={CARD}>
-        <h2 className="text-lg font-semibold text-kumo-strong mb-1">Update notice</h2>
+        <h2 className="text-lg font-semibold text-kumo-strong mb-1">更新通知</h2>
         <p className="text-sm text-kumo-subtle mb-5">
-          When a newer release is available, admins see a notice on Home. These settings apply to
-          the whole deployment.
+          有新版本时，管理员会在首页看到通知。这些设置适用于整个部署。
         </p>
 
         <div className="flex items-center gap-4 rounded-lg border border-kumo-line bg-kumo-base px-4 py-3 mb-5">
           <div className="min-w-0 flex-1 text-sm">
             <p className="font-medium text-kumo-default">{CHECKS_LABEL}</p>
             <p id={checksHelp} className="mt-0.5 text-kumo-subtle">
-              When on, the deployment asks for the newest release while admins use it, at most as
-              often as set below, and notifies admins of an update. When off, it asks only when an admin chooses Check now, and no
-              one is notified.
+              启用后，管理员使用时会按下方设定的最短间隔检查新版本并接收更新通知。关闭后，仅在管理员点击“立即检查”时检查，且不会发送通知。
             </p>
           </div>
           <Switch
@@ -223,42 +218,38 @@ export const AdminUpdatesPanel = ({ admin, status, onChanged }: AdminUpdatesPane
           <DurationSetting
             label={CHECK_INTERVAL_LABEL}
             help={
-              'How long the deployment relies on its last successful check before asking again. ' +
-              'It asks when an admin opens Home or these settings, never on a schedule.'
+              '两次检查之间依赖上次成功结果的最短时间。仅在管理员打开首页或这些设置时检查，不按计划执行。'
             }
             unit="minutes"
             min={1}
             max={MAX_UPDATE_CHECK_INTERVAL_MINUTES}
             value={status.checkIntervalMinutes}
             onSave={(minutes) =>
-              change(`Couldn’t update “${CHECK_INTERVAL_LABEL}”`, () => admin.setUpdateCheckIntervalMinutes(minutes))}
+              change(`无法更新“${CHECK_INTERVAL_LABEL}”`, () => admin.setUpdateCheckIntervalMinutes(minutes))}
           />
           <DurationSetting
             label={MINIMUM_AGE_LABEL}
             help={
-              'How long a newer release must have been available before admins are notified. It ' +
-              'delays the notice only: Update always installs the newest release. 0 notifies as ' +
-              'soon as a check finds an update.'
+              '新版本发布后等待多久再通知管理员。这只会延迟通知，更新始终安装最新版本。设为 0 时，检查发现更新后立即通知。'
             }
             unit="hours"
             min={0}
             max={MAX_UPDATE_HOURS}
             value={status.minimumAgeHours}
             onSave={(hours) =>
-              change(`Couldn’t update “${MINIMUM_AGE_LABEL}”`, () => admin.setUpdateMinimumAgeHours(hours))}
+              change(`无法更新“${MINIMUM_AGE_LABEL}”`, () => admin.setUpdateMinimumAgeHours(hours))}
           />
           <DurationSetting
             label={SNOOZE_LABEL}
             help={
-              'How long a closed notice stays hidden in the browser it was closed in. 0 means a ' +
-              'closed notice comes back on the next visit to Home.'
+              '关闭通知后在当前浏览器中隐藏的时间。设为 0 时，下次访问首页会再次显示。'
             }
             unit="hours"
             min={0}
             max={MAX_UPDATE_HOURS}
             value={status.noticeSnoozeHours}
             onSave={(hours) =>
-              change(`Couldn’t update “${SNOOZE_LABEL}”`, () => admin.setUpdateNoticeSnoozeHours(hours))}
+              change(`无法更新“${SNOOZE_LABEL}”`, () => admin.setUpdateNoticeSnoozeHours(hours))}
           />
         </div>
       </div>

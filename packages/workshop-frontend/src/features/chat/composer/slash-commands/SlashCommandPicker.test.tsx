@@ -224,7 +224,7 @@ describe("SlashCommandPicker", () => {
       container!.querySelector<HTMLButtonElement>('[data-testid="invalidate-catalog"]')!.click();
     });
     await act(async () => vi.waitFor(() => expect(document.body.textContent)
-      .toContain("Couldn’t load commands. disconnected")));
+      .toContain("无法加载命令。disconnected")));
 
     expect(document.querySelectorAll('[role="option"]')).toHaveLength(0);
   });

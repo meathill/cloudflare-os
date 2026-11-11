@@ -71,7 +71,7 @@ function PasswordField({
         <button
           type="button"
           onClick={() => setShow((s) => !s)}
-          aria-label={show ? 'Hide password' : 'Show password'}
+          aria-label={show ? '隐藏密码' : '显示密码'}
           className="absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 cursor-pointer place-items-center rounded-md text-kumo-inactive transition-colors hover:text-kumo-default"
         >
           {show ? <EyeSlash size={15} /> : <Eye size={15} />}
@@ -107,7 +107,7 @@ const CommitEmailRow = ({ initialCommitEmail }: { initialCommitEmail?: string })
       try {
         validateCommitEmail(email)
       } catch {
-        setError('Enter an address like name@example.com')
+        setError('输入类似 name@example.com 的邮箱地址')
         return
       }
     }
@@ -117,10 +117,10 @@ const CommitEmailRow = ({ initialCommitEmail }: { initialCommitEmail?: string })
       await authenticatedApi.setOwnCommitEmail(email)
       setCommitEmail(email ?? undefined)
       setIsEditing(false)
-      toasts.add({ title: email ? 'Commit email updated' : 'Commit email cleared', variant: 'success' })
+      toasts.add({ title: email ? '提交邮箱已更新' : '提交邮箱已清除', variant: 'success' })
     } catch (err) {
       console.error('Failed to update commit email:', err)
-      toasts.add({ title: 'Failed to update commit email', variant: 'error' })
+      toasts.add({ title: '更新提交邮箱失败', variant: 'error' })
     } finally {
       setSaving(false)
     }
@@ -129,7 +129,7 @@ const CommitEmailRow = ({ initialCommitEmail }: { initialCommitEmail?: string })
   return (
     <div className="flex items-end gap-2 px-5 py-4">
       <div className="min-w-0 flex-1">
-        <FieldLabel>Commit email</FieldLabel>
+        <FieldLabel>提交邮箱</FieldLabel>
         {isEditing ? (
           <>
             <input
@@ -142,7 +142,7 @@ const CommitEmailRow = ({ initialCommitEmail }: { initialCommitEmail?: string })
                 if (e.key === 'Escape') setIsEditing(false)
               }}
               placeholder="name@example.com"
-              aria-label="Commit email"
+              aria-label="提交邮箱"
               autoComplete="email"
               autoFocus
               className={`mt-1.5 ${INPUT} ${error ? 'border-kumo-danger focus:border-kumo-danger' : ''}`}
@@ -155,7 +155,7 @@ const CommitEmailRow = ({ initialCommitEmail }: { initialCommitEmail?: string })
           <p className="mt-1 truncate text-[14px] tracking-[-0.25px] text-kumo-default">{commitEmail}</p>
         ) : (
           <p className="mt-1 text-[14px] tracking-[-0.25px] text-kumo-inactive">
-            Not set — commits use an address based on your user ID
+            未设置，提交将使用基于用户 ID 的地址
           </p>
         )}
       </div>
@@ -165,16 +165,16 @@ const CommitEmailRow = ({ initialCommitEmail }: { initialCommitEmail?: string })
             type="button"
             onClick={handleSave}
             disabled={saving}
-            aria-label="Save commit email"
+            aria-label="保存提交邮箱"
             className={PRIMARY_BTN}
           >
             <Check size={15} weight="bold" />
-            Save
+            保存
           </button>
           <button
             type="button"
             onClick={() => setIsEditing(false)}
-            aria-label="Cancel"
+            aria-label="取消"
             className={ICON_BTN}
           >
             <X size={15} />
@@ -184,7 +184,7 @@ const CommitEmailRow = ({ initialCommitEmail }: { initialCommitEmail?: string })
         <button
           type="button"
           onClick={startEditing}
-          aria-label="Edit commit email"
+          aria-label="编辑提交邮箱"
           className={ICON_BTN}
         >
           <Pencil size={14} />
@@ -195,7 +195,7 @@ const CommitEmailRow = ({ initialCommitEmail }: { initialCommitEmail?: string })
 }
 
 export default function SettingsPage() {
-  useDocumentTitle('Profile')
+  useDocumentTitle('个人资料')
 
   const { authenticatedApi } = useAuthenticatedApi()
   const toasts = useKumoToastManager()
@@ -247,7 +247,7 @@ export default function SettingsPage() {
         setNameInput(info.name)
       } catch (error) {
         console.error('Failed to fetch user info:', error)
-        if (!cancelled) toasts.add({ title: 'Failed to load user information', variant: 'error' })
+        if (!cancelled) toasts.add({ title: '加载用户信息失败', variant: 'error' })
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -259,7 +259,7 @@ export default function SettingsPage() {
 
   const handleSaveName = async () => {
     if (!nameInput.trim()) {
-      toasts.add({ title: 'Display name cannot be empty', variant: 'error' })
+      toasts.add({ title: '显示名称不能为空', variant: 'error' })
       return
     }
 
@@ -267,10 +267,10 @@ export default function SettingsPage() {
       await authenticatedApi.setOwnDisplayName(nameInput.trim())
       setUserInfo(prev => prev ? { ...prev, name: nameInput.trim() } : null)
       setIsEditingName(false)
-      toasts.add({ title: 'Display name updated', variant: 'success' })
+      toasts.add({ title: '显示名称已更新', variant: 'success' })
     } catch (err) {
       console.error('Failed to update display name:', err)
-      toasts.add({ title: 'Failed to update display name', variant: 'error' })
+      toasts.add({ title: '更新显示名称失败', variant: 'error' })
     }
   }
 
@@ -283,15 +283,15 @@ export default function SettingsPage() {
     if (!userInfo?.id) return
     try {
       await navigator.clipboard.writeText(userInfo.id)
-      toasts.add({ title: 'User ID copied', variant: 'success' })
+      toasts.add({ title: '用户 ID 已复制', variant: 'success' })
     } catch {
-      toasts.add({ title: 'Failed to copy', variant: 'error' })
+      toasts.add({ title: '复制失败', variant: 'error' })
     }
   }
 
   const handleAvatarUpload = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      toasts.add({ title: 'Please select an image file', variant: 'error' })
+      toasts.add({ title: '请选择图片文件', variant: 'error' })
       return
     }
     setAvatarUploading(true)
@@ -304,11 +304,11 @@ export default function SettingsPage() {
       await authenticatedApi.setAvatar(compressed)
       // Invalidate cache so the hook refetches
       if (userInfo?.id) invalidateAvatarCache(userInfo.id)
-      toasts.add({ title: 'Avatar updated', variant: 'success' })
+      toasts.add({ title: '头像已更新', variant: 'success' })
     } catch (err) {
       console.error('Failed to upload avatar:', err)
       setLocalAvatarPreview(null)
-      toasts.add({ title: 'Failed to upload avatar', variant: 'error' })
+      toasts.add({ title: '上传头像失败', variant: 'error' })
     } finally {
       setAvatarUploading(false)
     }
@@ -333,12 +333,12 @@ export default function SettingsPage() {
       const oldHash = await hashPassword(userInfo.id, currentPassword)
       const newHash = await hashPassword(userInfo.id, newPassword)
       await authenticatedApi.changePassword(oldHash, newHash)
-      toasts.add({ title: 'Password changed successfully', variant: 'success' })
+      toasts.add({ title: '密码修改成功', variant: 'success' })
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to change password'
+      const errorMessage = err instanceof Error ? err.message : '修改密码失败'
       setPasswordError(errorMessage)
     } finally {
       setPasswordLoading(false)
@@ -350,7 +350,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] flex-1 items-center justify-center">
-        <p className="text-[13px] tracking-[-0.25px] text-kumo-subtle">Loading profile…</p>
+        <p className="text-[13px] tracking-[-0.25px] text-kumo-subtle">正在加载个人资料…</p>
       </div>
     )
   }
@@ -358,16 +358,16 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto flex h-full w-full max-w-2xl flex-col px-4 pb-16 sm:px-10">
       <header className="px-1 pb-2 pt-6 sm:pt-10">
-        <h1 className="text-2xl font-semibold tracking-tight text-kumo-default">Profile</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-kumo-default">个人资料</h1>
         <p className="mt-1 text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-subtle">
-          Manage your account details, avatar, and security.
+          管理账号资料、头像和安全设置。
         </p>
       </header>
 
       <div className="mt-6 flex flex-col gap-9">
         {/* Account */}
         <section className="flex flex-col gap-3">
-          <SectionLabel>Account</SectionLabel>
+          <SectionLabel>账号</SectionLabel>
           <div className="divide-y divide-kumo-line overflow-hidden rounded-xl border border-kumo-line bg-kumo-base">
             {/* Avatar */}
             <div className="flex items-center gap-4 px-5 py-4">
@@ -378,7 +378,7 @@ export default function SettingsPage() {
                 className="press group relative flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-kumo-fill disabled:cursor-wait"
               >
                 {displayAvatarUrl ? (
-                  <img src={displayAvatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                  <img src={displayAvatarUrl} alt="头像" className="h-full w-full object-cover" />
                 ) : (
                   <User size={28} className="text-kumo-subtle" />
                 )}
@@ -407,7 +407,7 @@ export default function SettingsPage() {
                   {userInfo?.name}
                 </p>
                 <p className="mt-0.5 text-[12px] leading-4 tracking-[-0.2px] text-kumo-subtle">
-                  Click the avatar to upload a new photo
+                  点击头像上传新照片
                 </p>
               </div>
             </div>
@@ -415,7 +415,7 @@ export default function SettingsPage() {
             {/* Display name */}
             <div className="flex items-end gap-2 px-5 py-4">
               <div className="min-w-0 flex-1">
-                <FieldLabel>Display name</FieldLabel>
+                <FieldLabel>显示名称</FieldLabel>
                 {isEditingName ? (
                   <input
                     value={nameInput}
@@ -425,7 +425,7 @@ export default function SettingsPage() {
                       if (e.key === 'Enter') handleSaveName()
                       if (e.key === 'Escape') handleCancelEdit()
                     }}
-                    placeholder="Enter display name"
+                    placeholder="输入显示名称"
                     autoFocus
                     className={`mt-1.5 ${INPUT}`}
                   />
@@ -441,16 +441,16 @@ export default function SettingsPage() {
                     type="button"
                     onClick={handleSaveName}
                     disabled={!nameInput.trim()}
-                    aria-label="Save display name"
+                    aria-label="保存显示名称"
                     className={PRIMARY_BTN}
                   >
                     <Check size={15} weight="bold" />
-                    Save
+                    保存
                   </button>
                   <button
                     type="button"
                     onClick={handleCancelEdit}
-                    aria-label="Cancel"
+                    aria-label="取消"
                     className={ICON_BTN}
                   >
                     <X size={15} />
@@ -460,7 +460,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setIsEditingName(true)}
-                  aria-label="Edit display name"
+                  aria-label="编辑显示名称"
                   className={ICON_BTN}
                 >
                   <Pencil size={14} />
@@ -473,7 +473,7 @@ export default function SettingsPage() {
             {/* User ID */}
             <div className="flex items-center gap-2 px-5 py-4">
               <div className="min-w-0 flex-1">
-                <FieldLabel>User ID</FieldLabel>
+                <FieldLabel>用户 ID</FieldLabel>
                 <p className="mt-1 truncate font-mono text-[12px] tracking-[-0.1px] text-kumo-subtle">
                   {userInfo?.id}
                 </p>
@@ -481,7 +481,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={handleCopyId}
-                aria-label="Copy user ID"
+                aria-label="复制用户 ID"
                 className={ICON_BTN}
               >
                 <Copy size={14} />
@@ -498,31 +498,31 @@ export default function SettingsPage() {
         {/* Security — only for password accounts (hidden under CF Access or gatekeeper sign-in) */}
         {!CF_ACCESS_MODE && hasPassword === true && (
           <section className="flex flex-col gap-3">
-            <SectionLabel>Security</SectionLabel>
+            <SectionLabel>安全</SectionLabel>
             <div className="rounded-xl border border-kumo-line bg-kumo-base p-5">
               <div className="flex max-w-sm flex-col gap-4">
                 <PasswordField
-                  label="Current password"
+                  label="当前密码"
                   value={currentPassword}
                   onChange={setCurrentPassword}
-                  placeholder="Enter current password"
+                  placeholder="输入当前密码"
                   autoComplete="current-password"
                 />
 
                 <PasswordField
-                  label="New password"
+                  label="新密码"
                   value={newPassword}
                   onChange={setNewPassword}
-                  placeholder="Enter new password"
-                  description="Must be at least 8 characters"
+                  placeholder="输入新密码"
+                  description="至少需要 8 个字符"
                   autoComplete="new-password"
                 />
 
                 <PasswordField
-                  label="Confirm new password"
+                  label="确认新密码"
                   value={confirmPassword}
                   onChange={setConfirmPassword}
-                  placeholder="Confirm new password"
+                  placeholder="确认新密码"
                   autoComplete="new-password"
                   error={passwordError}
                 />
@@ -535,7 +535,7 @@ export default function SettingsPage() {
                     className={PRIMARY_BTN}
                   >
                     <Lock size={14} weight="bold" />
-                    {passwordLoading ? 'Changing…' : 'Change password'}
+                    {passwordLoading ? '正在修改…' : '修改密码'}
                   </button>
                 </div>
               </div>

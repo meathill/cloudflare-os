@@ -571,7 +571,7 @@ for (const gk of gatekeepers) {
 
   config.services = config.services || [];
 
-  // For local testing, create an account named "admin" to test admin features.
+  // For local testing, default to "admin" or read from ADMINS / ADMIN_USERS env vars.
   config.vars = config.vars || {};
   config.vars.ADMINS = ["admin"];
   // A local instance, where `cf-os api` may act as anyone. Never set by a deployment.
@@ -598,6 +598,7 @@ for (const gk of gatekeepers) {
     "CF_AI_GATEWAY_API_TOKEN", "CF_AI_GATEWAY_USE_BINDING",
     // The admin audit log's minimum retention (see docs/admin-access.md).
     "ADMIN_AUDIT_RETENTION_MIN_DAYS",
+    "GEMINI_API_KEY", "GOOGLE_API_KEY",
   ];
   // OAuth app credentials (GOOGLE_/GITHUB_/CLOUDFLARE_OAUTH_*) are NOT passed to the backend anymore;
   // they are injected into the gatekeeper Workers (see SHARED_GATEKEEPER_CREDS below).

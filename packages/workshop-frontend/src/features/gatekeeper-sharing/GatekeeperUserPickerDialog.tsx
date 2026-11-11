@@ -104,7 +104,7 @@ export default function GatekeeperUserPickerDialog({
     if (!active.current || closeRequested.current || accepted.current.has(user.id) ||
       reserved.current.has(user.id)) return
     if (accepted.current.size + reserved.current.size >= MAX_PICKED_PEOPLE) {
-      setNotice('You can select up to 999 people at once. Close and reopen the picker to continue.')
+      setNotice('一次最多可选择 999 人。关闭后重新打开选择器即可继续。')
       return
     }
     reserved.current.add(user.id)
@@ -118,14 +118,14 @@ export default function GatekeeperUserPickerDialog({
       async (selection) => {
         if (!active.current) return
         if (!selection) {
-          setNotice(`${user.name} can no longer be selected. Try searching again.`)
+          setNotice(`无法再选择 ${user.name}，请重新搜索。`)
           return
         }
         await onSelected(selection)
         if (!active.current) return
         accepted.current.add(user.id)
         setPicked((current) => [...current, { id: user.id, name: selection.profile.displayName }])
-        setAnnouncement(`Added ${selection.profile.displayName}`)
+        setAnnouncement(`已添加 ${selection.profile.displayName}`)
       },
     ).catch((error: unknown) => {
       if (!active.current) return
@@ -133,7 +133,7 @@ export default function GatekeeperUserPickerDialog({
       // The app's own message, when it threw one, is meant for the user.
       setNotice(error instanceof Error && error.message
         ? `${user.name}: ${error.message}`
-        : `Couldn't select ${user.name}. Try again.`)
+        : `无法选择 ${user.name}，请重试。`)
     }).finally(() => {
       reserved.current.delete(user.id)
       if (active.current) {
@@ -172,9 +172,9 @@ export default function GatekeeperUserPickerDialog({
       >
         <div className="flex items-start justify-between gap-4 px-5 pb-4 pt-5">
           <Dialog.Title className="text-[18px] leading-6 font-medium tracking-[-0.4px] text-kumo-default">
-            Select users
+            选择用户
           </Dialog.Title>
-          <WorkshopIconButton aria-label="Close person picker" onClick={close} disabled={closing}>
+          <WorkshopIconButton aria-label="关闭人员选择器" onClick={close} disabled={closing}>
             <X size={18} />
           </WorkshopIconButton>
         </div>
@@ -205,14 +205,14 @@ export default function GatekeeperUserPickerDialog({
           </div>
           {atLimit && (
             <p role="status" className="mt-2 text-[12px] text-kumo-subtle">
-              You can select up to 999 people at once. Close and reopen the picker to continue.
+              一次最多可选择 999 人。关闭后重新打开选择器即可继续。
             </p>
           )}
           {closing && pending.length > 0 && (
             <div className="mt-3 text-[12px] text-kumo-subtle">
-              <p>Waiting for this service. Closing cannot undo selections it already accepted.</p>
+              <p>正在等待服务响应。关闭不会撤销已接受的选择。</p>
               <button type="button" onClick={cancel} className="mt-2 underline">
-                Stop waiting and close
+                停止等待并关闭
               </button>
             </div>
           )}
@@ -221,7 +221,7 @@ export default function GatekeeperUserPickerDialog({
           )}
           <p role="status" aria-live="polite" className="sr-only">{announcement}</p>
           {(picked.length > 0 || pending.length > 0) && (
-            <ul aria-label="Added people" className="mt-3 flex flex-wrap gap-2">
+            <ul aria-label="已添加的用户" className="mt-3 flex flex-wrap gap-2">
               {picked.map((user) => (
                 <li
                   key={user.id}
@@ -229,7 +229,7 @@ export default function GatekeeperUserPickerDialog({
                 >
                   <PersonAvatar api={authenticatedApi} userId={user.id} name={user.name} size={20} />
                   <span className="max-w-[160px] truncate">{user.name}</span>
-                  <Check size={12} weight="bold" className="text-kumo-success" aria-label="Added" />
+                  <Check size={12} weight="bold" className="text-kumo-success" aria-label="已添加" />
                 </li>
               ))}
               {pending.map((id) => (
@@ -238,14 +238,14 @@ export default function GatekeeperUserPickerDialog({
                   role="status"
                   className="flex items-center rounded-full border border-dashed border-kumo-line/80 px-2.5 py-1 text-[13px] text-kumo-subtle"
                 >
-                  Adding…
+                  正在添加…
                 </li>
               ))}
             </ul>
           )}
         </div>
         <div className="flex justify-end px-5 pb-5">
-          <Button variant="secondary" onClick={close} disabled={closing}>Done</Button>
+          <Button variant="secondary" onClick={close} disabled={closing}>完成</Button>
         </div>
       </Dialog>
     </Dialog.Root>

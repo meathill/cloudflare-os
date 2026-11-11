@@ -62,7 +62,7 @@ export default function Header() {
               activeProps={{ className: navLinkActiveClass }}
               activeOptions={{ exact: true }}
             >
-              Home
+              首页
             </Link>
             <Link
               to="/gatekeepers"
@@ -70,14 +70,14 @@ export default function Header() {
               activeProps={{ className: navLinkActiveClass }}
               activeOptions={{ exact: true }}
             >
-              Gatekeepers
+              连接服务
             </Link>
             <Link
               to="/explore"
               className={navLinkClass}
               activeProps={{ className: navLinkActiveClass }}
             >
-              Explore
+              探索
             </Link>
             {gatekeeperApps.map((app) => (
               <Link
@@ -125,7 +125,7 @@ export default function Header() {
               activeProps={{ className: navLinkActiveClass }}
               activeOptions={{ exact: true }}
             >
-              Home
+              首页
             </Link>
             <Link
               to="/gatekeepers"
@@ -134,7 +134,7 @@ export default function Header() {
               activeProps={{ className: navLinkActiveClass }}
               activeOptions={{ exact: true }}
             >
-              Gatekeepers
+              连接服务
             </Link>
             <Link
               to="/explore"
@@ -142,7 +142,7 @@ export default function Header() {
               className={navLinkClass}
               activeProps={{ className: navLinkActiveClass }}
             >
-              Explore
+              探索
             </Link>
             {gatekeeperApps.map((app) => (
               <Link
@@ -167,15 +167,7 @@ export default function Header() {
                   className={navLinkClass}
                   activeProps={{ className: navLinkActiveClass }}
                 >
-                  Profile
-                </Link>
-                <Link
-                  to="/providers"
-                  onClick={closeMobileMenu}
-                  className={navLinkClass}
-                  activeProps={{ className: navLinkActiveClass }}
-                >
-                  Providers
+                  个人资料
                 </Link>
                 {auth.isAdmin && (
                   <Link
@@ -184,14 +176,14 @@ export default function Header() {
                     className={navLinkClass}
                     activeProps={{ className: navLinkActiveClass }}
                   >
-                    Admin
+                    管理后台
                   </Link>
                 )}
                 <button
                   onClick={() => { closeMobileMenu(); auth.logout() }}
                   className="text-left text-sm px-3 py-1.5 rounded-md text-kumo-danger hover:bg-kumo-tint transition-colors"
                 >
-                  Sign out
+                  退出登录
                 </button>
               </>
             )}

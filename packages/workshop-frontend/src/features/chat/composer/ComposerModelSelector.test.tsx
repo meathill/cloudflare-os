@@ -3,14 +3,15 @@
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AiChatAuthorInfo } from "@gadgets/workshop-shared/api";
 import { ComposerModelSelector, type SelectedModel } from "./ComposerModelSelector";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const models: AiChatAuthorInfo[] = [
-  { type: "agent", id: "claude-opus-5-5", name: "Claude Opus 5.5" },
+  { type: "agent", id: "gemini-3.8-flash", name: "Gemini 3.8 Flash" },
+  { type: "agent", id: "gpt-6.1-terra", name: "GPT-6.1 Terra" },
 ];
 
 let root: Root | null = null;
@@ -23,7 +24,7 @@ afterEach(() => {
   container = null;
 });
 
-function renderTriggerLabel(selectedModel: SelectedModel): string {
+function render(selectedModel: SelectedModel, onModelChange: (id: string | null) => void) {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -31,23 +32,31 @@ function renderTriggerLabel(selectedModel: SelectedModel): string {
     <ComposerModelSelector
       models={models}
       selectedModel={selectedModel}
-      onModelChange={() => {}}
+      onModelChange={onModelChange}
     />,
   ));
-  return container.querySelector('[aria-label="Select model"]')!.textContent!;
+  return container;
 }
 
 describe("ComposerModelSelector", () => {
-  it("labels an offered model by its listed name", () => {
-    expect(renderTriggerLabel({ id: "claude-opus-5-5", name: "Stale name" })).toBe("Claude Opus 5.5");
+  it.each([
+    ["GPT-6.1 Terra", "gpt-6.1-terra"],
+    ["无智能体", null],
+  ])("选择 %s 时传回对应的模型 ID", async (label, id) => {
+    const onModelChange = vi.fn<(id: string | null) => void>();
+    const rendered = render({ id: "gemini-3.8-flash" }, onModelChange);
+    const trigger = rendered.querySelector<HTMLButtonElement>('button[aria-label="选择模型"]');
+    expect(trigger?.textContent).toContain("Gemini 3.8 Flash");
+    await act(async () => trigger?.click());
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+      .find(element => element.textContent?.trim() === label);
+    expect(item).toBeDefined();
+    await act(async () => item?.click());
+    expect(onModelChange).toHaveBeenCalledExactlyOnceWith(id);
   });
 
-  // An existing chat can still be on a model the picker has since hidden.
-  it("labels a model the list doesn't offer by the chat's own name for it", () => {
-    expect(renderTriggerLabel({ id: "claude-opus-5", name: "Claude Opus 5" })).toBe("Claude Opus 5");
-  });
-
-  it("falls back to the raw id when no name is known", () => {
-    expect(renderTriggerLabel({ id: "claude-opus-5" })).toBe("claude-opus-5");
+  it("显示旧会话中已隐藏的模型名称", () => {
+    const rendered = render({ id: "gpt-6-sol", name: "GPT-6 Sol" }, () => {});
+    expect(rendered.textContent).toContain("GPT-6 Sol");
   });
 });

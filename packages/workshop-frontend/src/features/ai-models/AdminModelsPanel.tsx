@@ -29,9 +29,9 @@ import { useGatewayTests } from './useGatewayTests'
 
 const CARD = 'rounded-xl border border-kumo-line bg-kumo-elevated p-6'
 const GROUP_HEADING = 'mb-2 text-sm font-semibold text-kumo-default'
-const USER_MODELS_LABEL = 'Users may add their own models'
-const MODELS_DEV_LABEL = 'Suggest models from models.dev'
-const DEFAULT_REASONING_LABEL = 'Default reasoning level'
+const USER_MODELS_LABEL = '允许用户添加自己的模型'
+const MODELS_DEV_LABEL = '从 models.dev 推荐模型'
+const DEFAULT_REASONING_LABEL = '默认推理级别'
 
 // The default-level select's value while the deployment sets no level.
 const BUILT_IN = 'built-in'
@@ -99,12 +99,7 @@ const DefaultReasoningSetting = ({ level, disabled, onChange }: {
       help={{
         id: help,
         text:
-          'The reasoning level of the agent’s turns on every model listed here that has no level ' +
-          'of its own. Built-in sets none: each model is then asked the way the Workshop asks it ' +
-          'by default, which the model’s Settings name. That is Provider default, where the model ' +
-          'reasons at whatever effort its provider defaults to, a fixed level, or no level sent. A ' +
-          'level that a model lacks is fitted to the nearest one it has. One-shot calls (titles, ' +
-          'summaries, gadget model bindings) are not affected, and neither are the models users added.',
+          '适用于列表中未单独设置推理级别的模型。选择内置时不设置统一级别，各模型使用自己的默认方式：服务商默认、固定级别或不发送级别。如果模型不支持指定级别，将使用最接近的可用级别。标题、摘要、应用模型绑定等单次调用以及用户添加的模型不受影响。',
       }}
     >
       <Select<ReasoningLevel | typeof BUILT_IN>
@@ -119,9 +114,9 @@ const DefaultReasoningSetting = ({ level, disabled, onChange }: {
           if (reason !== 'item-press' || !value || value === (level ?? BUILT_IN)) return
           onChange(value === BUILT_IN ? null : value)
         }}
-        renderValue={(value) => (value === BUILT_IN ? 'Built-in' : REASONING_LEVEL_LABELS[value])}
+        renderValue={(value) => (value === BUILT_IN ? '内置' : REASONING_LEVEL_LABELS[value])}
       >
-        <Select.Option value={BUILT_IN}>Built-in</Select.Option>
+        <Select.Option value={BUILT_IN}>内置</Select.Option>
         {REASONING_LEVELS.map((option) => (
           <Select.Option key={option} value={option}>{REASONING_LEVEL_LABELS[option]}</Select.Option>
         ))}
@@ -170,11 +165,9 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
   if (!gatewayModels) {
     return (
       <div className={CARD}>
-        <h2 className="mb-1 text-lg font-semibold text-kumo-strong">Models</h2>
+        <h2 className="mb-1 text-lg font-semibold text-kumo-strong">模型</h2>
         <p className="text-sm text-kumo-subtle">
-          Models are managed here only when the deployment provides them through AI Gateway
-          (<code className="font-mono text-xs">CF_AI_GATEWAY</code>). Otherwise each user adds
-          their own models on their Providers page.
+          仅当部署通过 AI Gateway（<code className="font-mono text-xs">CF_AI_GATEWAY</code>）提供模型时，才在这里管理。否则，每位用户需要在自己的服务商页面添加模型。
         </p>
       </div>
     )
@@ -209,7 +202,7 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
 
   const changeMode = (model: AdminModel, mode: GatewayModelMode) =>
     writeModel(model, () => admin.setGatewayModelMode(model.id, mode))
-      .catch((err) => reportFailure(`Couldn’t update ${model.name}`, err))
+      .catch((err) => reportFailure(`无法更新 ${model.name}`, err))
 
   // Disabling breaks what runs on the model with nobody there to see it fail, so it is confirmed.
   const requestMode = (model: AdminModel, mode: GatewayModelMode) => {
@@ -219,26 +212,26 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
 
   const changeSettings = (model: AdminModel, settings: GatewayModelSettings) =>
     writeModel(model, () => admin.setGatewayModelSettings(model.id, settings))
-      .catch((err) => reportFailure(`Couldn’t update ${model.name}`, err))
+      .catch((err) => reportFailure(`无法更新 ${model.name}`, err))
 
   // The default is the level of every model that has none of its own, so every test is forgotten.
   const changeDefaultReasoning = (level: ReasoningLevel | null) =>
     write(async () => {
       await admin.setDefaultReasoning(level)
       modelTests.clearTests()
-    }).catch((err) => reportFailure(`Couldn’t update “${DEFAULT_REASONING_LABEL}”`, err))
+    }).catch((err) => reportFailure(`无法更新“${DEFAULT_REASONING_LABEL}”`, err))
 
   const changeUserModels = (enabled: boolean) =>
     write(() => admin.setUserModelsEnabled(enabled))
-      .catch((err) => reportFailure(`Couldn’t update “${USER_MODELS_LABEL}”`, err))
+      .catch((err) => reportFailure(`无法更新“${USER_MODELS_LABEL}”`, err))
 
   const changeModelsDevSuggestions = (enabled: boolean) =>
     write(() => admin.setModelsDevSuggestions(enabled))
-      .catch((err) => reportFailure(`Couldn’t update “${MODELS_DEV_LABEL}”`, err))
+      .catch((err) => reportFailure(`无法更新“${MODELS_DEV_LABEL}”`, err))
 
   const changeProviderEnabled = (provider: AiModelProvider, enabled: boolean) =>
     write(() => admin.setGatewayProviderEnabled(provider, enabled))
-      .catch((err) => reportFailure(`Couldn’t update ${PROVIDER_LABELS[provider]}`, err))
+      .catch((err) => reportFailure(`无法更新 ${PROVIDER_LABELS[provider]}`, err))
 
   const changeProviderOrder = (providers: AiModelProvider[]) =>
     write(() => admin.setGatewayProviderOrder(providers))
@@ -267,7 +260,7 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
   const confirmRemoval = async () => {
     if (!pendingRemoval) return
     await writeModel(pendingRemoval, () => admin.removeGatewayModel(pendingRemoval.id))
-      .catch((err) => reportFailure(`Couldn’t remove ${pendingRemoval.name}`, err))
+      .catch((err) => reportFailure(`无法移除 ${pendingRemoval.name}`, err))
     setPendingRemoval(null)
   }
 
@@ -302,11 +295,9 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
 
   return (
     <div className={CARD}>
-      <h2 className="mb-1 text-lg font-semibold text-kumo-strong">Models</h2>
+      <h2 className="mb-1 text-lg font-semibold text-kumo-strong">模型</h2>
       <p className="mb-4 text-sm text-kumo-subtle">
-        The models this deployment provides through AI Gateway: the catalog this version ships for
-        the providers that are on, plus the models this deployment added. A model left on
-        its default follows the catalog when the deployment is upgraded.
+        此部署通过 AI Gateway 提供的模型包括当前版本中已启用服务商的模型目录，以及此部署添加的模型。使用默认设置的模型会在部署升级时跟随目录更新。
       </p>
 
       <SettingSwitch
@@ -315,10 +306,7 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
         disabled={busy}
         onChange={changeUserModels}
       >
-        When on, users can add models under their own IDs on their Providers page, and those run
-        through this deployment’s gateway. When off, only the models listed here can be used, and
-        the models users already added stop working until this is turned back on. Nothing is
-        deleted.
+        启用后，用户可在服务商页面使用自己的 ID 添加模型，并通过此部署的网关运行。关闭后只能使用这里列出的模型，用户已添加的模型会停止工作，直到重新启用。不会删除任何内容。
       </SettingSwitch>
 
       <DefaultReasoningSetting
@@ -328,7 +316,7 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
       />
 
       <section className="mb-6">
-        <h3 className={GROUP_HEADING}>Providers</h3>
+        <h3 className={GROUP_HEADING}>服务商</h3>
         {/* A test is not a write: it changes nothing, so it neither takes nor waits for the lock. */}
         <GatewayProviders
           providers={gatewayModels.providerSettings}
@@ -348,14 +336,13 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
         ))}
       </dl>
       <p className="mb-6 text-sm text-kumo-subtle">
-        Test sends a model one request the way a chat turn would, with the reasoning level in
-        effect for it, and shows what came back. A test can use up to 2,048 output tokens.
+        测试会以对话的方式向模型发送一次请求，使用当前推理级别并显示返回结果。一次测试最多使用 2,048 个输出 token。
       </p>
 
       <div className="flex flex-col gap-6">
         {byProvider.size === 0 && (
           <p className="text-sm text-kumo-subtle">
-            This version’s catalog has no models for the providers that are on.
+            当前版本的模型目录中没有已启用服务商的模型。
           </p>
         )}
 
@@ -388,24 +375,22 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
         ))}
 
         <section>
-          <h3 className={GROUP_HEADING}>Added by this deployment</h3>
+          <h3 className={GROUP_HEADING}>此部署添加的模型</h3>
           {added.length === 0 ? (
-            <p className="text-sm text-kumo-subtle">No models added.</p>
+            <p className="text-sm text-kumo-subtle">尚未添加模型。</p>
           ) : (
             <p className="text-sm text-kumo-subtle">
-              The models this deployment added are listed under their providers, marked Added. To
-              shut one off, disable it. Removing a model frees its ID instead: gadget model
-              bindings made for it{' '}
+              此部署添加的模型列在其所属服务商下并标有“已添加”。要关闭模型，请将其禁用。移除模型会改为释放其 ID：应用中指向此模型的绑定
               {userModelsEnabled
-                ? 'then run, even if the model was disabled.'
-                : 'then stay stopped for as long as users may not add their own models.'}
+                ? '将继续运行，即使该模型之前已禁用。'
+                : '将保持停止，直到允许用户添加自己的模型。'}
             </p>
           )}
 
-          <h4 className="mb-2 mt-5 text-sm font-medium text-kumo-default">Add a model</h4>
+          <h4 className="mb-2 mt-5 text-sm font-medium text-kumo-default">添加模型</h4>
           {gatewayModels.providers.length === 0 ? (
             <p className="text-sm text-kumo-subtle">
-              No model can be added, because no provider is on. Turn one on under Providers.
+              没有启用的服务商，无法添加模型。请先在服务商设置中启用。
             </p>
           ) : (
             <>
@@ -415,9 +400,7 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
                 disabled={busy}
                 onChange={changeModelsDevSuggestions}
               >
-                While you add a model, your browser downloads models.dev’s public model list to
-                suggest model IDs, names, limits and what a model can do. A suggestion only fills
-                in the form: nothing is added until you select “Add model”.
+                添加模型时，浏览器会下载 models.dev 的公开模型列表，以提供模型 ID、名称、限制和能力建议。建议只会填写表单，点击“添加模型”后才会添加。
               </SettingSwitch>
               <AddGatewayModelForm
                 providers={gatewayModels.providers}
@@ -435,20 +418,14 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
 
       <DeleteConfirmationDialog
         open={pendingRemoval !== null}
-        title={`Remove “${pendingRemoval?.name ?? ''}”?`}
+        title={`移除“${pendingRemoval?.name ?? ''}”？`}
         description={
           <>
-            Removing frees the ID <span className="break-all font-mono">{pendingRemoval?.id}</span>
-            : gadget model bindings made for the model{' '}
-            {userModelsEnabled
-              ? 'then run, even if it was disabled'
-              : 'then stay stopped for as long as users may not add their own models'}
-            , and a model added under the same ID takes its place in the chats that name it. To
-            shut a model off, disable it instead.
+            移除会释放 ID <span className="break-all font-mono">{pendingRemoval?.id}</span>：应用中指向此模型的绑定{userModelsEnabled ? '将继续运行，即使该模型之前已禁用' : '将保持停止，直到允许用户添加自己的模型'}。使用相同 ID 添加的新模型将替代引用它的对话中的模型。要关闭模型，请选择禁用。
           </>
         }
-        confirmLabel="Remove"
-        confirmingLabel="Removing…"
+        confirmLabel="移除"
+        confirmingLabel="正在移除…"
         isDeleting={busy}
         onOpenChange={(open) => { if (!open) setPendingRemoval(null) }}
         onConfirm={() => { void confirmRemoval() }}
@@ -456,17 +433,14 @@ export const AdminModelsPanel = ({ admin, gatewayModels, onChanged }: {
 
       <DeleteConfirmationDialog
         open={pendingDisable !== null}
-        title={`Disable “${pendingDisable?.name ?? ''}”?`}
+        title={`禁用“${pendingDisable?.name ?? ''}”？`}
         description={
           <>
-            Everything that uses this model stops working until it is enabled or hidden again:
-            chats, gadgets that call it, and scheduled tasks. A scheduled task that keeps failing
-            is eventually stopped for good, and enabling the model again won’t restart it. To take
-            the model out of the pickers without breaking anything, hide it instead.
+            使用此模型的对话、应用和定时任务都会停止工作，直到重新启用或隐藏该模型。持续失败的定时任务最终会永久停止，重新启用模型也不会重启它。若只想从选择器中移除模型且不影响现有功能，请选择隐藏。
           </>
         }
-        confirmLabel="Disable"
-        confirmingLabel="Disabling…"
+        confirmLabel="禁用"
+        confirmingLabel="正在禁用…"
         isDeleting={busy}
         onOpenChange={(open) => { if (!open) setPendingDisable(null) }}
         onConfirm={() => { void confirmDisable() }}

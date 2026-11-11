@@ -134,10 +134,10 @@ export class ContextAccount
 
   async describe(): Promise<AccountDescription> {
     return {
-      displayName: "Skills",
+      displayName: "技能",
       avatar: LIBRARY_ICON,
       singleton: { tsType: "ContextLibrary" },
-      providesUi: { title: "Skills", icon: LIBRARY_ICON },
+      providesUi: { title: "技能", icon: LIBRARY_ICON },
     };
   }
 
@@ -387,14 +387,12 @@ type GatekeeperVendorProps = {
 export class GatekeeperVendor extends WorkerEntrypoint<Cloudflare.Env, GatekeeperVendorProps> {
   async describe(): Promise<VendorDescription> {
     return {
-      displayName: "Skills",
+      displayName: "技能",
       url: "https://workers.cloudflare.com/",
       logo: LIBRARY_ICON,
-      tagline: "Reusable instructions and workflows for agents",
+      tagline: "供智能体复用的指令和工作流",
       description:
-        "Skills provide agents with reusable instructions, workflows, and supporting resources. " +
-        "Enable this feature to let users create their own skills and use skills shared by your " +
-        "organization.",
+        "技能为智能体提供可复用的指令、工作流和辅助资源。启用后，用户可以创建自己的技能，并使用组织共享的技能。",
       autoProvisionsAccount: true,
       providesAuth: false,
     };

@@ -82,10 +82,10 @@ export const useComposerAttachments = ({
       if (!mountedRef.current || !attachmentsRef.current.some((item) => item.id === id)) return;
       console.error("Failed to upload chat attachment:", error);
       reportIssue("chat.attachment-upload", error);
-      const message = errorMessage(error, "Upload failed");
+      const message = errorMessage(error, "上传失败");
       updateAttachments((current) => current.map((item) =>
         item.id === id ? { ...item, uploadState: "error", error: message } : item));
-      onErrorRef.current(errorMessage(error, "Failed to upload attachment"));
+      onErrorRef.current(errorMessage(error, "上传附件失败"));
     }
   };
 
@@ -93,14 +93,14 @@ export const useComposerAttachments = ({
     const candidates = Array.from(files);
     const initialRoom = MAX_COMPOSER_ATTACHMENTS - attachmentsRef.current.length;
     if (initialRoom <= 0) {
-      onErrorRef.current(`You can attach up to ${MAX_COMPOSER_ATTACHMENTS} attachments`);
+      onErrorRef.current(`最多可添加 ${MAX_COMPOSER_ATTACHMENTS} 个附件`);
       return;
     }
     const accepted = candidates.slice(0, initialRoom);
     if (candidates.length > initialRoom) {
       onErrorRef.current(initialRoom === 1
-        ? "Only the first attachment was attached"
-        : `Only the first ${initialRoom} attachments were attached`);
+        ? "仅添加了第一个附件"
+        : `仅添加了前 ${initialRoom} 个附件`);
     }
 
     const prepared = await Promise.allSettled(accepted.map(async (file) => ({
@@ -112,13 +112,13 @@ export const useComposerAttachments = ({
     for (const result of prepared) {
       if (result.status === "rejected") {
         console.error("Failed to process chat attachment:", result.reason);
-        onErrorRef.current(errorMessage(result.reason, "Failed to process attachment"));
+        onErrorRef.current(errorMessage(result.reason, "处理附件失败"));
         continue;
       }
 
       const { file, blob, mimeType } = result.value;
       if (attachmentsRef.current.length >= MAX_COMPOSER_ATTACHMENTS) {
-        onErrorRef.current(`You can attach up to ${MAX_COMPOSER_ATTACHMENTS} attachments`);
+        onErrorRef.current(`最多可添加 ${MAX_COMPOSER_ATTACHMENTS} 个附件`);
         continue;
       }
       const totalBytes = attachmentsRef.current.reduce(
@@ -127,7 +127,7 @@ export const useComposerAttachments = ({
       );
       if (totalBytes + blob.size > MAX_CHAT_ATTACHMENT_TOTAL_BYTES) {
         onErrorRef.current(
-          `Attached files must total ${formatAttachmentSize(MAX_CHAT_ATTACHMENT_TOTAL_BYTES)} or less`,
+          `附件总大小不能超过 ${formatAttachmentSize(MAX_CHAT_ATTACHMENT_TOTAL_BYTES)}`,
         );
         continue;
       }

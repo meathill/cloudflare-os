@@ -194,7 +194,7 @@ describe("ChatComposer", () => {
     });
 
     expect(textarea.value).toBe("Keep this draft");
-    expect(container.textContent?.includes("Connection hiccup")).toBe(transient);
+    expect(container.textContent?.includes("连接出现问题")).toBe(transient);
     expect(consoleError).toHaveBeenCalledTimes(transient ? 0 : 1);
     consoleError.mockRestore();
   });
@@ -240,10 +240,10 @@ describe("ChatComposer", () => {
       await typeText(textarea(), "Make it dark.");
       await pressEnter();
       expect(onSend).toHaveBeenCalledWith("Make it dark.", "model-a", undefined, undefined, undefined);
-      expect(button("Stop agent")!.disabled).toBe(true);
+      expect(button("停止智能体")!.disabled).toBe(true);
       await act(async () => finishSend!());
       expect(textarea().value).toBe("");
-      expect(button("Stop agent")!.disabled).toBe(false);
+      expect(button("停止智能体")!.disabled).toBe(false);
     });
 
     it("puts the dropped steers after the draft, and steers nothing until the agent is idle",
@@ -254,12 +254,12 @@ describe("ChatComposer", () => {
       await render({ onSend, onStop, queuedSteers: ["A"] });
 
       await typeText(textarea(), "Half a thought  ");
-      expect(button("Send message")).not.toBeNull();
-      await act(async () => button("Stop agent")!.click());
+      expect(button("发送消息")).not.toBeNull();
+      await act(async () => button("停止智能体")!.click());
       expect(onStop).toHaveBeenCalledOnce();
       expect(textarea().value).toBe("Half a thought\n\nA");
-      expect(button("Stop agent")!.disabled).toBe(true);
-      expect(button("Send message")).toBeNull();
+      expect(button("停止智能体")!.disabled).toBe(true);
+      expect(button("发送消息")).toBeNull();
       await pressEnter();
       expect(onSend).not.toHaveBeenCalled();
 
@@ -277,11 +277,11 @@ describe("ChatComposer", () => {
       await render({ onStop, queuedSteers: ["A"] });
       await typeText(textarea(), "Draft");
 
-      await act(async () => button("Stop agent")!.click());
-      expect(button("Stop agent")!.disabled).toBe(true);
+      await act(async () => button("停止智能体")!.click());
+      expect(button("停止智能体")!.disabled).toBe(true);
       await act(async () => failStop!(new Error("Peer closed WebSocket")));
       expect(textarea().value).toBe("Draft\n\nA");
-      expect(button("Stop agent")!.disabled).toBe(false);
+      expect(button("停止智能体")!.disabled).toBe(false);
     });
   });
 
@@ -319,7 +319,7 @@ describe("ChatComposer", () => {
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
     });
     textarea.setSelectionRange(7, 7);
-    const add = container.querySelector<HTMLButtonElement>('[aria-label="Add to conversation"]')!;
+    const add = container.querySelector<HTMLButtonElement>('[aria-label="添加到对话"]')!;
     await act(async () => add.click());
     await act(async () => vi.waitFor(() => expect(
       Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'))
@@ -334,17 +334,17 @@ describe("ChatComposer", () => {
 
     expect(textarea.value).toBe("before /review after");
     expect(document.body.textContent)
-      .toContain("Slash command /review from Projects is ready to send");
+      .toContain("来自 Projects 的斜杠命令 /review 已准备发送");
     expect(document.activeElement).toBe(textarea);
 
     await act(async () => add.click());
     const actions = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'));
     expect(actions).toHaveLength(2);
     expect(actions.every((action) => !action.disabled)).toBe(true);
-    expect(document.querySelector('[aria-label="Search skills"]')).toBeNull();
+    expect(document.querySelector('[aria-label="搜索技能"]')).toBeNull();
     expect(container.textContent).not.toContain("Add resource");
     expect(container.textContent).not.toContain("Legacy resource");
-    const connection = actions.find((action) => action.textContent?.includes("Add a new connection"))!;
+    const connection = actions.find((action) => action.textContent?.includes("添加新连接"))!;
     await act(async () => connection.click());
     expect(testState.gatekeeperModalProps?.open).toBe(true);
     expect(listSlashCommands).toHaveBeenCalledTimes(1);
@@ -466,11 +466,11 @@ describe("ChatComposer", () => {
       />,
     ));
 
-    const add = container.querySelector<HTMLButtonElement>('[aria-label="Add to conversation"]')!;
+    const add = container.querySelector<HTMLButtonElement>('[aria-label="添加到对话"]')!;
     await act(async () => add.click());
     await act(async () => vi.waitFor(() => expect(document.body.textContent).toContain("first skill")));
     const connect = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'))
-      .find((option) => option.textContent?.includes("Add a new connection"))!;
+      .find((option) => option.textContent?.includes("添加新连接"))!;
     await act(async () => connect.click());
     expect(testState.gatekeeperModalProps?.open).toBe(true);
 
@@ -550,12 +550,12 @@ describe("ChatComposer", () => {
     const { textarea, toast } = await pasteFailingUrl();
 
     expect(toast).toMatchObject({
-      title: "Failed to add resource",
+      title: "添加资源失败",
       description: reason,
       variant: "error",
       timeout: 0,
     });
-    expect(toast.actions?.map((action) => action.children)).toEqual(["Configure…"]);
+    expect(toast.actions?.map((action) => action.children)).toEqual(["配置…"]);
     expect(testState.gatekeeperModalProps?.open).toBe(false);
 
     act(() => toast.actions![0].onClick());
@@ -587,9 +587,9 @@ describe("ChatComposer", () => {
     expect(testState.gatekeeperModalProps?.initialResourceUrl).toBeUndefined();
   });
 
-  it("closes its Configure… toast when the composer unmounts", async () => {
+  it("closes its 配置… toast when the composer unmounts", async () => {
     const { toast } = await pasteFailingUrl();
-    expect(toast.actions?.map((action) => action.children)).toEqual(["Configure…"]);
+    expect(toast.actions?.map((action) => action.children)).toEqual(["配置…"]);
     expect(testState.closeToast).not.toHaveBeenCalled();
 
     act(() => root!.unmount());
@@ -608,7 +608,7 @@ describe("ChatComposer", () => {
     expect(testState.addToast).toHaveBeenCalledTimes(2);
     const changed = testState.addToast.mock.calls[1][0];
     expect(changed).toMatchObject({
-      title: "The prompt changed before the resource could be added",
+      title: "添加资源前提示内容已更改",
       variant: "error",
     });
     expect(changed.timeout).toBeUndefined();

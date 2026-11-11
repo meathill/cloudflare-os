@@ -70,7 +70,7 @@ describe('ProvidersPage quick model', () => {
   // A decision model as quick model would fail every title and binding-name request it was given.
   it('can be any language model but never a decision model', async () => {
     await renderPage()
-    expect(document.body.textContent).toContain('Quick model:')
+    expect(document.body.textContent).toContain('快速模型：')
 
     expect(nameOf('Decision model').closest('[role="button"]')).toBeNull()
     await act(async () => nameOf('Decision model').click())
@@ -78,8 +78,8 @@ describe('ProvidersPage quick model', () => {
     await act(async () => nameOf('Chat model').closest<HTMLElement>('[role="button"]')!.click())
     expect(api.setQuickModel).toHaveBeenCalledWith('chat-model')
 
-    const [chatMenu, decisionMenu] = document.body.querySelectorAll<HTMLElement>('[aria-label="Provider actions"]')
-    expect(await menuItems(chatMenu)).toContain('Clear quick model')
+    const [chatMenu, decisionMenu] = document.body.querySelectorAll<HTMLElement>('[aria-label="服务商操作"]')
+    expect(await menuItems(chatMenu)).toContain('清除快速模型')
     expect(await menuItems(decisionMenu)).not.toContainEqual(expect.stringContaining('quick model'))
   })
 
@@ -87,7 +87,7 @@ describe('ProvidersPage quick model', () => {
   it('offers no quick model when only decision models are configured', async () => {
     api.listModels.mockResolvedValueOnce([])
     await renderPage()
-    expect(document.body.textContent).not.toContain('Quick model:')
+    expect(document.body.textContent).not.toContain('快速模型：')
   })
 
   // The server refuses a quick model there, since quick tasks count against no usage limit.
@@ -102,7 +102,7 @@ describe('ProvidersPage quick model', () => {
     expect(nameOf('Chat model').closest('[role="button"]')).toBeNull()
     await act(async () => nameOf('Chat model').click())
     expect(api.setQuickModel).not.toHaveBeenCalled()
-    const [chatMenu] = document.body.querySelectorAll<HTMLElement>('[aria-label="Provider actions"]')
+    const [chatMenu] = document.body.querySelectorAll<HTMLElement>('[aria-label="服务商操作"]')
     expect(await menuItems(chatMenu)).not.toContainEqual(expect.stringContaining('quick model'))
   })
 })

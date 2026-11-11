@@ -164,6 +164,14 @@ export class TestControl extends DurableObject<Cloudflare.Env> {
     return this.ctx.storage.kv.get<number>(`ambient-verifications:${label}`) ?? 0;
   }
 
+  setAccountDisplayName(label: string, displayName: string): void {
+    this.ctx.storage.kv.put(`display-name:${label}`, displayName);
+  }
+
+  getAccountDisplayName(label: string): string | null {
+    return this.ctx.storage.kv.get<string>(`display-name:${label}`) ?? null;
+  }
+
   setAgentCatalog(label: string, catalog: AgentCatalog): void {
     this.ctx.storage.kv.put(`agent-catalog:${label}`, catalog);
   }
@@ -563,7 +571,9 @@ export class TestAccount
     extends WorkerEntrypoint<Cloudflare.Env, AccountProps> implements GatekeeperUser {
   async describe(): Promise<AccountDescription> {
     return {
-      displayName: this.ctx.props.label.split("@")[0],
+      // `/control/account-display-name` stands in for a gatekeeper upgrade that changes it.
+      displayName: await control(this.ctx.exports).getAccountDisplayName(this.ctx.props.label)
+          ?? this.ctx.props.label.split("@")[0],
       // What the overseer names in a verification-failure message.
       uniqueName: this.ctx.props.label,
       avatar: AVATAR,
@@ -1083,6 +1093,18 @@ export default {
       const { label } = body as Record<string, unknown>;
       if (!isNonEmptyString(label)) return badRequest("`label` must be a non-empty string");
       return Response.json({ count: await control(ctx.exports).getAmbientVerificationCount(label) });
+    }
+
+    // Change what the account's describe() reports from now on.
+    // Body: {"label": "...", "displayName": "..."}
+    if (url.pathname === "/control/account-display-name" && req.method === "POST") {
+      const { label, displayName } = body as Record<string, unknown>;
+      if (!isNonEmptyString(label)) return badRequest("`label` must be a non-empty string");
+      if (!isNonEmptyString(displayName)) {
+        return badRequest("`displayName` must be a non-empty string");
+      }
+      await control(ctx.exports).setAccountDisplayName(label, displayName);
+      return new Response(null, { status: 204 });
     }
 
     // Set the account's discovery catalog: one entry per skill title.

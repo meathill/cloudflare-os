@@ -182,7 +182,7 @@ describe("useComposerResources", () => {
     await act(async () => harness.controls.resources.createCapsule(resolution));
 
     expect(createCapsuleGatekeeper).toHaveBeenCalledWith(3, link);
-    expect(harness.onError).toHaveBeenCalledWith("Failed to add resource", refusal, expect.any(Function));
+    expect(harness.onError).toHaveBeenCalledWith("添加资源失败", refusal, expect.any(Function));
     expect(harness.controls.draft.document).toEqual(emptyDocument(link));
   });
 
@@ -215,7 +215,7 @@ describe("useComposerResources", () => {
     expect(harness.onConnectionCreated).not.toHaveBeenCalled();
     expect(harness.onSelectionRequest).not.toHaveBeenCalled();
     expect(harness.onError).toHaveBeenCalledWith(
-      "The prompt changed before the resource could be added",
+      "添加资源前提示内容已更改",
     );
     expect(harness.onError.mock.calls[0][2]).toBeUndefined();
   });
@@ -411,7 +411,7 @@ describe("useComposerResources", () => {
       throw new Error(reason);
     });
 
-    expect(title).toBe("Failed to add resource");
+    expect(title).toBe("添加资源失败");
     expect(detail).toBe(reason);
     expect(configure).toBeTypeOf("function");
   });
@@ -421,7 +421,7 @@ describe("useComposerResources", () => {
       throw new Error("Peer closed WebSocket");
     });
 
-    expect(title).toBe("Failed to add resource");
+    expect(title).toBe("添加资源失败");
     expect(detail).toBeUndefined();
     expect(configure).toBeTypeOf("function");
   });
@@ -429,7 +429,7 @@ describe("useComposerResources", () => {
   it("offers to configure a URL whose connection was not created", async () => {
     const { title, detail, configure } = await failPaste(async () => null);
 
-    expect(title).toBe("Failed to create resource connection");
+    expect(title).toBe("创建资源连接失败");
     expect(detail).toBeUndefined();
     expect(configure).toBeTypeOf("function");
   });
@@ -526,7 +526,7 @@ describe("useComposerResources", () => {
 
     expect(harness.controls.resources.attachModalOpen).toBe(false);
     expect(harness.onError).toHaveBeenLastCalledWith(
-      "The prompt changed before the resource could be added",
+      "添加资源前提示内容已更改",
     );
   });
 
@@ -546,7 +546,7 @@ describe("useComposerResources", () => {
     expect(gatekeeper.dispose).toHaveBeenCalledOnce();
     expect(harness.onConnectionCreated).not.toHaveBeenCalled();
     expect(harness.onError).toHaveBeenLastCalledWith(
-      "The prompt changed before the resource could be added",
+      "添加资源前提示内容已更改",
     );
   });
 

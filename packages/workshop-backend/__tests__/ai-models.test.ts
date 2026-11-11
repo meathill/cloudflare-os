@@ -456,6 +456,21 @@ describe("getModel AI Gateway binding transport", () => {
     expect((JSON.parse(entry.body) as { model: string }).model).toBe("claude-sonnet-4-5");
   }, 15000);
 
+  it.each(["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"])(
+      "sends the selected %s to the native OpenAI Responses route", async model => {
+    const handle = getModel(bindingEnv(), { provider: "openai", model, apiToken: "" }, INITIATOR);
+    expect(handle.model.cost.input).toBeGreaterThan(0);
+
+    const request = await captureEntry(handle);
+    expect(request.url).toBe(
+        "https://workers-binding.ai/ai-gateway/gateways/platform-gateway/openai/responses");
+    expect(request.headers["cf-aig-authorization"]).toBe("Bearer cloudflare-gateway-binding");
+    expect(request.headers.authorization).toBeUndefined();
+    expect(JSON.parse(request.body)).toMatchObject({
+      model, reasoning: { effort: "medium" }, store: false, stream: true,
+    });
+  }, 15000);
+
   it("drives Workers AI through the binding via its gateway route", async () => {
     const handle = getModel(bindingEnv(), WORKERS_AI_CONFIG, INITIATOR);
 
@@ -798,6 +813,37 @@ describe("getModel direct routing (no gateway)", () => {
       expect(handle.model.baseUrl).toBe("http://my-ollama:11434/v1");
     }
   });
+
+  it("defaults Google Gemini to LOW thinking level to avoid Cloudflare 524 timeouts", async () => {
+    const handle = getModel(env({ CF_AI_GATEWAY: undefined }), {
+      provider: "google",
+      model: "gemini-3.8-flash",
+      apiToken: "test-google-key",
+    }, INITIATOR);
+
+    expect(handle.model.api).toBe("google-generative-ai");
+
+    let capturedConfig: any = null;
+    const stream = handle.stream(handle.model, {
+      messages: [{ role: "user", content: "hello", timestamp: 0 }],
+    }, {
+      apiKey: "test-google-key",
+      onPayload: (payload: any) => {
+        capturedConfig = payload.config;
+        return payload;
+      },
+    });
+
+    for await (const _ of stream) {
+      // drain
+    }
+
+    expect(capturedConfig).toBeDefined();
+    expect(capturedConfig.thinkingConfig).toEqual({
+      includeThoughts: true,
+      thinkingLevel: "LOW",
+    });
+  });
 });
 
 // The parts of a request body that ask for reasoning, and what they are for each answer of
@@ -1096,6 +1142,7 @@ describe("gateway model reasoning levels", () => {
     ["anthropic", "claude-sonnet-5", ["off", "minimal", ...LOW_TO_MAX]],
     ["anthropic", "claude-haiku-4-5", OFF_TO_HIGH],
     ["openai", "gpt-6.1-sol", LOW_TO_MAX],
+    ["openai", "gpt-6.1-terra", ["off", ...LOW_TO_MAX]],
     ["openai", "gpt-6-astra", LOW_TO_MAX],
     ["openai", "gpt-6-sol", ["off", ...LOW_TO_MAX]],
     ["openai", "gpt-6-luna", ["off", ...LOW_TO_MAX]],
@@ -1131,6 +1178,7 @@ describe("gateway model reasoning levels", () => {
     ["anthropic", "claude-sonnet-5", "adaptive"],
     ["anthropic", "claude-haiku-4-5", null],
     ["openai", "gpt-6.1-sol", "medium"],
+    ["openai", "gpt-6.1-terra", "medium"],
     ["openai", "gpt-6-sol", "medium"],
     ["openai", "gpt-6-luna", "medium"],
     ["openai", "gpt-6-astra", "medium"],
@@ -1138,11 +1186,12 @@ describe("gateway model reasoning levels", () => {
     ["openai", "gpt-5.6-luna", "medium"],
     ["openai", "gpt-5.6-terra", "medium"],
     ["google", "gemini-3.6-flash", null],
+    ["google", "gemini-3.8-flash", "low"],
     ["cloudflare", "@cf/moonshotai/kimi-k2.7-code", null],
     ["cloudflare", "@cf/zai-org/glm-5.2", null],
     ["cloudflare", "@cf/zai-org/glm-5.3-flash", null],
-    ["cloudflare", "@cf/deepseek-ai/deepseek-v4-pro-0813", null],
     ["cloudflare", "@cf/deepseek-ai/deepseek-v4.1-flash-1017", null],
+    ["cloudflare", "@cf/deepseek-ai/deepseek-v4-pro-0813", null],
     ["cloudflare", "@cf/zai-org/glm-5.3", null],
     ["cloudflare", "@cf/cloudflare/clef", null],
     ["cloudflare", "@cf/cloudflare/clef-flash", null],
@@ -1236,6 +1285,14 @@ describe("gateway model reasoning levels", () => {
   });
 
   // Google's requests go over HTTPS alone.
+  it("Gemini 3.8 Flash 默认使用 LOW，并允许显式覆盖思考等级", async () => {
+    expect(gatewayBuiltInReasoning("google", "gemini-3.8-flash")).toBe("low");
+    expect(await googleThinking("gemini-3.8-flash"))
+      .toEqual({ includeThoughts: true, thinkingLevel: "LOW" });
+    expect(await googleThinking("gemini-3.8-flash", "high"))
+      .toEqual({ includeThoughts: true, thinkingLevel: "HIGH" });
+  });
+
   it.each(["gemini-3.6-flash", "gemini-2.5-flash", "gemini-next"])(
       "sends Gemini model %s nothing, as its built-in reasoning says", async (model) => {
     expect(gatewayBuiltInReasoning("google", model)).toBeNull();

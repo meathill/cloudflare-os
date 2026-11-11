@@ -88,25 +88,25 @@ describe('FileBrowser', () => {
     ])
     // The symlink is listed (as text, not a button) and named for what it is.
     expect(container.textContent).toContain('link')
-    expect(container.querySelector('[title="Symbolic link (not viewable)"]')).not.toBeNull()
+    expect(container.querySelector('[title="符号链接（无法查看）"]')).not.toBeNull()
   })
 
   it('does not select a symlink when its row is clicked', async () => {
     const onFileSelect = vi.fn<(path: string) => void>()
     const { container } = await render({ onFileSelect })
-    const row = container.querySelector<HTMLElement>('[title="Symbolic link (not viewable)"]')!
+    const row = container.querySelector<HTMLElement>('[title="符号链接（无法查看）"]')!
     await act(async () => row.click())
     expect(onFileSelect).not.toHaveBeenCalled()
   })
 
   it('withholds Rename from an executable but keeps Delete and Download', async () => {
     const { container } = await render()
-    const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Actions for bin/run"]')!
+    const trigger = container.querySelector<HTMLButtonElement>('[aria-label="bin/run的操作"]')!
     await act(async () => trigger.click())
     const menuText = document.body.textContent ?? ''
-    expect(menuText).toContain('Download')
-    expect(menuText).toContain('Delete')
-    expect(menuText).not.toContain('Rename')
+    expect(menuText).toContain('下载')
+    expect(menuText).toContain('删除')
+    expect(menuText).not.toContain('重命名')
   })
 
   it('collapses a large tree to its first level and reveals the active file', async () => {
@@ -146,7 +146,7 @@ describe('FileBrowser', () => {
     const { container } = await render({
       changes: [{ path: 'gone/old.ts', status: 'deleted' }, { path: 'src/a.ts', status: 'modified' }],
     })
-    expect(container.textContent).toContain('Changes (2)')
+    expect(container.textContent).toContain('更改（2）')
     const labels = rowLabels(container)
     expect(labels.slice(0, 2)).toEqual(['gone/old.ts', 'src/a.ts'])
   })
@@ -155,13 +155,13 @@ describe('FileBrowser', () => {
     vi.useFakeTimers()
     try {
       const { container } = await render({ changes: [{ path: 'src/a.ts', status: 'modified' }] })
-      const triggers = container.querySelectorAll<HTMLButtonElement>('[aria-label="Actions for src/a.ts"]')
+      const triggers = container.querySelectorAll<HTMLButtonElement>('[aria-label="src/a.ts的操作"]')
       expect(triggers).toHaveLength(2)
       await act(async () => triggers[1].click())  // the tree's row
       const rename = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-        .find(item => item.textContent === 'Rename')!
+        .find(item => item.textContent === '重命名')!
       await act(async () => rename.click())
-      const inputs = () => container.querySelectorAll<HTMLInputElement>('input[aria-label="Rename src/a.ts"]')
+      const inputs = () => container.querySelectorAll<HTMLInputElement>('input[aria-label="重命名 src/a.ts"]')
       expect(inputs()).toHaveLength(1)
       // Each input focuses itself on a timer; with two mounted, the second's focus would blur
       // the first, whose unchanged value cancels the rename. One input rides it out.
@@ -178,7 +178,7 @@ describe('FileBrowser', () => {
     const { container } = await render({
       onFileSelect, changes: [{ path: 'gone/old.ts', status: 'pending' }],
     })
-    expect(container.querySelector('[aria-label="Actions for gone/old.ts"]')).toBeNull()
+    expect(container.querySelector('[aria-label="gone/old.ts的操作"]')).toBeNull()
     const row = [...container.querySelectorAll('button')]
       .find(button => button.textContent === 'gone/old.ts')!
     await act(async () => row.click())

@@ -159,12 +159,12 @@ describe('WorkpieceCodeInterface changes of a merge', () => {
     })
 
     await vi.waitFor(() => {
-      expect(container.textContent).toContain('Some of this draft\'s changes could not be loaded')
+      expect(container.textContent).toContain('无法加载此草稿的部分更改')
     })
     expect(listed.changes).toEqual([])
 
     const retry = [...container.querySelectorAll('button')]
-      .find(button => button.textContent === 'Try again')
+      .find(button => button.textContent === '重试')
     await act(async () => { retry!.click() })
 
     await vi.waitFor(() => {

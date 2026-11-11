@@ -22,18 +22,11 @@ const PROVIDERS: AdminGatewayProvider[] = [
   { provider: 'google', needsApiToken: true },
 ]
 
-const INTRO =
-  'The providers whose models this deployment can offer through its AI Gateway. The ones listed ' +
-  'in CF_AI_GATEWAY_PROVIDERS are always on; the others can be turned on here. Provider keys or ' +
-  'credits are stored in the gateway, where this page cannot see them, so use Test to find out ' +
-  'whether a provider answers. The model pickers list the providers in this order, and a new ' +
-  'user or chat gets the first enabled model.'
-const LOCKED_NOTE = 'Set by CF_AI_GATEWAY_PROVIDERS'
+const INTRO = '此部署通过 AI Gateway 提供以下服务商的模型。列入 CF_AI_GATEWAY_PROVIDERS 的服务商始终启用；其他服务商可以在这里开启。服务商密钥或额度保存在网关中，此页面无法查看，请使用“测试”确认服务商是否响应。模型选择器按此顺序列出服务商，新用户或新对话使用第一个启用的模型。'
+const LOCKED_NOTE = '由 CF_AI_GATEWAY_PROVIDERS 设置'
 const TOKEN_WARNING =
-  'Needs CF_AI_GATEWAY_API_TOKEN: requests to this provider fail until the deployment sets it.'
-const AUTH_HINT =
-  'The gateway may hold no key or credits for this provider, or CF_AI_GATEWAY_API_TOKEN may not ' +
-  'be allowed to run models.'
+  '需要 CF_AI_GATEWAY_API_TOKEN；部署设置此令牌之前，对该服务商的请求会失败。'
+const AUTH_HINT = '网关中可能没有此服务商的密钥或余额，或者 CF_AI_GATEWAY_API_TOKEN 没有运行模型的权限。'
 
 const PASSED: GatewayModelTest = { model: 'claude-sonnet-4-5', ok: true }
 
@@ -267,8 +260,8 @@ describe('GatewayProviders', () => {
       const { onTest, onEnabledChange } = await render()
 
       for (const label of ['Cloudflare Workers AI', 'Anthropic', 'OpenAI', 'Google']) {
-        expect(testButton(label).textContent).toBe('Test')
-        expect(testButton(label).getAttribute('aria-label')).toBe(`Test ${label}`)
+        expect(testButton(label).textContent).toBe('测试')
+        expect(testButton(label).getAttribute('aria-label')).toBe(`测试 ${label}`)
         expect(testButton(label).disabled).toBe(false)
       }
 
@@ -289,8 +282,8 @@ describe('GatewayProviders', () => {
       await click(pressed)
 
       expect(testButton('Anthropic')).toBe(pressed)
-      expect(pressed.textContent).toBe('Testing…')
-      expect(pressed.getAttribute('aria-label')).toBe('Testing Anthropic…')
+      expect(pressed.textContent).toBe('正在测试…')
+      expect(pressed.getAttribute('aria-label')).toBe('正在测试 Anthropic…')
       expect(pressed.getAttribute('aria-disabled')).toBe('true')
       // A browser takes focus from a button that is disabled, which jsdom does not.
       expect(pressed.disabled).toBe(false)
@@ -303,39 +296,39 @@ describe('GatewayProviders', () => {
       await act(async () => call.resolve(PASSED))
 
       expect(testButton('Anthropic')).toBe(pressed)
-      expect(pressed.textContent).toBe('Test')
-      expect(pressed.getAttribute('aria-label')).toBe('Test Anthropic')
+      expect(pressed.textContent).toBe('测试')
+      expect(pressed.getAttribute('aria-label')).toBe('测试 Anthropic')
       expect(pressed.getAttribute('aria-disabled')).toBe('false')
       expect(document.activeElement).toBe(pressed)
       // The region that was there all along is the one that says the result.
       expect(status('Anthropic')).toBe(region)
-      expect(region.textContent).toBe('claude-sonnet-4-5 answered through the gateway.')
+      expect(region.textContent).toBe('模型 claude-sonnet-4-5 已通过网关响应。')
 
       await click(pressed)
       expect(onTest).toHaveBeenCalledTimes(2)
     })
 
     it.each<[string, GatewayModelTest, string[]]>([
-      ['a model that answered', PASSED, ['claude-sonnet-4-5 answered through the gateway.']],
+      ['a model that answered', PASSED, ['模型 claude-sonnet-4-5 已通过网关响应。']],
       [
         'a failure with a status',
         { model: 'gpt-main', ok: false, status: 500, message: 'The server had an error.' },
-        ['Failed (500): The server had an error.'],
+        ['失败 (500): The server had an error.'],
       ],
       [
         'a failure without a status',
         { model: 'gemini-main', ok: false, message: 'API key not valid.' },
-        ['Failed: API key not valid.'],
+        ['失败: API key not valid.'],
       ],
       [
         'a 401, with what it may mean',
         { model: 'claude-sonnet-4-5', ok: false, status: 401, message: 'invalid x-api-key' },
-        ['Failed (401): invalid x-api-key', AUTH_HINT],
+        ['失败 (401): invalid x-api-key', AUTH_HINT],
       ],
       [
         'a 403, with what it may mean',
         { model: 'claude-sonnet-4-5', ok: false, status: 403, message: 'Forbidden' },
-        ['Failed (403): Forbidden', AUTH_HINT],
+        ['失败 (403): Forbidden', AUTH_HINT],
       ],
     ])('reports %s in the provider’s row', async (_case, result, expected) => {
       const { onTest } = await render()
@@ -354,7 +347,7 @@ describe('GatewayProviders', () => {
 
       await click(testButton('Anthropic'))
 
-      expect(said('Anthropic')).toEqual([`Failed (529): ${message}`])
+      expect(said('Anthropic')).toEqual([`失败 (529): ${message}`])
       expect(document.body.querySelector('img')).toBeNull()
     })
 
@@ -362,10 +355,10 @@ describe('GatewayProviders', () => {
       [
         'with the server’s reason',
         new Error('Provider "anthropic" is not served through AI Gateway.'),
-        'Couldn’t run the test: Provider "anthropic" is not served through AI Gateway.',
+        '无法运行测试: Provider "anthropic" is not served through AI Gateway.',
       ],
       // A lost connection's message is a transport string, which is not shown.
-      ['without one', new Error('Peer closed WebSocket: 1006 '), 'Couldn’t run the test.'],
+      ['without one', new Error('Peer closed WebSocket: 1006 '), '无法运行测试.'],
     ])('shows a test that could not be run in the provider’s row, %s', async (
       _case, failure, expected,
     ) => {
@@ -376,7 +369,7 @@ describe('GatewayProviders', () => {
       await click(testButton('Anthropic'))
 
       expect(said('Anthropic')).toEqual([expected])
-      expect(testButton('Anthropic').textContent).toBe('Test')
+      expect(testButton('Anthropic').textContent).toBe('测试')
       expect(logged).toHaveBeenCalledExactlyOnceWith(expect.any(String), failure)
     })
 
@@ -385,7 +378,7 @@ describe('GatewayProviders', () => {
       onTest.mockResolvedValueOnce(
         { model: 'claude-sonnet-4-5', ok: false, status: 401, message: 'invalid x-api-key' })
       await click(testButton('Anthropic'))
-      expect(said('Anthropic')).toEqual(['Failed (401): invalid x-api-key', AUTH_HINT])
+      expect(said('Anthropic')).toEqual(['失败 (401): invalid x-api-key', AUTH_HINT])
       const call = deferred<GatewayModelTest>()
       onTest.mockReturnValueOnce(call.promise)
 
@@ -395,7 +388,7 @@ describe('GatewayProviders', () => {
 
       await act(async () => call.resolve(PASSED))
 
-      expect(said('Anthropic')).toEqual(['claude-sonnet-4-5 answered through the gateway.'])
+      expect(said('Anthropic')).toEqual(['模型 claude-sonnet-4-5 已通过网关响应。'])
     })
 
     it('tests two providers at once, and keeps each one’s result in its own row', async () => {
@@ -408,22 +401,22 @@ describe('GatewayProviders', () => {
       await click(testButton('OpenAI'))
 
       expect(onTest.mock.calls).toEqual([['anthropic'], ['openai']])
-      expect(testButton('Anthropic').textContent).toBe('Testing…')
-      expect(testButton('OpenAI').textContent).toBe('Testing…')
-      expect(testButton('Google').textContent).toBe('Test')
+      expect(testButton('Anthropic').textContent).toBe('正在测试…')
+      expect(testButton('OpenAI').textContent).toBe('正在测试…')
+      expect(testButton('Google').textContent).toBe('测试')
 
       await act(async () => openai.resolve(
         { model: 'gpt-main', ok: false, status: 429, message: 'Rate limit reached.' }))
 
-      expect(said('OpenAI')).toEqual(['Failed (429): Rate limit reached.'])
-      expect(testButton('OpenAI').textContent).toBe('Test')
+      expect(said('OpenAI')).toEqual(['失败 (429): Rate limit reached.'])
+      expect(testButton('OpenAI').textContent).toBe('测试')
       expect(status('Anthropic').childNodes).toHaveLength(0)
-      expect(testButton('Anthropic').textContent).toBe('Testing…')
+      expect(testButton('Anthropic').textContent).toBe('正在测试…')
 
       await act(async () => anthropic.resolve(PASSED))
 
-      expect(said('Anthropic')).toEqual(['claude-sonnet-4-5 answered through the gateway.'])
-      expect(said('OpenAI')).toEqual(['Failed (429): Rate limit reached.'])
+      expect(said('Anthropic')).toEqual(['模型 claude-sonnet-4-5 已通过网关响应。'])
+      expect(said('OpenAI')).toEqual(['失败 (429): Rate limit reached.'])
     })
 
     it('can be run while a write is in flight', async () => {
@@ -435,7 +428,7 @@ describe('GatewayProviders', () => {
       await click(testButton('Anthropic'))
 
       expect(onTest).toHaveBeenCalledExactlyOnceWith('anthropic')
-      expect(said('Anthropic')).toEqual(['claude-sonnet-4-5 answered through the gateway.'])
+      expect(said('Anthropic')).toEqual(['模型 claude-sonnet-4-5 已通过网关响应。'])
     })
 
     it('keeps a result when the providers are re-read', async () => {
@@ -449,7 +442,7 @@ describe('GatewayProviders', () => {
       })
 
       expect(providerSwitch('OpenAI').getAttribute('aria-checked')).toBe('true')
-      expect(said('OpenAI')).toEqual(['claude-sonnet-4-5 answered through the gateway.'])
+      expect(said('OpenAI')).toEqual(['模型 claude-sonnet-4-5 已通过网关响应。'])
     })
 
     it('says nothing of a test that fails once the list is gone', async () => {

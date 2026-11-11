@@ -1,6 +1,7 @@
 import { StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
+import { KumoLocaleProvider } from '@cloudflare/kumo'
 import { RpcPromise, RpcStub, newWebSocketRpcSession } from 'capnweb'
 import { PublicApi, ServerConfig } from '@gadgets/workshop-shared/api'
 import { RpcContext } from './RpcContext'
@@ -288,8 +289,13 @@ devAutoLogin(currentStub).catch(() => {})
 
 root.render(
   <StrictMode>
-    <FrontendErrorBoundary>
-      <AppWithConnection />
-    </FrontendErrorBoundary>
+    <KumoLocaleProvider translations={{
+      label: { optional: '可选', tooltip: '提示' },
+      layerDialog: { close: '关闭', cancel: '取消' },
+    }}>
+      <FrontendErrorBoundary>
+        <AppWithConnection />
+      </FrontendErrorBoundary>
+    </KumoLocaleProvider>
   </StrictMode>
 )

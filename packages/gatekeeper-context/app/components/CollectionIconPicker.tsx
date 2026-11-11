@@ -1,4 +1,5 @@
 import emojiData from "@emoji-mart/data";
+import emojiI18n from "@emoji-mart/data/i18n/zh.json";
 import { Picker as EmojiMartPicker } from "emoji-mart";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -86,6 +87,8 @@ export function CollectionIconPicker({
     const host = pickerHostRef.current;
     const picker = new (EmojiMartPicker as any)({
       data: emojiData,
+      i18n: emojiI18n,
+      locale: "zh",
       theme: themeMode,
       previewPosition: "none",
       skinTonePosition: "none",
@@ -110,7 +113,7 @@ export function CollectionIconPicker({
         id={id}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        title="Choose an icon"
+        title="选择图标"
         className={
           inline
             ? "grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-kumo-tint text-[18px] leading-none text-kumo-subtle transition-colors hover:bg-kumo-fill"

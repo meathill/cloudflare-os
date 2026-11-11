@@ -32,7 +32,7 @@ export const DurationSetting = ({ label, help, unit, min, max, value, onSave }: 
   const field = useRef<HTMLInputElement>(null)
   const fieldError = useFieldErrorAlert()
   const parsed = draft === null ? value : parseWholeNumber(draft, min, max)
-  const rangeError = `Enter a whole number of ${unit} from ${min} to ${max}`
+  const rangeError = `请输入 ${min} 到 ${max} 之间的整数（${unit === 'days' ? '天' : unit === 'hours' ? '小时' : '分钟'}）`
   const error = parsed === null ? rangeError : undefined
   // A save disables the field and its button, and a browser takes focus from a control that
   // becomes disabled without giving it back. So the control that had focus when the save began
@@ -90,9 +90,9 @@ export const DurationSetting = ({ label, help, unit, min, max, value, onSave }: 
           size="sm"
           loading={saving}
           disabled={saving}
-          aria-label={`Save “${label}”`}
+          aria-label={`保存“${label}”`}
         >
-          Save
+          保存
         </Button>
       </div>
     </form>

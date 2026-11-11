@@ -6,7 +6,7 @@ import type { ActionLogEntry } from '@gadgets/workshop-shared/api'
  * the text is a summary, truncated, or leaves out bytes that cannot be shown.
  */
 export const INCOMPLETE_DESCRIPTION_COPY =
-  "This description is incomplete: part of what this action will send isn't shown."
+  "此描述不完整：此操作将发送的部分内容未显示。"
 
 /**
  * True when a pending entry should carry the notice: an action its gatekeeper did not mark

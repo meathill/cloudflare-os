@@ -254,6 +254,19 @@ describe("UserDurableObject gateway model modes", () => {
     expect((await user.getChatContext(null)).quickModel?.provider).toBe("cloudflare");
   }, DISABLED));
 
+  it("offers GPT-6 models and resolves the model chosen for each turn", () => inGatewayUser(async user => {
+    const gptIds = ["gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"];
+    expect(await listedIds(user)).toEqual(expect.arrayContaining(gptIds));
+    await user.setPreferredModel("gemini-3.8-flash");
+    expect((await user.getChatContext("gpt-6.1-terra")).aiModel?.config)
+        .toMatchObject({ provider: "openai", model: "gpt-6.1-terra" });
+    expect((await user.getChatContext("gpt-6-luna")).aiModel?.config)
+        .toMatchObject({ provider: "openai", model: "gpt-6-luna" });
+    expect((await user.getChatContext(null)).aiModel).toBeUndefined();
+    expect((await user.getExternalMessageChatContext("gemini-3.8-flash")).aiModel?.profile.id)
+        .toBe("gemini-3.8-flash");
+  }, { addedProviders: ["openai", "google"] }));
+
   it("starts a new conversation on the first offered model when the preference is hidden",
       () => inGatewayUser(async user => {
     await user.setPreferredModel(HIDDEN_ID);
@@ -498,7 +511,7 @@ describe("UserDurableObject gateway model modes", () => {
     const decisionIds = ["@cf/cloudflare/clef", "@cf/cloudflare/clef-flash", "my-clef"];
     expect((await user.listModels("decision")).map(model => model.id)).toEqual(decisionIds);
     const languageIds = await listedIds(user);
-    expect(languageIds).toContain("@cf/zai-org/glm-5.2");
+    expect(languageIds).toContain("@cf/zai-org/glm-5.3");
     expect(languageIds.filter(id => decisionIds.includes(id))).toEqual([]);
   }, { addedProviders: ["cloudflare"] }));
 });

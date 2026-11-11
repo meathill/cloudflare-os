@@ -1,7 +1,7 @@
 import { RpcCompatible, RpcStub, RpcTarget } from "capnweb";
 import type { ChatTimelineHead } from "@gadgets/workshop-shared/api";
 import { validateRpc } from "capnweb-validate";
-import { Overseer, WorkspaceMetadata, UiBundle, WorkpieceId, WorkpieceSummary, WorkpiecesSubscriber, GadgetClient, GadgetBindingInfo, GatekeeperClient, ActionLogEntry, ActionsSubscriber, ActionHistoryFilter, ActionHistoryPage, ChatGadgetPinRecord, MainlineMergeGadget, ChatCodeBase, ChatGadgetPinState, CodeChangeSubmission, CommitInfo, FileAtCommit, MAX_READ_FILES_PER_CALL, TreeNode, MergeChangesResult, AiChatMetadata, AiChatMessage, AiChatHistoryPage, AiChatSubscriber, AiChatAuthorInfo, AiModelConfig, AiToolCall, AiChatMessageBody, AgentSpawnerConfig, AGENT_SPAWNER_CONNECTION_ID, ConsoleLogSubscriber, ConsoleLogEvent, CapsuleSpecifier, CollaboratorInfo, CollaboratorRole, CollaboratorAccess, CollaboratorGrant, AffectedCollaborator, ShareLinkInfo, GatekeeperCreationSpec, ObserverConfigCallback, ObserverBindingNeed, ObserverBindingFailure, BlueprintBindingAnnotation, BlueprintBinding, BlueprintMetadata, BlueprintOutput, BlueprintMerge, ApplyBlueprintResult, GadgetUpstream, MessageFormatRef, isOutputIcon, SpawnerEnvTarget, BlueprintGadgetSummary, AiChatStreamEvent, BlueprintScreenshotUpload, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ChatAttachmentHandle, ChatAttachmentRef, BoundHookInfo, PreApprovableAction, PresenceParticipant, PresenceSubscriber, SlashCommandChoice, SlashCommandRequest, validateBindingName, createOpenWorkspaceError, OPEN_WORKSPACE_ERROR_CODES, createGatekeeperError, GATEKEEPER_ERROR_CODES, resolveSiteName, modelKind } from '@gadgets/workshop-shared/api'
+import { Overseer, WorkspaceMetadata, UiBundle, WorkpieceId, WorkpieceSummary, WorkpiecesSubscriber, GadgetClient, GadgetBindingInfo, GatekeeperClient, ActionLogEntry, ActionsSubscriber, ActionHistoryFilter, ActionHistoryPage, ChatGadgetPinRecord, MainlineMergeGadget, ChatCodeBase, ChatGadgetPinState, CodeChangeSubmission, CommitInfo, FileAtCommit, MAX_READ_FILES_PER_CALL, TreeNode, MergeChangesResult, AiChatMetadata, AiChatMessage, AiChatHistoryPage, AiChatSubscriber, AiChatAuthorInfo, AiModelConfig, AiToolCall, AiChatMessageBody, AgentSpawnerConfig, AGENT_SPAWNER_CONNECTION_ID, ConsoleLogSubscriber, ConsoleLogEvent, CapsuleSpecifier, CollaboratorInfo, CollaboratorRole, CollaboratorAccess, CollaboratorGrant, AffectedCollaborator, ShareLinkInfo, GatekeeperCreationSpec, ObserverConfigCallback, ObserverBindingNeed, ObserverBindingFailure, BlueprintBindingAnnotation, BlueprintBinding, BlueprintMetadata, BlueprintOutput, BlueprintMerge, ApplyBlueprintResult, GadgetUpstream, MessageFormatRef, isOutputIcon, SpawnerEnvTarget, BlueprintGadgetSummary, AiChatStreamEvent, BlueprintScreenshotUpload, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ChatAttachmentHandle, ChatAttachmentRef, BoundHookInfo, PreApprovableAction, PresenceParticipant, PresenceSubscriber, SlashCommandChoice, SlashCommandRequest, validateBindingName, createOpenWorkspaceError, OPEN_WORKSPACE_ERROR_CODES, createGatekeeperError, GATEKEEPER_ERROR_CODES, resolveSiteName, modelKind, SCRIPT_SKILLS } from '@gadgets/workshop-shared/api'
 import { applyCodeChange, changedGadgets, codeChangeSerializedSize, composeCodeChange,
   MAX_CODE_CHANGE_SIZE, transformCodeChange, validateCodeChangeContent, validateCodeChangeSchema,
   requireTextFiles, type FileContent, type CodeContent, type CodeChange } from "@gadgets/workshop-shared/code-change";
@@ -6324,6 +6324,11 @@ class OverseerImpl implements AgentHooks {
     return false;
   }
 
+  getWebSearchApiKey(): string | undefined {
+    return (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GEMINI_API_KEY ||
+           (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GOOGLE_API_KEY;
+  }
+
   // Record an observation that originated from a built-in agent tool (not a gatekeeper).
   // The `gatekeeperId` is set to the BUILTIN_TOOL_GATEKEEPER_ID sentinel so that downstream
   // code (which expects a gatekeeper to dereference for approve/reject) never touches it —
@@ -7029,16 +7034,31 @@ class OverseerImpl implements AgentHooks {
       message: string | SlashCommandRequest,
       hasAttachments: boolean, chatId?: number): Promise<PreparedChatMessage> {
     if (typeof message !== "string") {
+      const req = message;
       // A built-in command is handled by the Workshop, not a Gatekeeper: there is nothing to invoke
       // here. Committing the event is what makes the turn a compaction turn (see isCompactionTurn).
       // The name is typed but arrives over RPC, and one we don't implement would commit an event and
       // then start a turn with no prompt for the model to answer, so reject it here.
-      if (message.id.builtin === true) {
-        if (message.id.commandId !== "compact") throw new Error("Unknown built-in slash command.");
-        return {slashCommand: message};
+      if (req.id.builtin === true) {
+        if (req.id.commandId === "compact") {
+          return {slashCommand: req};
+        }
+        const skill = SCRIPT_SKILLS.find(s => s.id === req.id.commandId);
+        if (skill) {
+          const userArgs = (req.args || "").trim();
+          const expandedMessage = userArgs
+            ? `【工业剧作专项指令：${skill.name}】\n\n${skill.systemInstruction}\n\n---\n【创作需求/输入背景】：\n${userArgs}`
+            : `【工业剧作专项指令：${skill.name}】\n\n${skill.systemInstruction}\n\n---\n请依据上述工业剧作标准，开启该专项剧作任务。`;
+          return {
+            slashCommand: req,
+            message: expandedMessage,
+            skillName: skill.name,
+          };
+        }
+        throw new Error(`Unknown built-in slash command: ${req.id.commandId}`);
       }
       // Held separately because reassigning `message` below widens `id` back to the union.
-      let {gatekeeperId} = message.id;
+      let {gatekeeperId} = req.id;
       let record = this.storage.gatekeepers.get(gatekeeperId);
       if (!record?.hasSlashCommands) throw new Error("Slash command provider is not available.");
       // The id is client-supplied, so a connection blocked pending a scope-widening restart must
@@ -7188,7 +7208,7 @@ class OverseerImpl implements AgentHooks {
     this.ctx.storage.transactionSync(() => {
       let meta: AiChatMetadata = {
         id: chatId,
-        title: "New Chat",   // filled in later by AI
+        title: "新对话",   // 后续由 AI 生成标题
         started: timestamp,
         lastActive: timestamp,
       };
@@ -8827,6 +8847,7 @@ class OverseerImpl implements AgentHooks {
     // A connection blocked pending a scope-widening restart is silently omitted (its commands
     // reappear once the reset lands and clients reconnect) rather than failing the whole listing,
     // as is one removed before its facet is reached.
+    await this.#refreshDramaSlashCommands();
     let sources = (await Promise.all([...this.storage.gatekeepers.list()]
       .filter(record => record.hasSlashCommands && this.gatekeeperUsable(record.id))
       .map(record => this.getGatekeeperFacet(record.id).then(gatekeeper => ({
@@ -8834,12 +8855,41 @@ class OverseerImpl implements AgentHooks {
         providerLabel: record.resourceTitle || `Gatekeeper ${record.id}`,
         gatekeeper,
       }), () => null)))).filter(source => source !== null);
+    const scriptSkillChoices: SlashCommandChoice[] = SCRIPT_SKILLS.map(skill => ({
+      selection: {builtin: true, commandId: skill.id},
+      name: skill.id,
+      description: `${skill.name} · ${skill.description}`,
+      providerLabel: "有缘心之助剧作引擎",
+      resourceLabel: skill.name,
+    }));
     return [{
       selection: {builtin: true, commandId: "compact"},
       name: "compact",
       description: "Summarize older context while preserving recent messages.",
       providerLabel: resolveSiteName((await readAdminConfig(this.env)).siteName),
-    }, ...await collectSlashCommands(sources)];
+    }, ...scriptSkillChoices, ...await collectSlashCommands(sources)];
+  }
+
+  // 剧作引擎是后来才声明斜杠命令的。已有连接不会重跑 describe()，打开命令面板时补一次。
+  async #refreshDramaSlashCommands(): Promise<void> {
+    for (let record of this.storage.gatekeepers.list()) {
+      if (record.hasSlashCommands || gatekeeperVendorId(record) !== "custom") continue;
+      try {
+        let gatekeeper = await this.getGatekeeperFacet(record.id);
+        let description = await gatekeeper.describe();
+        if (!description.hasSlashCommands) continue;
+        record.hasSlashCommands = true;
+        record.resourceTitle = description.title;
+        record.resourceUrl = description.url;
+        this.storage.gatekeepers.put(record);
+      } catch (error) {
+        this.logger.warn("failed to refresh custom gatekeeper slash commands", {
+          event: "slash.custom.refresh.failed",
+          gatekeeperId: record.id,
+          error,
+        });
+      }
+    }
   }
 
   // =======================================================================================
@@ -9321,7 +9371,7 @@ class OverseerImpl implements AgentHooks {
       // Also rename the gadget if this is the first chat. Since the gadget likely doesn't have
       // any code yet, the user still sees it as just a chat, and therefore it makes sense to
       // apply the same title as the chat itself.
-      if (chatId === 0 && ["Untitled Gadget", "Untitled Workspace"].includes(this.storage.title.get()) && this.ownerId) {
+      if (chatId === 0 && ["Untitled Gadget", "Untitled Workspace", "未命名工作区"].includes(this.storage.title.get()) && this.ownerId) {
         this.storage.title.put(result);
         let owner = this.users.get(this.users.idFromString(this.ownerId));
         await owner.updateTitle(this.ctx.id.toString(), result);
@@ -9329,7 +9379,7 @@ class OverseerImpl implements AgentHooks {
 
       // TODO: Should we track costs for title generation? It's pretty negligible.
     } catch (err) {
-      // Oh well, just leave the title as "New Chat".
+      // 标题生成失败时保留默认标题。
       this.logger.warn("error generating chat title", {
         event: "chat.title.generate.failed", chatId, error: err,
       });
@@ -9474,6 +9524,28 @@ class OverseerImpl implements AgentHooks {
           (meta.promptTokens ?? 0) + usage.input + usage.cacheRead + usage.cacheWrite;
       meta.cacheReadTokens = (meta.cacheReadTokens ?? 0) + usage.cacheRead;
       meta.cacheWriteTokens = (meta.cacheWriteTokens ?? 0) + usage.cacheWrite;
+      if (this.ownerId) {
+        // 有缘心之助：把每次请求的 Token 消耗汇总到 AdminSettings 的用量看板。
+        this.ctx.waitUntil((async () => {
+          try {
+            let username = await this.getOwnerProfileId();
+            let admin = this.ctx.exports.AdminSettings.getByName("");
+            await admin.recordUserActivity(
+              username,
+              username,
+              usage.totalTokens,
+              usage.cost.total ?? 0,
+              false,
+              true
+            );
+          } catch (e) {
+            logger.warn("failed to record user usage in admin settings", {
+              event: "admin.usage.record.failed",
+              error: e,
+            });
+          }
+        })());
+      }
     }
 
     meta.lastActive = this.getChatTimestamp();

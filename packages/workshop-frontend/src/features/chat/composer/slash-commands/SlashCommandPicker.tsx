@@ -87,8 +87,9 @@ export function useSlashCommandPicker({
   const popupRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
+  // 压缩命令作用于已有会话，新建聊天时不展示；创作类技能在新建聊天里照常可选。
   const offerable = useCallback((catalog: SlashCommandChoice[]) =>
-      chatExists ? catalog : catalog.filter(choice => choice.selection.builtin !== true),
+      chatExists ? catalog : catalog.filter(choice => choice.selection.commandId !== "compact"),
     [chatExists]);
 
   const parsed = selectedCommand || disabled
@@ -228,14 +229,14 @@ export function useSlashCommandPicker({
         ref={listRef}
         id={listboxId}
         role="listbox"
-        aria-label="Slash commands"
+        aria-label="斜杠命令"
         aria-busy={loading}
         className="sidebar-scroll min-h-0 flex-1 overflow-y-auto p-2"
       >
         {error ? (
-          <p className={PICKER_EMPTY}>{`Couldn’t load commands. ${error}`}</p>
+          <p className={PICKER_EMPTY}>{`无法加载命令。${error}`}</p>
         ) : loading && choices.length === 0 ? (
-          <p className={PICKER_EMPTY}>Loading commands…</p>
+          <p className={PICKER_EMPTY}>正在加载命令…</p>
         ) : choices.length > 0 ? (
           choices.map((choice, optionIndex) => (
             <button
@@ -273,7 +274,7 @@ export function useSlashCommandPicker({
           ))
         ) : (
           <p className={PICKER_EMPTY}>
-            {query ? "No commands match your search." : "No commands are available."}
+            {query ? "没有匹配的命令。" : "没有可用命令。"}
           </p>
         )}
       </div>
@@ -298,9 +299,9 @@ export function useSlashCommandPicker({
     setIndex: selectIndex,
     status: open
       ? loading
-        ? "Loading slash commands"
+        ? "正在加载斜杠命令"
         : error
-          ? `Slash commands unavailable: ${error}`
+          ? `斜杠命令不可用：${error}`
           : `${choices.length} slash command${choices.length === 1 ? "" : "s"} found`
       : "",
   };

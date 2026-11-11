@@ -16,8 +16,8 @@ import { useFieldErrorAlert } from '../../hooks/useFieldErrorAlert'
 const POOL_DOCS = 'https://developers.cloudflare.com/ai-gateway/features/auto-router/#models'
 
 const malformedError = (name: string) =>
-  `“${name}” is not a gateway model name. Name each model as provider/model, like ` +
-  'anthropic/claude-sonnet-5.5, or a provider’s every model, like anthropic/*'
+  `“${name}” 不是网关模型名。每个模型名应写成 provider/model，例如 ` +
+  'anthropic/claude-sonnet-5.5；或用 provider/* 表示某服务商的全部模型'
 
 const commas = (text: string) => text.split(',').length - 1
 
@@ -72,7 +72,7 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, sugges
     (name.toLowerCase().includes(lowered) || description.toLowerCase().includes(lowered)))
   const typedOption: Option[] = typed && !typed.includes(',') && !names.includes(typed) &&
     !matches.some(({ name }) => name === typed)
-    ? [{ name: typed, description: 'Use the text as a gateway model name', typed: true }]
+    ? [{ name: typed, description: '按输入的网关模型名使用', typed: true }]
     : []
   const suggested = matches.map((suggestion) => ({ ...suggestion, typed: false }))
   // A typed gateway name leads, so that Enter adds what was typed rather than a longer suggestion
@@ -220,7 +220,7 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, sugges
   return (
     <form noValidate onSubmit={save} className="grid content-start gap-2 sm:col-span-2">
       <label htmlFor={inputId} className="m-0 text-base font-medium text-kumo-default select-none">
-        Allowed models<span className="sr-only"> for {modelName}</span>
+        允许的模型<span className="sr-only">（{modelName}）</span>
       </label>
       <div>
         <div
@@ -236,7 +236,7 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, sugges
               <ComposerChip
                 key={name}
                 label={name}
-                removeLabel={`Remove ${name} from the allowed models of ${modelName}`}
+                removeLabel={`从 ${modelName} 的允许模型中移除 ${name}`}
                 disabled={busy}
                 onRemove={() => remove(name)}
               />
@@ -247,8 +247,8 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, sugges
               type="text"
               role="combobox"
               placeholder={names.length > 0
-                ? 'Add a model'
-                : 'Every model of the providers that are on'}
+                ? '添加模型'
+                : '所有已启用服务商的模型'}
               aria-autocomplete="list"
               aria-expanded={open}
               aria-controls={open ? listboxId : undefined}
@@ -291,7 +291,7 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, sugges
             ref={listboxRef}
             id={listboxId}
             role="listbox"
-            aria-label={`Models to allow ${modelName}`}
+            aria-label={`允许 ${modelName} 的模型`}
             // In the page's flow rather than floating, since the settings panel clips what
             // overflows it. Pressing in the list must not blur the field, which would close the
             // list before the click lands.
@@ -315,7 +315,7 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, sugges
                 {option.typed && <Plus size={15} className="shrink-0 text-kumo-subtle" />}
                 <span className="min-w-0">
                   <span className="block truncate font-mono text-[13px] text-kumo-default">
-                    {option.typed ? <>Add &ldquo;{option.name}&rdquo; exactly</> : option.name}
+                    {option.typed ? <>精确添加 &ldquo;{option.name}&rdquo;</> : option.name}
                   </span>
                   <span className="block truncate text-[11px] text-kumo-subtle">
                     {option.description}
@@ -330,22 +330,20 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, sugges
         {error !== undefined && <span className="block text-kumo-danger">{error}</span>}
         {providers.length > 0 ? (
           <>
-            With none listed, Auto picks from every model of the providers that are on (
-            {providers.map((provider) => PROVIDER_LABELS[provider]).join(', ')}) in{' '}
+            留空时，自动模式在{' '}
             <a href={POOL_DOCS} target="_blank" rel="noreferrer" className="underline">
-              Cloudflare’s model pool
+              Cloudflare 模型池
             </a>
-            .
+            中从已启用的服务商（
+            {providers.map((provider) => PROVIDER_LABELS[provider]).join(', ')}）挑选全部模型。
           </>
         ) : (
-          <>No provider is on for Auto to pick from: turn one on above.</>
+          <>没有可供自动选择的已启用服务商，请在上方启用。</>
         )}{' '}
-        To narrow it, add a provider’s every model, or type a model’s gateway name and press
-        Enter: <span className="font-mono">anthropic/claude-sonnet-5.5</span>,{' '}
-        <span className="font-mono">anthropic/*</span> or{' '}
-        <span className="font-mono">@cf/*/*</span>. Disabling a model above doesn’t take it out
-        of the pool; listing does. After saving, press Test: a name the gateway doesn’t know
-        fails every request.
+        如需缩小范围，请添加某服务商的全部模型，或输入模型的网关名称并按 Enter：{' '}
+        <span className="font-mono">anthropic/claude-sonnet-5.5</span>,{' '}
+        <span className="font-mono">anthropic/*</span> 或{' '}
+        <span className="font-mono">@cf/*/*</span>。在上方禁用模型不会将其移出模型池，只有在此列出才会。保存后请点击“测试”：网关不认识的模型名会导致每次请求失败。
       </p>
       {alert.alert}
       <div className="flex gap-2">
@@ -354,9 +352,9 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, sugges
           variant="secondary"
           size="sm"
           disabled={busy}
-          aria-label={`Save the allowed models of ${modelName}`}
+          aria-label={`保存 ${modelName} 的允许模型`}
         >
-          Save
+          保存
         </Button>
         {allowedModels !== undefined && (
           <Button
@@ -364,10 +362,10 @@ export const AllowedModelsField = ({ modelName, allowedModels, providers, sugges
             variant="ghost"
             size="sm"
             disabled={busy}
-            aria-label={`Reset the allowed models of ${modelName}`}
+            aria-label={`重置 ${modelName} 的允许模型`}
             onClick={reset}
           >
-            Reset
+            重置
           </Button>
         )}
       </div>

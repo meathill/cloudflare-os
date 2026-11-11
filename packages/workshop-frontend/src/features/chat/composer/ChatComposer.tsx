@@ -288,7 +288,7 @@ export const ChatComposer = ({
         // A toast offering an action stays until the user acts on it or dismisses it.
         timeout: configure ? 0 : undefined,
         actions: configure && [{
-          children: "Configure…",
+          children: "配置…",
           onClick: () => {
             configureToastsRef.current.delete(toastId);
             toasts.close(toastId);
@@ -496,15 +496,15 @@ export const ChatComposer = ({
 
     if (!inputValue.trim() && !selectedSlashCommand && readyAttachments.length === 0) return;
     if (hasUploadingAttachment) {
-      toasts.add({ title: "Please wait for attachment uploads to finish", variant: "error" });
+      toasts.add({ title: "请等待附件上传完成", variant: "error" });
       return;
     }
     if (hasFailedAttachment) {
-      toasts.add({ title: "Remove failed attachment uploads before sending", variant: "error" });
+      toasts.add({ title: "发送前请移除上传失败的附件", variant: "error" });
       return;
     }
     if (isCreatingResource) {
-      toasts.add({ title: "Please wait for the resource connection to finish", variant: "error" });
+      toasts.add({ title: "请等待资源连接完成", variant: "error" });
       return;
     }
 
@@ -517,7 +517,7 @@ export const ChatComposer = ({
         hasAttachments: readyAttachments.length > 0,
       });
       if (!submissionResult.ok) {
-        toasts.add({ title: "Slash commands cannot include resources or attachments", variant: "error" });
+        toasts.add({ title: "斜杠命令不能包含资源或附件", variant: "error" });
         return;
       }
       const { message, capsules: capsuleSpecifiers, formats: formatRefs } =
@@ -745,7 +745,7 @@ export const ChatComposer = ({
               <span className={`grid h-7 w-7 place-items-center rounded-full ${canAttachMore ? "bg-kumo-brand/12 text-kumo-brand" : "bg-kumo-warning/15 text-kumo-warning"}`}>
                 <FileIcon size={16} weight="duotone" />
               </span>
-              {canAttachMore ? "Drop files to attach" : "Messages are limited to 5 attachments"}
+              {canAttachMore ? "拖放文件以添加附件" : "每条消息最多添加 5 个附件"}
             </div>
           </div>
         )}
@@ -754,8 +754,8 @@ export const ChatComposer = ({
           <div className="px-4 pt-2 text-xs text-kumo-warning">
             {/* Composers without a chatKey (new-chat, home page) have no thread to check. */}
             {chatKey != null
-              ? "Connection hiccup — your message may not have been sent. Check the thread, then try again; if it keeps failing, reload the page."
-              : "Connection hiccup — your message may not have been sent. Try again; if it keeps failing, reload the page."}
+              ? "连接出现问题，消息可能未发送。请检查对话后重试；如果仍然失败，请重新加载页面。"
+              : "连接出现问题，消息可能未发送。请重试；如果仍然失败，请重新加载页面。"}
           </div>
         )}
         <ComposerAttachmentTray
@@ -770,7 +770,7 @@ export const ChatComposer = ({
           <div className="sr-only" aria-live="polite">
             {slashCommandPicker.status ||
               (selectedSlashCommand
-                ? `Slash command /${selectedSlashCommand.choice.name} from ${selectedSlashCommand.choice.providerLabel} is ready to send`
+                ? `来自 ${selectedSlashCommand.choice.providerLabel} 的斜杠命令 /${selectedSlashCommand.choice.name} 已准备发送`
                 : "")}
           </div>
           <div ref={wrapperRef} className={styles.capsuleInputWrapper}>
@@ -841,10 +841,10 @@ export const ChatComposer = ({
                 isBlocked
                   ? blockedReason
                   : isAgentActive
-                    ? "Message the agent while it works…"
+                    ? "智能体工作时可发送消息…"
                     : newChat
-                      ? "Start a new conversation…"
-                      : "Ask a follow-up…"
+                      ? "开始新对话…"
+                      : "继续提问…"
               }
               autoFocus={autoFocus}
               rows={minRows}
@@ -970,18 +970,28 @@ export const ChatComposer = ({
                   <button
                     type="button"
                     className="group flex h-10 w-10 flex-shrink-0 cursor-pointer items-center justify-center rounded-lg text-kumo-inactive transition-[background-color,color,transform] duration-150 ease-out hover:bg-kumo-tint hover:text-kumo-subtle focus-visible:bg-kumo-tint focus-visible:text-kumo-subtle focus-visible:outline-none active:scale-[0.96] data-[popup-open]:bg-kumo-tint data-[popup-open]:text-kumo-subtle sm:h-8 sm:w-8"
-                    aria-label="More chat options"
+                    aria-label="更多对话选项"
                   >
                     <DotsThree size={18} weight="bold" />
                   </button>
                 }
               />
               <DropdownMenu.Content collisionPadding={16} className="themed-floating-shadow-lg !z-[1100] !min-w-[170px] rounded-2xl border border-kumo-line/70 bg-kumo-base p-1">
-                {/* The deployment's standard formats. Picking one drops its name into the message at
-                    the caret; the agent is told what to build from it. */}
+                {/* 剧作方向与通用产物格式。方向会整段替换输入框，格式名插入到光标处。 */}
                 {canChooseFormat && (
                   <ComposerFormatMenuItems
                     onSelect={(format) => void chooseFormat(format)}
+                    onSelectPrompt={(prompt) => {
+                      recordDraftEdit();
+                      replaceComposerDocument({ text: prompt, capsules: [], formats: [], command: null });
+                      requestAnimationFrame(() => {
+                        const textarea = composerTextareaRef.current;
+                        if (!textarea) return;
+                        textarea.focus();
+                        textarea.setSelectionRange(prompt.length, prompt.length);
+                        resizeTextarea(textarea);
+                      });
+                    }}
                     showTrailingSeparator={onToggleThinkingTraces !== undefined}
                   />
                 )}
@@ -994,7 +1004,7 @@ export const ChatComposer = ({
                       <Brain size={14} />
                     </span>
                     <span className="flex-1">
-                      {showThinkingTraces ? "Hide thinking" : "Show thinking"}
+                      {showThinkingTraces ? "隐藏思考过程" : "显示思考过程"}
                     </span>
                   </DropdownMenu.Item>
                 )}
@@ -1016,7 +1026,7 @@ export const ChatComposer = ({
                   disabled={isSending || isStopping}
                   tone={canSteer ? "ghost" : "primary"}
                   className="!h-10 !w-10 sm:!h-8 sm:!w-8"
-                  aria-label="Stop agent"
+                  aria-label="停止智能体"
                 >
                   <svg
                     width="14"
@@ -1034,7 +1044,7 @@ export const ChatComposer = ({
                   disabled={!canSend && !canSteer}
                   tone="primary"
                   className="!h-10 !w-10 disabled:cursor-not-allowed disabled:opacity-30 sm:!h-8 sm:!w-8"
-                  aria-label="Send message"
+                  aria-label="发送消息"
                 >
                   {/* Arrow-up icon */}
                   <svg

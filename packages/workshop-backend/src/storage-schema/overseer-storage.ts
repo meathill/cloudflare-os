@@ -1389,7 +1389,7 @@ export function makeOverseerStorage(storage: DurableObjectStorage) {
       version: 0,
 
       // The workspace title. (Each chat, gatekeeper, and gadget has its own title, elsewhere.)
-      title: "Untitled Workspace",
+      title: "未命名工作区",
 
       // If present, this gadget was migrated from version zero, when a workspace had only one
       // gadget. Many stored records that normally contain a `gadgetId` might be missing it; they

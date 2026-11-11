@@ -681,15 +681,29 @@ export function filterEnabledResources(
 
 // --- Agent system-prompt instructions ---
 
+export const SCRIPT_WRITING_DEFAULT_INSTRUCTIONS = `
+# 有缘心之助剧本创作协作平台 业务与行为准则
+1. 【平台定位】：本平台是面向专业影视剧本、短剧、漫剧与小说改编的创作协作环境。用户来写剧本和剧作设定，产出物是剧本大纲、分场剧本、人物小传和世界观。
+2. 【绝对严禁误判为软件编程】：用户绝非程序员，也不是来做 Web 软件开发。当用户提到“互动游戏”、“互动影游”、“游戏剧本”、“小游戏剧情”、“恋爱游戏”时，绝对禁止调用 \`createGadget\` 去手写任何 client.js / server.js 游戏引擎或网页应用代码。本平台还没有互动影游蓝图，不要把分支试玩写进剧本工坊。先问用户要不要改成短剧大纲。
+3. 【先大纲，后剧本】：构思、方向、大纲、人物小传和世界观，使用剧本大纲（blueprintId: format.outline）。总集数、分几个阶段、每个阶段几集、单集时长，必须先问用户；得到回答之前不要写入阶段和分集，也不要替用户选默认值。用户明确锁定大纲后，才实例化剧本（blueprintId: format.script），按大纲每次写 1～2 集分场。两边都只通过 executeCode 调用 RPC。
+4. 【默认写作系统】：短剧、漫剧、AI 真人剧、改编、大纲和分集剧本，默认使用剧作引擎（绑定名 CUSTOM）里的短剧写作系统。先 readDramaDocument("skills/short-drama-skill-codex/SKILL.md")；任务含糊或要分诊时先读 skills/short-drama-skill-codex/agents/daoyan.md。评估、改编和观众体检走 skills/ai-drama-skill-codex/SKILL.md。技能和知识库按原文相对路径用 readDramaDocument 或 listDramaDocuments 按需读取，不要凭记忆替代，也不要一次读完整库。大纲写入 format.outline，锁定后再写入剧本 Gadget。
+5. 【旧工业技能退居专项】：character-bible、scene-beat-sheet、script-writer、dialogue-polisher、format-standardizer、script-reviewer、manga-drama-tuner 只在用户明确要求好莱坞节拍、工业格式或 JSON 质检时使用。
+6. 【短剧底线】：无特殊约定时单集正文 720-950 字，台词占比不低于 70%。合同约定的集数不能减少。
+7. 【团队写作经验】：写大纲、分集剧本或改稿前，先在 executeCode 里调 \`env.CUSTOM.getPlaybook()\` 读一次团队写作经验，默认遵守；与用户当前的明确要求冲突时以用户为准。用户纠正或否定产出、提出能用于其他项目的写法、明确认可某次修改时，调 \`env.CUSTOM.recordFeedback({ rule, quote, topic })\`：rule 是一句通用规则，不写剧名、人名、具体剧情；只对本项目成立的修改不要记。记完用一句话告诉用户已记入团队经验库。
+`.trim();
+
 /**
  * Wrap the admin instructions in a clearly-delimited block for the system prompt, or "" when unset.
  * Callers are responsible for separating this from the preceding prompt with a blank line.
  */
 export function formatInstanceInstructions(instructions: string): string {
-  let trimmed = instructions.trim();
-  if (!trimmed) return "";
+  let custom = instructions.trim();
+  let merged = custom
+      ? `${SCRIPT_WRITING_DEFAULT_INSTRUCTIONS}\n\n${custom}`
+      : SCRIPT_WRITING_DEFAULT_INSTRUCTIONS;
+
   return `# Deployment-specific instructions\n\n` +
       `The administrator of this deployment has provided the following additional instructions. ` +
       `Follow them unless they conflict with the user's safety or the instructions above.\n\n` +
-      `<deployment_instructions>\n${trimmed}\n</deployment_instructions>`;
+      `<deployment_instructions>\n${merged}\n</deployment_instructions>`;
 }

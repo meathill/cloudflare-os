@@ -5,7 +5,9 @@ import {
   getOpenWorkspaceErrorCode, OPEN_WORKSPACE_ERROR_CODES, type AuthenticatedApi,
 } from "@gadgets/workshop-shared/api";
 import { settleRestart, type Harness, startHarness } from "../src/harness.js";
-import { mockChatCompletion } from "../src/mock-model.js";
+import {
+  mockChatCompletion, SCRIPTED_MODEL_CONFIG, SCRIPTED_MODEL_ID, SCRIPTED_MODEL_PROFILE,
+} from "../src/mock-model.js";
 import { NetworkInterceptor } from "../src/network-interceptor.js";
 import { connect, logIn, nextUsernames, signUp, waitFor } from "../src/rpc-client.js";
 
@@ -46,6 +48,41 @@ async function rejectedOpen(
   }
   throw new Error("Expected workspace open to fail");
 }
+
+it.concurrent("新工作区和无模型对话使用中文默认名称", async () => {
+  using publicApi = connect(requireHarness().url);
+  using authenticated = await signUp(publicApi, username());
+  await authenticated.setQuickModel(null);
+  using workspace = await authenticated.newWorkspace();
+  expect((await workspace.getMetadata()).title).toBe("未命名工作区");
+
+  const chatId = await workspace.newChat("记录想法", null);
+  expect(await workspace.listChats()).toContainEqual(expect.objectContaining({
+    id: chatId, title: "新对话",
+  }));
+  await workspace.deleteSelf();
+});
+
+it.concurrent("自动生成对话标题时只重命名默认工作区标题", async () => {
+  using publicApi = connect(requireHarness().url);
+  using authenticated = await signUp(publicApi, username());
+  await authenticated.addModel(SCRIPTED_MODEL_PROFILE, SCRIPTED_MODEL_CONFIG);
+  await authenticated.setQuickModel(SCRIPTED_MODEL_ID);
+
+  for (const initialTitle of [null, "Untitled Workspace", "Untitled Gadget", "自定义工作区"]) {
+    using workspace = await authenticated.newWorkspace();
+    if (initialTitle !== null) await workspace.setTitle(initialTitle);
+    const chatId = await workspace.newChat("记录想法", null);
+    await waitFor("模拟模型生成对话标题", async () =>
+      (await workspace.listChats()).some(chat => chat.id === chatId && chat.title === "Test chat")
+        ? true : null);
+    const expectedTitle = initialTitle === "自定义工作区" ? initialTitle : "Test chat";
+    await waitFor("工作区标题更新或保持自定义名称", async () =>
+      (await workspace.getMetadata()).title === expectedTitle ? true : null);
+    expect((await workspace.getMetadata()).title).toBe(expectedTitle);
+    await workspace.deleteSelf();
+  }
+});
 
 it.concurrent("lists workspace metadata after activity and removes it after deletion", async () => {
   const owner = username();

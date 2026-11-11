@@ -147,7 +147,7 @@ export const useHierarchicalListRowInteractions = ({
     "aria-keyshortcuts": draggable
       ? "Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight"
       : undefined,
-    "aria-description": draggable ? "Move with Alt plus an arrow key." : undefined,
+    "aria-description": draggable ? "按 Alt 加方向键移动。" : undefined,
     onClick: (event) => {
       const suppressed = consumeSuppressedClick();
       if (event.defaultPrevented) return;

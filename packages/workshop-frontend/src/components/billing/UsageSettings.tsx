@@ -74,7 +74,7 @@ export default function UsageSettings() {
       await openConnectWindow(await authenticatedApi.connectAccount('cloudflare', []), authenticatedApi)
     } catch (error) {
       if (error instanceof AuthPopupCancelledError) return
-      toasts.add({ title: 'Could not connect Cloudflare',
+      toasts.add({ title: '无法连接 Cloudflare',
         description: error instanceof Error ? error.message : undefined, variant: 'error' })
     } finally {
       setBusy(false)
@@ -85,11 +85,11 @@ export default function UsageSettings() {
     setSelecting(accountId)
     try {
       await authenticatedApi.selectCloudflareAccount(accountId)
-      toasts.add({ title: 'Cloudflare account selected', variant: 'success' })
+      toasts.add({ title: '已选择 Cloudflare 账号', variant: 'success' })
       setAccounts(null)
       refresh()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to select account'
+      const msg = err instanceof Error ? err.message : '选择账号失败'
       toasts.add({ title: msg, variant: 'error' })
     } finally {
       setSelecting(null)
@@ -99,46 +99,42 @@ export default function UsageSettings() {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="px-1 text-[12px] font-medium uppercase tracking-[0.08em] text-kumo-inactive">
-        Usage &amp; billing
+        用量与计费
       </h2>
       <div className="rounded-xl border border-kumo-line bg-kumo-base p-5">
       {loading || !usage ? (
-        <p className="text-sm text-kumo-subtle">Loading usage…</p>
+        <p className="text-sm text-kumo-subtle">正在加载用量…</p>
       ) : (
         <div className="space-y-6">
           {/* Free daily allowance */}
           <div>
-            <p className="text-xs font-medium text-kumo-subtle mb-1">Free daily allowance</p>
+            <p className="text-xs font-medium text-kumo-subtle mb-1">每日免费额度</p>
             <p className="text-sm text-kumo-default">
-              {usage.remaining} of {usage.dailyLimit}{' '}
-              {usage.dailyLimit === 1 ? 'request' : 'requests'} remaining today
+              今天剩余 {usage.remaining} 次，共 {usage.dailyLimit} 次请求
             </p>
             {usage.resetAt && (
               <p className="text-xs text-kumo-subtle mt-1">
-                Resets at 00:00 UTC, in{' '}
-                <ResetCountdown resetAt={usage.resetAt} onElapsed={refresh} />.
+                UTC 00:00 重置，距离重置还有 <ResetCountdown resetAt={usage.resetAt} onElapsed={refresh} />。
               </p>
             )}
           </div>
 
           {/* Cloudflare connection / credits */}
           <div>
-            <p className="text-xs font-medium text-kumo-subtle mb-1">Cloudflare account</p>
+            <p className="text-xs font-medium text-kumo-subtle mb-1">Cloudflare 账号</p>
             {!usage.connected ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-kumo-subtle">
                   <CloudflareLogo size={16} />
-                  <span>Not connected</span>
+                  <span>未连接</span>
                 </div>
                 <p className="text-sm text-kumo-subtle">
-                  Connect your Cloudflare account to keep building once your free allowance runs
-                  out. Usage beyond the free tier is billed to your own Cloudflare AI Gateway
-                  credits.
+                  连接 Cloudflare 账号后，免费额度用完仍可继续创作。超出免费额度的用量将从你的 Cloudflare AI Gateway 余额中扣除。
                 </p>
                 <div className="pt-1">
                   <Button variant="primary" size="sm" onClick={connect} loading={busy}>
                     <Lightning size={14} weight="bold" className="mr-1" />
-                    Connect Cloudflare
+                    连接 Cloudflare
                   </Button>
                 </div>
               </div>
@@ -147,17 +143,16 @@ export default function UsageSettings() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-kumo-default">
                   <Warning size={18} weight="bold" className="text-kumo-warning" />
-                  <span>Choose which Cloudflare account to bill</span>
+                  <span>选择用于计费的 Cloudflare 账号</span>
                 </div>
                 <p className="text-sm text-kumo-subtle">
-                  Your connection has access to multiple Cloudflare accounts. Select the one whose
-                  AI Gateway credits should be used.
+                  此连接可以访问多个 Cloudflare 账号，请选择用于计费的 AI Gateway 余额。
                 </p>
                 {accounts === null ? (
-                  <p className="text-sm text-kumo-subtle">Loading accounts…</p>
+                  <p className="text-sm text-kumo-subtle">正在加载账号…</p>
                 ) : accounts.length === 0 ? (
                   <p className="text-sm text-kumo-subtle">
-                    No accounts available on this connection.
+                    此连接没有可用账号。
                   </p>
                 ) : (
                   <div className="flex flex-col gap-2">
@@ -182,16 +177,16 @@ export default function UsageSettings() {
                 <div className="flex items-center gap-2 text-sm text-kumo-default">
                   <CloudCheck size={18} weight="bold" className="text-kumo-success" />
                   <span>
-                    Connected
+                    已连接
                     {usage.accountName && <> — {usage.accountName}</>}
                   </span>
                 </div>
                 <p className="text-sm text-kumo-default">
-                  Account balance:{' '}
+                  账号余额：{' '}
                   {usage.balance !== null ? (
                     <strong>${usage.balance.toFixed(2)}</strong>
                   ) : (
-                    <span className="text-kumo-subtle">unknown</span>
+                    <span className="text-kumo-subtle">未知</span>
                   )}
                 </p>
 
@@ -202,7 +197,7 @@ export default function UsageSettings() {
                     onClick={() => window.open(buildAddCreditsUrl(usage.accountId), '_blank')}
                   >
                     <Lightning size={14} weight="bold" className="mr-1" />
-                    Add credits
+                    充值
                   </Button>
                 </div>
               </div>
@@ -210,14 +205,14 @@ export default function UsageSettings() {
           </div>
 
           <p className="text-xs text-kumo-subtle border-t border-kumo-line pt-3">
-            Learn more about{' '}
+            了解更多：{' '}
             <a
               href="https://developers.cloudflare.com/ai-gateway/features/unified-billing/"
               target="_blank"
               rel="noreferrer"
               className="underline"
             >
-              AI Gateway unified billing
+              AI Gateway 统一计费
             </a>
             .
           </p>

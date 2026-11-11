@@ -309,7 +309,7 @@ describe('GatekeeperModal grouped resource types', () => {
         acceptedResourceUrlPatterns: [SERVICE.urlPattern],
         initialResourceUrl: testState.collectedUrl, resourceUrlPattern: SERVICE.urlPattern,
       })
-      expect(buttonLabels()).not.toContain('Grant access')
+      expect(buttonLabels()).not.toContain('授予访问权限')
       await act(async () => button('Add connection').click())
       expect(getOverseer).toHaveBeenCalledOnce()
     },
@@ -323,9 +323,9 @@ describe('GatekeeperModal grouped resource types', () => {
       ...GROUPED, granted: [], accountResources: { 1: accountResources },
     })
 
-    await vi.waitFor(() => expect(buttonLabels()).toContain('Grant access'))
+    await vi.waitFor(() => expect(buttonLabels()).toContain('授予访问权限'))
     expect(api.startResourceConfigurator).not.toHaveBeenCalled()
-    await act(async () => button('Grant access').click())
+    await act(async () => button('授予访问权限').click())
     expect(api.ensureAccountResources).toHaveBeenCalledExactlyOnceWith(1, [SERVICE.urlPattern])
 
     await act(async () => api.subscriber!.add(1, accountDescription(1, [SERVICE.urlPattern]),
@@ -333,7 +333,7 @@ describe('GatekeeperModal grouped resource types', () => {
     await vi.waitFor(() => expect(testState.frameKeys).toHaveLength(1))
     expect(api.startResourceConfigurator).toHaveBeenCalledExactlyOnceWith(1, SERVICE.urlPattern)
     expect(testState.configurator?.acceptedResourceUrlPatterns).toEqual([SERVICE.urlPattern])
-    expect(buttonLabels()).not.toContain('Grant access')
+    expect(buttonLabels()).not.toContain('授予访问权限')
   })
 
   it('excludes a creation-only sibling even if the account retains its old grant', async () => {
@@ -380,9 +380,9 @@ describe('GatekeeperModal grouped resource types', () => {
       granted: [],
     })
 
-    await vi.waitFor(() => expect(buttonLabels()).toContain('Grant access'))
+    await vi.waitFor(() => expect(buttonLabels()).toContain('授予访问权限'))
     expect(document.body.querySelector('[data-testid="resource-configurator"]')).toBeNull()
-    await act(async () => button('Grant access').click())
+    await act(async () => button('授予访问权限').click())
     expect(api.ensureAccountResources.mock.calls).toEqual([[1, [SERVICE.urlPattern, CATALOG.urlPattern]]])
   })
 
@@ -398,7 +398,7 @@ describe('GatekeeperModal grouped resource types', () => {
 
     await vi.waitFor(() => expect(testState.frameKeys).toHaveLength(1))
     expect(testState.configurator?.acceptedResourceUrlPatterns).toEqual([CATALOG.urlPattern])
-    await act(async () => button('Grant access').click())
+    await act(async () => button('授予访问权限').click())
     expect(api.ensureAccountResources.mock.calls).toEqual([[1, [SERVICE.urlPattern]]])
 
     await act(async () => api.subscriber!.add(
@@ -419,7 +419,7 @@ describe('GatekeeperModal grouped resource types', () => {
 
     await vi.waitFor(() => expect(testState.frameKeys).toHaveLength(1))
     expect(testState.configurator?.acceptedResourceUrlPatterns).toEqual([CATALOG.urlPattern])
-    expect(buttonLabels()).toContain('Grant access')
+    expect(buttonLabels()).toContain('授予访问权限')
   })
 
   // A configurator should offer only the types the account holds; one that returns another anyway
@@ -464,7 +464,7 @@ describe('GatekeeperModal grouped resource types', () => {
       granted: BOTH_GRANTED,
     })
     const search = await vi.waitFor(() =>
-      document.body.querySelector<HTMLInputElement>('input[placeholder="Search services, apps, data sources..."]')!)
+      document.body.querySelector<HTMLInputElement>('input[placeholder="搜索服务、应用和数据源…"]')!)
 
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(search, 'pipeline')
@@ -495,7 +495,7 @@ describe('GatekeeperModal agent spawner request', () => {
     await render(true)
 
     await vi.waitFor(() => {
-      expect(document.body.querySelector('[aria-label="Agent display name"]')).not.toBeNull()
+      expect(document.body.querySelector('[aria-label="智能体显示名称"]')).not.toBeNull()
     })
   })
 })
@@ -504,9 +504,9 @@ describe('GatekeeperModal model pickers', () => {
   // A decision model can back an AI Model binding but can't run an agent. The AI Model picker labels
   // each model with its kind.
   it.each([
-    { groupKey: 'platform:ai-model', picker: 'Select an AI model',
-      options: ['Language models: Chat model', 'Decision models: Decision model'] },
-    { groupKey: 'platform:agent-spawner', picker: 'Agent model', options: ['None (no agent)', 'Chat model'] },
+    { groupKey: 'platform:ai-model', picker: '选择 AI 模型',
+      options: ['语言模型: Chat model', '决策模型: Decision model'] },
+    { groupKey: 'platform:agent-spawner', picker: '智能体模型', options: ['无（不使用智能体）', 'Chat model'] },
   ])('offers $options in the $groupKey picker', async ({ groupKey, picker, options }) => {
     await renderModal()
 
@@ -666,7 +666,7 @@ describe('GatekeeperModal resource grant step', () => {
     )
     const grant = await vi.waitFor(() => {
       const button = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-        .find(candidate => candidate.textContent === 'Grant access')
+        .find(candidate => candidate.textContent === '授予访问权限')
       expect(button).toBeDefined()
       return button!
     })

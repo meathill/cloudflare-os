@@ -98,13 +98,13 @@ describe("collection dialogs", () => {
 
     act(() => {
       setInputValue(document.querySelector<HTMLInputElement>(
-        'input[placeholder^="A short name"]',
+        'input[placeholder^="简短的名称"]',
       )!, "Engineering");
     });
-    act(() => radio("Git mirror")?.click());
-    act(() => radio("Everyone")?.click());
+    act(() => radio("Git 镜像")?.click());
+    act(() => radio("所有人")?.click());
     await act(async () => {
-      button("Add collection")?.click();
+      button("添加知识集合")?.click();
       await Promise.resolve();
     });
 
@@ -116,8 +116,8 @@ describe("collection dialogs", () => {
       "git",
     );
     expect(createContextCollectionGitToken).toHaveBeenCalledWith("created");
-    expect(document.body.textContent).toContain("Set up the mirror");
-    expect(document.body.textContent).toContain("you do not enter a source repository URL here");
+    expect(document.body.textContent).toContain("设置镜像");
+    expect(document.body.textContent).toContain("无需在此输入源仓库 URL");
   });
 
   it("updates a Git branch and exposes token management", async () => {
@@ -150,11 +150,11 @@ describe("collection dialogs", () => {
       />,
     );
     await act(async () => Promise.resolve());
-    expect(button("Create token")).toBeDefined();
+    expect(button("创建令牌")).toBeDefined();
 
     act(() => setInputValue(document.querySelector<HTMLInputElement>('input[value="main"]')!, "release"));
     await act(async () => {
-      button("Save changes")?.click();
+      button("保存更改")?.click();
       await Promise.resolve();
     });
 
@@ -184,7 +184,7 @@ describe("collection dialogs", () => {
     };
     render(<Parent />);
     expect(leaveContextCollection).not.toHaveBeenCalled();
-    await act(async () => button("Leave")?.click());
+    await act(async () => button("退出")?.click());
     expect(document.body.textContent).toContain("No membership in library");
     expect(document.body.textContent).toContain(rejectCleanup ? "Leave not confirmed successful" : "Leave succeeded");
     expect(document.body.textContent?.includes("Git tokens could not be revoked yet")).toBe(rejectCleanup);

@@ -371,9 +371,9 @@ export const HierarchicalListPrimitive = ({
       const announceMove = () => {
         if (operationId < latestSuccessfulMoveIdRef.current) return;
         latestSuccessfulMoveIdRef.current = operationId;
-        const message = `${item.name} moved to position ${normalizedDestination.index + 1} in ${
+        const message = `${item.name}已移动到${
           normalizedDestination.parent?.name ?? label
-        }.`;
+        }的第 ${normalizedDestination.index + 1} 位。`;
         setMoveAnnouncement((current) => ({
           message,
           channel: current.channel === 0 ? 1 : 0,

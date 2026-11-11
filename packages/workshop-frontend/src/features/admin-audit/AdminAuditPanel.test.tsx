@@ -601,7 +601,7 @@ describe('AdminAuditPanel', () => {
       expect(pages().textContent).toContain('Page 2')
 
       await type(retentionInput(), '365')
-      await click(button(`Save “${RETENTION_LABEL}”`))
+      await click(button(`保存“${RETENTION_LABEL}”`))
       expect(admin.listAdminAudit).toHaveBeenLastCalledWith(pageQuery())
       expect(pages().textContent).toContain('Page 1')
     })
@@ -649,7 +649,7 @@ describe('AdminAuditPanel', () => {
       admin.listAdminAudit.mockResolvedValueOnce(testPage([settingRecord({ admin: 'later-admin' })]))
 
       await type(retentionInput(), '365')
-      await click(button(`Save “${RETENTION_LABEL}”`))
+      await click(button(`保存“${RETENTION_LABEL}”`))
       expect(admin.listAdminAudit).toHaveBeenCalledTimes(2)
       await act(async () => first.resolve(testPage([settingRecord({ admin: 'earlier-admin' })])))
 
@@ -762,7 +762,7 @@ describe('AdminAuditPanel', () => {
       const { setAdminAuditRetentionDays, onSettingsChanged } = await render()
 
       await type(retentionInput(), '365')
-      await click(button(`Save “${RETENTION_LABEL}”`))
+      await click(button(`保存“${RETENTION_LABEL}”`))
 
       expect(setAdminAuditRetentionDays).toHaveBeenCalledExactlyOnceWith(365)
       expect(onSettingsChanged).toHaveBeenCalledOnce()
@@ -774,11 +774,11 @@ describe('AdminAuditPanel', () => {
       expect(card('Audit retention').textContent).toContain('ADMIN_AUDIT_RETENTION_MIN_DAYS')
 
       await type(retentionInput(), '119')
-      await click(button(`Save “${RETENTION_LABEL}”`))
+      await click(button(`保存“${RETENTION_LABEL}”`))
 
       expect(setAdminAuditRetentionDays).not.toHaveBeenCalled()
       expect(container.textContent)
-        .toContain(`Enter a whole number of days from 120 to ${MAX_ADMIN_AUDIT_RETENTION_DAYS}`)
+        .toContain(`请输入 120 到 ${MAX_ADMIN_AUDIT_RETENTION_DAYS} 之间的整数（天）`)
     })
 
     it('reports a failed save', async () => {
@@ -787,7 +787,7 @@ describe('AdminAuditPanel', () => {
       await render(settingsWith(), admin)
 
       await type(retentionInput(), '365')
-      await click(button(`Save “${RETENTION_LABEL}”`))
+      await click(button(`保存“${RETENTION_LABEL}”`))
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
         title: `Couldn’t update “${RETENTION_LABEL}”`,

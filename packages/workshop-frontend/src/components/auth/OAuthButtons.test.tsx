@@ -158,7 +158,7 @@ describe('OAuthButtons', () => {
     mount(stub)
     await clickSignIn()
     await settle()
-    const cancel = Array.from(container!.querySelectorAll('button')).find(b => b.textContent === 'Cancel sign-in')!
+    const cancel = Array.from(container!.querySelectorAll('button')).find(b => b.textContent === '取消登录')!
     expect(cancel).toBeDefined()
     await act(async () => cancel.click())
     await tick()

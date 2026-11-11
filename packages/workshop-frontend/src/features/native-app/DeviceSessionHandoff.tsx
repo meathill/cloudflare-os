@@ -108,7 +108,7 @@ export const DeviceSessionHandoff = ({
       submitDeviceSession(attempt.state, start)
     } catch (err) {
       logRpcFailure('Failed to prepare a device session:', err)
-      setError(rpcFailureDescription(err) ?? 'Could not prepare this device session. Try again.')
+      setError(rpcFailureDescription(err) ?? '无法准备设备会话，请重试。')
       setWorking(false)
     }
   }
@@ -117,9 +117,9 @@ export const DeviceSessionHandoff = ({
     return (
       <main className="flex min-h-full items-center justify-center bg-kumo-base p-6">
         <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-          <h1 className="text-lg font-semibold text-kumo-default">Couldn&apos;t start app sign-in</h1>
+          <h1 className="text-lg font-semibold text-kumo-default">无法启动应用登录</h1>
           <p role="alert" className="text-sm text-kumo-danger">
-            This device-session request is invalid. Return to the app and start again.
+            设备会话请求无效。请返回应用重新开始。
           </p>
         </div>
       </main>
@@ -131,29 +131,29 @@ export const DeviceSessionHandoff = ({
       <div className="flex max-w-sm flex-col items-center gap-4 text-center">
         {working && <div aria-hidden="true" className="h-8 w-8 animate-spin rounded-full border-2 border-kumo-brand border-t-transparent" />}
         <h1 className="text-lg font-semibold text-kumo-default">
-          {working ? 'Finishing sign-in…' : 'Continue in Cloudflare OS?'}
+          {working ? '正在完成登录…' : '在 Cloudflare OS 中继续？'}
         </h1>
         <p className="text-sm text-kumo-subtle">
           {working
-            ? 'This browser will close and return to the app.'
-            : 'Continue only if you started this sign-in from the Cloudflare OS app.'}
+            ? '浏览器将关闭并返回应用。'
+            : '仅当你从 Cloudflare OS 应用发起此次登录时才继续。'}
         </p>
         {!working && identityFailed && (
           <p role="alert" className="text-sm text-kumo-danger">
-            Could not confirm your account. Return to the app and try again.
+            无法确认你的账号。请返回应用重试。
           </p>
         )}
         {!working && !identityFailed && (
           <p className="text-sm text-kumo-subtle">
             {confirmedUser
-              ? `Signed in as ${confirmedUser.name} (${confirmedUser.id}) on ${window.location.host}.`
-              : 'Checking your account…'}
+              ? `已在 ${window.location.host} 登录为 ${confirmedUser.name}（${confirmedUser.id}）。`
+              : '正在检查账号…'}
           </p>
         )}
         {error && <p role="alert" className="text-sm text-kumo-danger">{error}</p>}
         {!working && !identityFailed && (
           <Button variant="primary" disabled={!confirmedUser} onClick={() => { void continueInApp() }}>
-            Continue in Cloudflare OS
+            在 Cloudflare OS 中继续
           </Button>
         )}
       </div>

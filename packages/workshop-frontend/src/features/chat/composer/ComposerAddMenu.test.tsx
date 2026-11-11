@@ -116,7 +116,7 @@ describe("ComposerAddMenu", () => {
     expect(skillOption.textContent).toContain("Writing tools · Editorial account");
     expect(skillOption.title).toContain("Writing tools · Editorial account");
 
-    const search = document.querySelector<HTMLInputElement>('[aria-label="Search skills"]')!;
+    const search = document.querySelector<HTMLInputElement>('[aria-label="搜索技能"]')!;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
         search,
@@ -148,7 +148,7 @@ describe("ComposerAddMenu", () => {
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"]')!.click());
 
     const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
-    const search = dialog.querySelector<HTMLInputElement>('[aria-label="Search skills"]')!;
+    const search = dialog.querySelector<HTMLInputElement>('[aria-label="搜索技能"]')!;
     expect(search.parentElement?.classList).toContain(orderClass);
   });
 
@@ -160,7 +160,7 @@ describe("ComposerAddMenu", () => {
       <Harness anchorTop={100} getOverseer={getOverseer} onSelectSkill={() => {}} />,
     );
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"]')!.click());
-    const search = document.querySelector<HTMLInputElement>('[aria-label="Search skills"]')!;
+    const search = document.querySelector<HTMLInputElement>('[aria-label="搜索技能"]')!;
     search.focus();
 
     await act(async () => root!.render(
@@ -168,7 +168,7 @@ describe("ComposerAddMenu", () => {
     ));
     await act(async () => window.dispatchEvent(new Event("resize")));
 
-    const movedSearch = document.querySelector<HTMLInputElement>('[aria-label="Search skills"]')!;
+    const movedSearch = document.querySelector<HTMLInputElement>('[aria-label="搜索技能"]')!;
     expect(movedSearch).toBe(search);
     expect(document.activeElement).toBe(search);
     expect(movedSearch.parentElement?.classList).toContain("order-last");
@@ -212,7 +212,7 @@ describe("ComposerAddMenu", () => {
     );
     const trigger = host.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"]')!;
     await act(async () => trigger.click());
-    expect(document.querySelector('[aria-label="Search skills"]')).toBeNull();
+    expect(document.querySelector('[aria-label="搜索技能"]')).toBeNull();
     expect(listSlashCommands).not.toHaveBeenCalled();
     const options = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'));
     expect(options).toHaveLength(2);
@@ -222,7 +222,7 @@ describe("ComposerAddMenu", () => {
 
     await act(async () => trigger.click());
     const connection = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'))
-      .find((option) => option.textContent?.includes("Add a new connection"))!;
+      .find((option) => option.textContent?.includes("添加新连接"))!;
     await act(async () => connection.click());
     expect(onAddConnection).toHaveBeenCalledOnce();
     expect(document.activeElement).toBe(trigger);
@@ -240,7 +240,7 @@ describe("ComposerAddMenu", () => {
     const trigger = host.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"]')!;
     await act(async () => trigger.click());
     await waitFor(() => document.querySelectorAll('[role="option"]').length === 3);
-    const search = document.querySelector<HTMLInputElement>('[aria-label="Search skills"]')!;
+    const search = document.querySelector<HTMLInputElement>('[aria-label="搜索技能"]')!;
     await act(async () => search.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Tab", bubbles: true }),
     ));
@@ -249,7 +249,7 @@ describe("ComposerAddMenu", () => {
 
     await act(async () => trigger.click());
     await waitFor(() => document.querySelectorAll('[role="option"]').length === 3);
-    const reopened = document.querySelector<HTMLInputElement>('[aria-label="Search skills"]')!;
+    const reopened = document.querySelector<HTMLInputElement>('[aria-label="搜索技能"]')!;
     await act(async () => reopened.dispatchEvent(
       new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }),
     ));
@@ -260,7 +260,7 @@ describe("ComposerAddMenu", () => {
 
     await act(async () => trigger.click());
     await waitFor(() => document.querySelector('[role="dialog"]') !== null);
-    const finalSearch = document.querySelector<HTMLInputElement>('[aria-label="Search skills"]')!;
+    const finalSearch = document.querySelector<HTMLInputElement>('[aria-label="搜索技能"]')!;
     const escapedMenu = vi.fn<(event: globalThis.KeyboardEvent) => void>();
     document.addEventListener("keydown", escapedMenu);
     await act(async () => {
@@ -283,7 +283,7 @@ describe("ComposerAddMenu", () => {
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"]')!.click());
     await waitFor(() => document.querySelectorAll('[role="option"]').length === 3);
 
-    const search = document.querySelector<HTMLInputElement>('[aria-label="Search skills"]')!;
+    const search = document.querySelector<HTMLInputElement>('[aria-label="搜索技能"]')!;
     await act(async () => search.dispatchEvent(new KeyboardEvent("keydown", {
       key: "Enter",
       isComposing: true,
