@@ -4,6 +4,7 @@ import { Sparkle } from '@phosphor-icons/react'
 import { RpcStub, RpcTarget, newMessagePortRpcSession } from 'capnweb'
 import { GadgetClient, ConsoleLogEvent } from '@gadgets/workshop-shared/api'
 import { CAPNWEB_MODULE_URL, SANDBOX_HEAD } from './sandboxDocument'
+import { markConnectionActivity } from './features/idle-disconnect/connectionIdle'
 
 // Unfortunately, we will have to embed the code as a data: URL, because our iframe is totally
 // sandboxed. Even more unfortunately, since it's a module which we need to import from, we can't
@@ -59,6 +60,18 @@ window.addEventListener('keydown', (event) => {
     window.parent.postMessage({ type: 'escape' }, '*');
   }
 }, true);
+
+// Forward user input to the parent frame, throttled. Input inside the sandbox never reaches the
+// parent's own listeners, and the parent drops the connection of a tab nobody uses.
+let lastActivityPost = 0;
+for (let type of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+  window.addEventListener(type, () => {
+    let now = Date.now();
+    if (now - lastActivityPost < 5000) return;
+    lastActivityPost = now;
+    window.parent.postMessage({ type: 'activity' }, '*');
+  }, { capture: true, passive: true });
+}
 
 window.addEventListener('click', (event) => {
   if (!(event.target instanceof Element)) {
@@ -390,6 +403,8 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
         })
       } else if (event.data?.type === 'escape') {
         onIframeEscapeRef.current?.()
+      } else if (event.data?.type === 'activity') {
+        markConnectionActivity()
       }
     }
 

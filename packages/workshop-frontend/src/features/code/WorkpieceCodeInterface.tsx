@@ -23,6 +23,7 @@ import {
 import { reportIssue } from '../../errorReporting'
 import { saveTextToFile } from '../../fileTransfers'
 import { isTransientRpcError } from '../../rpcErrors'
+import { useConnectionHold } from '../idle-disconnect/useConnectionIdle'
 
 // The code view over a workpiece's git-backed files -- a gadget's code or a worktree's checkout.
 // The two differ here in exactly two places: which summary field names the *accepted commit*
@@ -275,6 +276,7 @@ export default function WorkpieceCodeInterface({
   const [clientError, setClientError] = useState(false)
   // Unacknowledged local edits are stuck behind a failing submission ("connection issue").
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  useConnectionHold(hasUnsavedChanges)
 
   // Per-open-file remote-delta listeners, keyed by `${gadgetId}\u0000${path}` (see EditSession).
   const fileListenersRef = useRef(new Map<string, Set<(change: FileChange) => void>>())

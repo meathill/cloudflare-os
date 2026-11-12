@@ -1,3 +1,5 @@
+import { useConnectionPaused } from '../features/idle-disconnect/useConnectionIdle'
+
 /**
  * "Reconnecting…" pill for a fixed-height chrome strip (the workspace editor's top bar, the app
  * shell's top bar). Deliberately an inline chip rather than a full-width banner: a banner inserted
@@ -5,12 +7,13 @@
  * layout twice.
  */
 export default function ReconnectingChip() {
+  const paused = useConnectionPaused()
   return (
     <span
       role="status"
       className="text-xs text-kumo-warning px-2 py-0.5 rounded-full bg-kumo-warning-tint border border-kumo-warning/20"
     >
-      正在重新连接…
+      {paused ? '连接已暂停，操作即可恢复' : '正在重新连接…'}
     </span>
   )
 }

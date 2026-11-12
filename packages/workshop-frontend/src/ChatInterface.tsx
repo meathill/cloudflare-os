@@ -131,6 +131,7 @@ import { UiBlockCard, type UiBlockCardProps } from "./features/chat/UiBlockCard"
 import { parseInlineHtmlBlocks } from "@gadgets/workshop-shared/inline-html-blocks";
 import { BlueprintProposalNotice } from "./features/blueprint-updates/BlueprintProposalNotice";
 import { appliedBlueprintMerges } from "./features/blueprint-updates/blueprintProposal";
+import { useConnectionHold } from "./features/idle-disconnect/useConnectionIdle";
 
 /**
  * The selected chat's live (accepted but not yet materialized) change row stream, delivered via
@@ -3453,6 +3454,7 @@ function ChatInterface({
       provisionalToolCalls.length > 0);
 
   const isAgentActive = !!currentChatMetadata?.activeAgent;
+  useConnectionHold(isAgentActive);
   const activeAgent = currentChatMetadata?.activeAgent;
   // Names the chat's own model in the composer even when the picker no longer offers it.
   const chatAgent = activeAgent ?? inferChatAgentFromMessages(currentMessages);
