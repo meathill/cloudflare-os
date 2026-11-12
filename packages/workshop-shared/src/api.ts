@@ -28,6 +28,9 @@ import { AccountDescription, ActionKind, ActionDescription, AgentCatalog, Avatar
 import type { CodeChange } from "./code-change.js";
 import type { GitOid } from "./gatekeeper.js";
 import type { UiFeatureFlags } from "./feature-flags.js";
+import type {
+  BillingAccountInfo, BillingLedgerEntry, BillingPlan, BillingUserApi,
+} from "./billing.js";
 
 export const SERVICE_SALT = new Uint8Array([
   0xd9, 0x4e, 0x54, 0x1d, 0x29, 0xc1, 0x03, 0x74, 0x73, 0x7e, 0xb3, 0xe3, 0x34, 0x6d, 0x8f, 0x21
@@ -1252,6 +1255,13 @@ export interface AuthenticatedApi extends RpcTarget {
    */
   getAdminApi(): Promise<RpcStub<AdminApi> | null>;
 
+  /**
+   * 有缘心之助：this user's own prepaid billing (balance, top-ups, usage), scoped to them.
+   *
+   * @nullWhen the deployment does not bill its users (it has no BILLING binding)
+   */
+  getBilling(): Promise<RpcStub<BillingUserApi> | null>;
+
   // TODO:
   // - Edit permissions on a connected account.
 }
@@ -2151,6 +2161,29 @@ export interface AdminApi {
 
   /** 获取平台所有用户的行为与 Token 消耗用量统计 */
   getUsageStats(): Promise<UsageStatsResponse>;
+
+  /**
+   * 有缘心之助：prepaid billing administration, acting as the calling admin (every plan change and
+   * grant is recorded under their id in the billing ledger).
+   *
+   * @nullWhen the deployment does not bill its users (it has no BILLING binding)
+   */
+  getBillingAdmin(): Promise<RpcStub<BillingAdminClient> | null>;
+}
+
+/**
+ * 有缘心之助：the admin's billing capability as the browser holds it. Like BillingAdminApi, but the
+ * acting admin is the capability's own, never one the caller names.
+ */
+export interface BillingAdminClient extends RpcTarget {
+  /** Accounts whose user key contains `query`, most recently changed first. */
+  listAccounts(query?: string): Promise<BillingAccountInfo[]>;
+  /** Move a user to `plan`, creating their account if they have none yet. */
+  setPlan(userKey: string, plan: BillingPlan): Promise<BillingAccountInfo>;
+  /** Add `amountUsd` (negative to take some back) to a user's balance, with a reason. */
+  grant(userKey: string, amountUsd: number, note: string): Promise<BillingAccountInfo>;
+  /** A user's ledger, newest first. */
+  listLedger(userKey: string, limit?: number): Promise<BillingLedgerEntry[]>;
 }
 
 /** 单个用户的 Token 消耗与行为用量记录 */

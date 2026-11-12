@@ -3,6 +3,7 @@ import { validateRpc } from "capnweb-validate";
 import type { JWTPayload } from "jose";
 import { PublicApi, ROUTER_TAG_PROBE_PATH, VERSION_PATH, AuthenticatedApi, Overseer, WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, RedactedAiModelConfig, AiGatewayInfo, ModelKind, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, ObserverConfigCallback, BlueprintLibrarySummary, BlueprintPublicInfo, BlueprintUserSummary, BlueprintBindingAssignment, AgentSpawnerConfig, WorkpieceId, BLUEPRINT_SCREENSHOT_PATH_PREFIX, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ServerConfig, CloudflareUsageInfo, CloudflareAccountOption, LoginAttempt, GatekeeperAppInfo, AdminApi, GatekeeperVendorInfo, OutputFormatOffer, ListOutputsResult, UserDirectoryRecord, createOpenWorkspaceError, getOpenWorkspaceErrorCode, OPEN_WORKSPACE_ERROR_CODES, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, NotificationSubscriber, NotificationMute, WebPushSubscription, type UnreadStateSubscriber, AdminVia } from '@gadgets/workshop-shared/api';
 import type { UiFeatureFlags } from "@gadgets/workshop-shared/feature-flags";
+import { BILLING_STRIPE_WEBHOOK_PATH, type BillingUserApi } from "@gadgets/workshop-shared/billing";
 import type { UnreadStateScope } from "@gadgets/workshop-shared/api";
 import { backendVersion, getServerConfig } from "./deployment-config.js";
 import { isDeploymentAdmin, isEmailOtpEnabled, isPasswordAuthEnabled, isPasswordSignupEnabled, isSignupAllowed, getAuthGatekeeperAllowlist } from "./auth/config.js";
@@ -726,6 +727,14 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     //     system doesn't know this.
     return new AdminApiImpl(this.ctx, this.env, adminUserId, this.via);
   }
+
+  async getBilling(): Promise<RpcStub<BillingUserApi> | null> {
+    if (!this.env.BILLING) return null;
+    // The user DO is named by the profile id, which is also the billing key (see billing.ts).
+    // @ts-expect-error Cap'n Web RPC stubs and native RPC stubs are compatible but the type
+    //     system doesn't know this.
+    return this.env.BILLING.forUser(this.#userId.name!);
+  }
 }
 
 async function serveBlueprintScreenshot(env: Env, blueprintId: string): Promise<Response> {
@@ -1099,6 +1108,11 @@ export default {
 
     if (url.pathname === "/api/client-errors") {
       return handleClientErrorRequest(req, env, ctx);
+    }
+
+    // 有缘心之助：Stripe webhook 原样交给计费 Worker，由它验签入账（它没有公网路由）。
+    if (url.pathname === BILLING_STRIPE_WEBHOOK_PATH && env.BILLING) {
+      return env.BILLING.fetch(req);
     }
 
     if (url.pathname === "/api/device-session/callback") {

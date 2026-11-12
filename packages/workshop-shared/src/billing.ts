@@ -1,6 +1,11 @@
 // 有缘心之助：预付费计费的 RPC 契约。实现在主仓库 packages/billing（独立 Worker，D1 + Stripe），
 // Workshop 通过可选的 BILLING service binding 调用；没有该 binding 时计费整体关闭。
 
+import type { RpcTarget, WorkerEntrypoint } from "cloudflare:workers";
+
+/** Where Stripe delivers webhooks; the Workshop forwards it to the billing Worker unchanged. */
+export const BILLING_STRIPE_WEBHOOK_PATH = "/api/billing/stripe/webhook";
+
 /**
  * A user's billing plan. `standard` users prepay and are charged the raw model cost times the
  * deployment's markup; `internal` users are metered at raw cost but never charged or blocked.
@@ -61,8 +66,8 @@ export type BillingSummary = {
   topUpEnabled: boolean;
 };
 
-/** How a ledger entry moved money. */
-export type BillingLedgerKind = "topup" | "grant" | "refund" | "dispute";
+/** How a ledger entry moved money; `plan` records an admin's plan change and moves none. */
+export type BillingLedgerKind = "topup" | "grant" | "refund" | "dispute" | "plan";
 
 /** One movement of money into or out of a balance, other than usage. */
 export type BillingLedgerEntry = {
@@ -113,7 +118,7 @@ export type BillingAccountInfo = {
 };
 
 /** One user's view of their own billing, scoped to that user when minted. */
-export interface BillingUserApi {
+export interface BillingUserApi extends RpcTarget {
   /** The user's balance, plan and top-up options. */
   getSummary(): Promise<BillingSummary>;
   /** The user's top-ups, grants and refunds, newest first. */
@@ -125,14 +130,11 @@ export interface BillingUserApi {
 }
 
 /** Deployment-admin operations on any user's billing. */
-export interface BillingAdminApi {
+export interface BillingAdminApi extends RpcTarget {
   /** Accounts whose user key contains `query`, most recently changed first. */
   listAccounts(query?: string): Promise<BillingAccountInfo[]>;
-  /**
-   * Move a user to `plan`, creating their account if they have none yet. The Workshop records the
-   * change in its admin audit log before calling.
-   */
-  setPlan(userKey: string, plan: BillingPlan): Promise<BillingAccountInfo>;
+  /** Move a user to `plan`, creating their account if they have none yet; recorded in the ledger. */
+  setPlan(userKey: string, plan: BillingPlan, actor: string): Promise<BillingAccountInfo>;
   /** Add `amountUsd` (negative to take some back) to a user's balance, with the admin's reason. */
   grant(userKey: string, amountUsd: number, note: string, actor: string): Promise<BillingAccountInfo>;
   /** A user's ledger, newest first. */
@@ -143,7 +145,7 @@ export interface BillingAdminApi {
  * The billing Worker's entrypoint, as the Workshop reaches it over the BILLING service binding.
  * `userKey` is the user's profile id throughout.
  */
-export interface BillingService {
+export interface BillingService extends WorkerEntrypoint {
   /** Whether the user may start paid work; creates a standard account on first sight. */
   authorize(userKey: string): Promise<BillingAuthorization>;
   /** Meter one request against the user. */
