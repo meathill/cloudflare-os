@@ -27,7 +27,7 @@ export type ConnectionIdle = {
   stop: () => void
 }
 
-const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'mousemove', 'focus'] as const
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'input', 'wheel', 'touchstart', 'mousemove', 'focus'] as const
 
 const isVisible = () => document.visibilityState === 'visible'
 
@@ -147,6 +147,8 @@ export const startConnectionIdle = (options: ConnectionIdleOptions): ConnectionI
 export const holdConnection = (): (() => void) => instance?.hold() ?? (() => {})
 
 export const markConnectionActivity = () => instance?.markActivity()
+
+export const whenConnectionActive = (): Promise<void> => instance?.whenActive() ?? Promise.resolve()
 
 export const isConnectionPaused = () => instance?.isPaused() ?? false
 

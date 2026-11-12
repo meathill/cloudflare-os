@@ -5,7 +5,7 @@ import { RpcStub, RpcTarget, newMessagePortRpcSession } from 'capnweb'
 import { GadgetClient, ConsoleLogEvent, type GadgetHost } from '@gadgets/workshop-shared/api'
 import { prepareUiPage, uiModuleKey, type UiPage } from '@gadgets/workshop-shared/ui-page'
 import { CAPNWEB_MODULE_URL, SANDBOX_HEAD } from './sandboxDocument'
-import { markConnectionActivity } from './features/idle-disconnect/connectionIdle'
+import { markConnectionActivity, whenConnectionActive } from './features/idle-disconnect/connectionIdle'
 
 // Unfortunately, we will have to embed the code as a data: URL, because our iframe is totally
 // sandboxed. Even more unfortunately, since it's a module which we need to import from, we can't
@@ -80,7 +80,7 @@ window.addEventListener('keydown', (event) => {
 // Forward user input to the parent frame, throttled. Input inside the sandbox never reaches the
 // parent's own listeners, and the parent drops the connection of a tab nobody uses.
 let lastActivityPost = 0;
-for (let type of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+for (let type of ['pointerdown', 'keydown', 'input', 'wheel', 'touchstart']) {
   window.addEventListener(type, () => {
     let now = Date.now();
     if (now - lastActivityPost < 5000) return;
@@ -348,8 +348,11 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
     const reconnect = async () => {
       let timeout: ReturnType<typeof setTimeout> | undefined
       try {
+        // A tab that dropped its connection while unattended reconnects only once someone is back,
+        // so the timeout starts then: reloading the iframe meanwhile would discard its state.
+        await whenConnectionActive()
+        if (!isCurrent()) return
         // A pipelined client resolves only once the connection is back and the workspace reopened.
-        // The budget is for the gadget's own answer, not for the outage before it.
         await gadget
         const replacementStub = await Promise.race([
           replacementPromise,
