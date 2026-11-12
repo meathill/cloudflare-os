@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent } from 'react'
+import { useState, FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { RpcStub } from 'capnweb'
 import { PublicApi } from '@gadgets/workshop-shared/api'
@@ -9,6 +9,7 @@ import { useServerConfig, useServerConfigError, useSiteName } from './ServerConf
 import { useDocumentTitle } from './useDocumentTitle'
 import { useConnectionLost } from './RpcContext'
 import OAuthButtons from './components/auth/OAuthButtons'
+import EmailOtpForm from './components/auth/EmailOtpForm'
 import SiteLogo from './components/SiteLogo'
 import { deviceSessionSearch } from './features/native-app/DeviceSessionHandoff'
 
@@ -21,11 +22,6 @@ interface LoginPageProps {
 export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
-  const [otpSending, setOtpSending] = useState(false)
-  const [otpVerifying, setOtpVerifying] = useState(false)
-  const [cooldown, setCooldown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const serverConfig = useServerConfig()
@@ -34,52 +30,12 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
   const connectionLost = useConnectionLost()
   useDocumentTitle('登录')
 
-  // The resend cooldown ticks down once a second while it runs.
-  useEffect(() => {
-    if (cooldown <= 0) return
-    const timer = setTimeout(() => setCooldown(value => value - 1), 1000)
-    return () => clearTimeout(timer)
-  }, [cooldown])
-
   const finishLogin = (token: string) => {
     localStorage.setItem('authToken', token)
     if (onLoginSuccess) {
       onLoginSuccess()
     } else {
       window.location.reload()
-    }
-  }
-
-  const handleSendCode = async () => {
-    if (!email || otpSending || cooldown > 0) return
-    setOtpSending(true)
-    setError(null)
-    try {
-      await rpcStub.requestEmailOtp(email)
-      setCooldown(60)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '验证码发送失败')
-    } finally {
-      setOtpSending(false)
-    }
-  }
-
-  const handleVerifyCode = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!email || !code || otpVerifying) return
-    setOtpVerifying(true)
-    setError(null)
-    try {
-      const token = await rpcStub.verifyEmailOtp(email, code)
-      if (token) {
-        finishLogin(token)
-      } else {
-        setError('验证码无效或已过期，请重新获取')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '验证码登录失败')
-    } finally {
-      setOtpVerifying(false)
     }
   }
 
@@ -158,57 +114,13 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
             </div>
           </SiteLogo>
           <h1 className="text-xl font-semibold text-kumo-default">{siteName}</h1>
-          <p className="text-sm text-kumo-subtle mt-1">登录账号</p>
+          <p className="text-sm text-kumo-subtle mt-1">
+            {passwordAuthEnabled ? '登录账号' : '登录或注册账号'}
+          </p>
         </div>
 
-        {error && (
-          <Banner variant="error" title={error} className="mb-4" />
-        )}
-
         {emailOtpEnabled && (
-          <form onSubmit={handleVerifyCode} className="space-y-4">
-            <Input
-              className="w-full"
-              type="email"
-              label="邮箱"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              disabled={otpVerifying}
-              placeholder="you@example.com"
-            />
-            <div className="flex items-end gap-2">
-              <Input
-                className="w-full"
-                label="验证码"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                disabled={otpVerifying}
-                placeholder="6 位数字"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleSendCode}
-                disabled={!email || otpSending || cooldown > 0}
-                loading={otpSending}
-                className="shrink-0"
-              >
-                {cooldown > 0 ? `${cooldown}s 后重发` : '发送验证码'}
-              </Button>
-            </div>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={!email || !code}
-              loading={otpVerifying}
-              className="w-full justify-center"
-            >
-              邮箱登录 / 注册
-            </Button>
-          </form>
+          <EmailOtpForm rpcStub={rpcStub} submitLabel="邮箱登录 / 注册" onSignedIn={finishLogin} />
         )}
 
         {emailOtpEnabled && (passwordAuthEnabled || authVendors.length > 0) && (
@@ -223,12 +135,13 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
           <>
             {/* Username / password form */}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {error && <Banner variant="error" title={error} />}
               <Input
                 className="w-full"
                 label="用户名"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                autoFocus
+                autoFocus={!emailOtpEnabled}
                 autoComplete="username"
                 disabled={loading}
                 placeholder="例如：writer"
@@ -256,7 +169,8 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
               </Button>
             </form>
 
-            <p className="text-center text-sm text-kumo-subtle mt-6">
+            {/* With email codes on, the code form above registers new users itself. */}
+            {!emailOtpEnabled && <p className="text-center text-sm text-kumo-subtle mt-6">
               还没有账号？{' '}
               <Link
                 to="/signup"
@@ -265,7 +179,7 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
               >
                 创建账号
               </Link>
-            </p>
+            </p>}
           </>
         )}
 

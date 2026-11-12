@@ -5,7 +5,7 @@ import { PublicApi, ROUTER_TAG_PROBE_PATH, VERSION_PATH, AuthenticatedApi, Overs
 import type { UiFeatureFlags } from "@gadgets/workshop-shared/feature-flags";
 import type { UnreadStateScope } from "@gadgets/workshop-shared/api";
 import { backendVersion, getServerConfig } from "./deployment-config.js";
-import { isDeploymentAdmin, isPasswordAuthEnabled, isSignupAllowed, signupAllowlistEnabled, getAuthGatekeeperAllowlist } from "./auth/config.js";
+import { isDeploymentAdmin, isEmailOtpEnabled, isPasswordAuthEnabled, isPasswordSignupEnabled, isSignupAllowed, getAuthGatekeeperAllowlist } from "./auth/config.js";
 import { getAuthVendorBinding } from "./auth/auth-vendors.js";
 import { getUsageInfo } from "./ai-gateway-billing/limits/usage-checker.js";
 import { listConnectedAccounts, selectAccount } from "./ai-gateway-billing/cloudflare/connection-service.js";
@@ -16,7 +16,8 @@ import { deploymentOutputForBlueprint, listFormatOffers, readAdminConfig } from 
 // Re-export the optional-feature Durable Objects + entrypoints so they can be bound in wrangler.
 export { PendingLogin, LoginConnectCallbackImpl };
 export { EmailOtp } from "./email-otp.js";
-import { emailEnabled, sendEmail } from "./email.js";
+import { emailOtpIpThrottleName } from "./email-otp.js";
+import { sendEmail } from "./email.js";
 import { GatekeeperUiFrame, GatekeeperUserSelection } from "@gadgets/workshop-shared/gatekeeper";
 import { DecisionModelGatekeeper, LanguageModelGatekeeper } from "./ai-models";
 import { getGatewayModels } from "./ai-gateway.js";
@@ -788,7 +789,8 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       private abortSession: (reason: Error) => void,
       private accessSession: { payload: JWTPayload; jwt: string } | undefined,
       private cliAdminsOnly: boolean,
-      private via: AdminVia) {
+      private via: AdminVia,
+      private clientIp?: string) {
     super();
     this.users = this.ctx.exports.UserDurableObject;
   }
@@ -932,10 +934,15 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
   }
 
   async requestEmailOtp(email: string): Promise<void> {
-    if (this.env.EMAIL_OTP_ENABLED !== "true" || !emailEnabled(this.env)) {
+    if (!isEmailOtpEnabled(this.env)) {
       throw new Error("此部署未启用邮箱验证码登录。");
     }
     let address = normalizeEmailAddress(email);
+    if (this.clientIp) {
+      await this.ctx.exports.EmailOtp.get(
+          this.ctx.exports.EmailOtp.idFromName(emailOtpIpThrottleName(this.clientIp)),
+          this.#doOptions).throttle();
+    }
     let user = this.users.get(this.users.idFromName(address), this.#doOptions);
     let exists = (await user.whoamiIfExists()) !== null;
     // Existing accounts may sign in by code whenever the feature is on; a new account is created
@@ -966,7 +973,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
   }
 
   async verifyEmailOtp(email: string, code: string): Promise<string | null> {
-    if (this.env.EMAIL_OTP_ENABLED !== "true" || !emailEnabled(this.env)) {
+    if (!isEmailOtpEnabled(this.env)) {
       throw new Error("此部署未启用邮箱验证码登录。");
     }
     let address = normalizeEmailAddress(email);
@@ -995,10 +1002,8 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     if (!(await readAdminConfig(this.env)).signupsEnabled) {
       throw new Error("New signups are currently disabled on this deployment.");
     }
-    // Password accounts carry no email, so an email allowlist cannot decide their fate: with the
-    // allowlist on, password signup is closed and email OTP becomes the way in.
-    if (signupAllowlistEnabled(this.env)) {
-      throw new Error("密码注册已关闭：此部署只允许名单内的邮箱通过邮箱验证码注册。");
+    if (!isPasswordSignupEnabled(this.env)) {
+      throw new Error("密码注册已关闭：请使用邮箱验证码注册。");
     }
 
     username = normalizeUsername(username);
@@ -1182,7 +1187,8 @@ export default {
 
       return await newWorkersRpcResponse(req,
           new PublicApiImpl(ctx, env, abortSession, accessSession,
-              !local && cli, cli ? "cli" : "api"),
+              !local && cli, cli ? "cli" : "api",
+              req.headers.get("CF-Connecting-IP") ?? undefined),
           { abortSignal: abortController.signal });
     }
 

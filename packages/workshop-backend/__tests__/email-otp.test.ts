@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { env } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import {
-  EMAIL_OTP_MAX_ATTEMPTS, EMAIL_OTP_RESEND_COOLDOWN_MS, EMAIL_OTP_TTL_MS,
+  EMAIL_OTP_IP_LIMIT, EMAIL_OTP_IP_WINDOW_MS, EMAIL_OTP_MAX_ATTEMPTS,
+  EMAIL_OTP_RESEND_COOLDOWN_MS, EMAIL_OTP_TTL_MS,
   type EmailOtp,
 } from "../src/email-otp.js";
 
@@ -94,6 +95,23 @@ describe("EmailOtp", () => {
     await runInDurableObject(stub, async (instance: EmailOtp) => {
       expect([...instance.ctx.storage.kv.list()]).toEqual([]);
     });
+  });
+
+  it("throttles a client to a fixed number of requests per window", async () => {
+    const stub = fresh();
+    const throttle = (now: number) => runInDurableObject(stub, async (instance: EmailOtp) => {
+      try {
+        await instance.throttle(now);
+        return "ok";
+      } catch (err) {
+        return `error:${(err as Error).message}`;
+      }
+    });
+    const start = Date.now();
+    for (let i = 0; i < EMAIL_OTP_IP_LIMIT; i++) expect(await throttle(start)).toBe("ok");
+    expect(await throttle(start + 1)).toContain("过于频繁");
+    // A new window starts afresh.
+    expect(await throttle(start + EMAIL_OTP_IP_WINDOW_MS)).toBe("ok");
   });
 
   it("stores only the hash it is given", async () => {
