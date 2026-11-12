@@ -165,6 +165,9 @@ export interface GatekeeperUserSelectionReceiver extends RpcTarget {
   receive(selection: GatekeeperUserSelection): Promise<void>;
 }
 
+/** 有缘心之助：where a gatekeeper's management app is opened; see AppUiContext.surface. */
+export type GatekeeperAppSurface = "app" | "admin";
+
 /**
  * Per-open context the Workshop passes to GatekeeperUser.startAppUi(). Supplied
  * fresh each time rather than baked into the account: a user's admin status can
@@ -174,6 +177,13 @@ export interface GatekeeperUserSelectionReceiver extends RpcTarget {
 export type AppUiContext = {
   /** Whether the opening user is currently a deployment admin. */
   isAdmin: boolean;
+
+  /**
+   * 有缘心之助：where the app is opened. "app" is its own page (/gatekeepers/<id>); "admin" is a tab
+   * of the deployment admin panel, opened only for deployment admins, where a gatekeeper may show
+   * what it keeps from everyone else. Absent from a Workshop older than this field: treat as "app".
+   */
+  surface?: GatekeeperAppSurface;
 
   /**
    * Redeems the tickets this account's UI receives from the Workshop user
@@ -278,6 +288,14 @@ export type AccountDescription = {
    * surfaces it as a nav entry / page using this title.
    */
   providesUi?: { title: string; icon?: AvatarImage };
+
+  /**
+   * 有缘心之助：set by an auto-provisioned account minted in a form its gatekeeper no longer
+   * supports (e.g. without the identity newer accounts carry). The Workshop then revokes it and
+   * provisions a fresh one in its place; workspaces drop the old account's ambient record by
+   * themselves, since it names an account that is gone.
+   */
+  superseded?: true;
 }
 
 /** Describes metadata about a specific instance of a resource. Returned by Gatekeeper.describe(). */

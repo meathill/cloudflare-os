@@ -19,7 +19,7 @@ export { PendingLogin, LoginConnectCallbackImpl };
 export { EmailOtp } from "./email-otp.js";
 import { emailOtpIpThrottleName } from "./email-otp.js";
 import { sendEmail } from "./email.js";
-import { GatekeeperUiFrame, GatekeeperUserSelection } from "@gadgets/workshop-shared/gatekeeper";
+import { GatekeeperUiFrame, GatekeeperUserSelection, type GatekeeperAppSurface } from "@gadgets/workshop-shared/gatekeeper";
 import { DecisionModelGatekeeper, LanguageModelGatekeeper } from "./ai-models";
 import { getGatewayModels } from "./ai-gateway.js";
 import { AdminSettings, AdminApiImpl } from "./admin-settings.js";
@@ -691,7 +691,10 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
         }));
   }
 
-  async getGatekeeperApp(vendorId: string): Promise<GatekeeperUiFrame | null> {
+  async getGatekeeperApp(vendorId: string, surface: GatekeeperAppSurface = "app")
+      : Promise<GatekeeperUiFrame | null> {
+    let isAdmin = this.#isAdmin();
+    if (surface === "admin" && !isAdmin) return null;
     // Self-sufficient: listProvidedAccounts provisions auto-provisioned accounts first (idempotent),
     // so a direct URL load of /gatekeepers/$id works without racing the Header's listGatekeeperApps.
     let user = this.#user;  // one stub for both calls
@@ -699,7 +702,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     let app = accounts.find(account => account.vendorId === vendorId && account.description.providesUi);
     if (!app) return null;
     // isAdmin is supplied fresh per open so admin-gated features reflect the user's current status.
-    return user.startAccountAppUi(app.accountId, { isAdmin: this.#isAdmin() });
+    return user.startAccountAppUi(app.accountId, { isAdmin, surface });
   }
 
   async createGatekeeperUserSelection(

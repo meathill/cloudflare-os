@@ -28,6 +28,7 @@ import { AccountDescription, ActionKind, ActionDescription, AgentCatalog, Avatar
 import type { CodeChange } from "./code-change.js";
 import type { GitOid } from "./gatekeeper.js";
 import type { UiFeatureFlags } from "./feature-flags.js";
+import type { GatekeeperAppSurface } from "./gatekeeper.js";
 import type {
   BillingAccountInfo, BillingLedgerEntry, BillingPlan, BillingUserApi,
 } from "./billing.js";
@@ -1222,9 +1223,9 @@ export interface AuthenticatedApi extends RpcTarget {
    * @appApi ui id
    * @nullWhen the user has no gatekeeper of that id with an app, as listGatekeeperApps() lists
    *   them; for an ambient one the deployment only offers, provisionAmbientAccount() with that id
-   *   adds it
+   *   adds it; or (有缘心之助) `surface` is "admin" and the caller is not a deployment admin
    */
-  getGatekeeperApp(id: string): Promise<GatekeeperUiFrame | null>;
+  getGatekeeperApp(id: string, surface?: GatekeeperAppSurface): Promise<GatekeeperUiFrame | null>;
 
   /**
    * Mint a single-use ticket for a user selected on behalf of a gatekeeper app,
