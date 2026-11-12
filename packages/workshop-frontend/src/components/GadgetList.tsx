@@ -15,6 +15,7 @@ import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER } from './menuStyles'
 import { BlueprintPreviewImage } from './BlueprintPreviewImage'
 import DeleteConfirmationDialog from './DeleteConfirmationDialog'
 import { isImeComposing } from '../keyboardEvent'
+import { useCostMarkup } from '../features/billing/BillingContext'
 
 // Neutral monogram for a workspace — matches the sidebar treatment (no per-item color noise).
 function initials(title: string | undefined): string {
@@ -194,6 +195,8 @@ function AppRow({
 }
 
 export default function GadgetList({ showHeader = true }: { showHeader?: boolean } = {}) {
+  // 有缘心之助：花费按用户实际被扣的倍率显示。
+  const costMarkup = useCostMarkup()
   const { authenticatedApi } = useAuthenticatedApi()
   const toasts = useKumoToastManager()
   const [gadgets, setGadgets] = useState<WorkspaceMetadataWithTimestamps[]>([])
@@ -461,7 +464,7 @@ export default function GadgetList({ showHeader = true }: { showHeader?: boolean
             <div className="flex justify-between">
               <span className="text-kumo-subtle">总费用</span>
               <span className="text-kumo-default">
-                {formatCost(infoTarget?.totalCost ?? 0)}
+                {formatCost((infoTarget?.totalCost ?? 0) * costMarkup)}
               </span>
             </div>
             <div className="flex justify-between">

@@ -116,7 +116,8 @@ import { useResolveAction } from "./useResolveAction";
 import { safeExternalUrl } from "./utils/safeExternalUrl";
 import { useAuthenticatedApi } from "./AuthContext";
 import { useVendorBranding } from "./useVendorBranding";
-import OutOfCreditsModal from "./components/billing/OutOfCreditsModal";
+import UsageLimitModal from "./features/billing/UsageLimitModal";
+import { useCostMarkup } from "./features/billing/BillingContext";
 import { formatFullTimestamp } from "./utils/formatTimestamp";
 import { copyToClipboard } from "./clipboard";
 import { isImeComposing } from "./keyboardEvent";
@@ -2850,6 +2851,8 @@ function ChatInterface({
   // we've already auto-opened for, so dismissing it doesn't immediately reopen.
   const [usageModalOpen, setUsageModalOpen] = useState(false);
   const usageModalShownForRef = useRef<number | null>(null);
+  // 有缘心之助：花费按用户实际被扣的金额显示（原始成本 × 倍率；内部账号与未开计费时为 1）。
+  const costMarkup = useCostMarkup();
   const [chatListScope, setChatListScope] = useState<ChatListScope>("all");
   const [chatListVersion, setChatListVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -5631,7 +5634,7 @@ function ChatInterface({
                           <>
                             <span className="flex-shrink-0" aria-hidden="true">·</span>
                             <span className="flex-shrink-0 font-mono">
-                              ${chat.totalCost.toFixed(4)}
+                              ${(chat.totalCost * costMarkup).toFixed(4)}
                             </span>
                           </>
                         )}
@@ -6854,7 +6857,7 @@ function ChatInterface({
                       </span>
                     )}
                     {currentChatMetadata?.totalCost != null && (
-                      <span>${currentChatMetadata.totalCost.toFixed(4)}</span>
+                      <span>${(currentChatMetadata.totalCost * costMarkup).toFixed(4)}</span>
                     )}
                   </div>
                 </div>
@@ -6977,7 +6980,7 @@ function ChatInterface({
         initialResourceUrl={connectionAccept?.resourceUrl}
         initialResourceUrlPattern={connectionAccept?.resourceUrlPattern}
       />
-      <OutOfCreditsModal
+      <UsageLimitModal
         open={usageModalOpen}
         onClose={() => setUsageModalOpen(false)}
       />

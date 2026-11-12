@@ -20,6 +20,7 @@ import { RestrictedWebFetchCard } from './features/web-fetch/RestrictedWebFetchC
 import { isAdminTab, resolveAdminTab } from './adminTab'
 import { logRpcFailure } from './rpcErrors'
 import AdminUsagePanel from './components/admin/AdminUsagePanel'
+import AdminBillingPanel from './features/billing/AdminBillingPanel'
 
 // Preset accent colors offered in the Theme section ('' = default brand).
 const ACCENT_PRESETS: { label: string; value: string }[] = [
@@ -487,6 +488,7 @@ export default function AdminPage() {
         tabs={[
           { value: 'general', label: '常规' },
           { value: 'usage', label: '用量统计' },
+          { value: 'billing', label: '计费' },
           { value: 'gatekeepers', label: '连接服务' },
           { value: 'formats', label: '格式' },
           { value: 'models', label: '模型' },
@@ -530,6 +532,11 @@ export default function AdminPage() {
       {/* 用量统计看板 */}
       {activeTab === 'usage' && admin && (
         <AdminUsagePanel admin={admin.api} />
+      )}
+
+      {/* 预付费计费：方案、手动加额度、流水 */}
+      {activeTab === 'billing' && admin && (
+        <AdminBillingPanel admin={admin.api} />
       )}
 
       {/* Standard output formats */}

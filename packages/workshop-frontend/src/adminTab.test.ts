@@ -10,7 +10,7 @@ describe('resolveAdminTab', () => {
 
   it('shows General for no tab or an unknown one', () => {
     expect(resolveAdminTab(undefined, { updatesAvailable: true, auditAvailable: true })).toBe('general')
-    expect(resolveAdminTab('billing', { updatesAvailable: true, auditAvailable: true })).toBe('general')
+    expect(resolveAdminTab('invoices', { updatesAvailable: true, auditAvailable: true })).toBe('general')
   })
 
   it('keeps a requested Updates tab while the update status is loading', () => {
