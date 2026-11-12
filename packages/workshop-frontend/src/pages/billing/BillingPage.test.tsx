@@ -47,12 +47,13 @@ describe('BillingPage', () => {
     return container
   }
 
-  const api = (createCheckout = vi.fn(async () => ({ url: 'https://checkout.stripe.com/c/1' }))) => ({
+  type Checkout = (tier: number) => Promise<{ url: string }>
+  const api = (createCheckout = vi.fn<Checkout>(async () => ({ url: 'https://checkout.stripe.com/c/1' }))) => ({
     createCheckout, listLedger: async () => [] as [], listUsage: async () => [] as [],
   })
 
   it('offers each top-up tier to a standard user and sends them to Stripe Checkout', async () => {
-    const createCheckout = vi.fn(async () => ({ url: 'https://checkout.stripe.com/c/1' }))
+    const createCheckout = vi.fn<Checkout>(async () => ({ url: 'https://checkout.stripe.com/c/1' }))
     const assign = vi.fn<(url: string) => void>()
     vi.stubGlobal('location', { ...window.location, assign })
     const page = await render({ api: api(createCheckout), summary: summary({}), refresh: () => {} })

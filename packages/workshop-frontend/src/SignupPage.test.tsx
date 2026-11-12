@@ -8,7 +8,7 @@ import type { RpcStub } from 'capnweb'
 import type { PublicApi, ServerConfig } from '@gadgets/workshop-shared/api'
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children }: { children: unknown }) => <a>{children as string}</a>,
+  Link: ({ children }: { children: unknown }) => <a href="/">{children as string}</a>,
 }))
 
 import SignupPage from './SignupPage'
