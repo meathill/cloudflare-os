@@ -28,6 +28,30 @@ import { AccountDescription, ActionKind, ActionDescription, AgentCatalog, Avatar
 import type { BytesRef, CodeChange } from "./code-change.js";
 import type { GitOid } from "./gatekeeper.js";
 import type { UiFeatureFlags } from "./feature-flags.js";
+import type { GatekeeperAppSurface } from "./gatekeeper.js";
+import type {
+  BillingAccountInfo, BillingLedgerEntry, BillingLedgerQuery, BillingPlan, BillingSummary,
+  BillingUsageEvent, BillingUsageEventQuery, BillingUsageRange, BillingUsageReport,
+  BillingUserUsageRow,
+} from "./billing.js";
+
+/**
+ * One user's view of their own billing, scoped to that user when minted. The browser holds it over
+ * Cap'n Web (`AuthenticatedApi.getBilling()`), so it is a Cap'n Web target.
+ */
+export interface BillingUserApi extends RpcTarget {
+  /** The user's balance, plan and top-up options. */
+  getSummary(): Promise<BillingSummary>;
+  /** The user's top-ups, grants and refunds, newest first. */
+  listLedger(limit?: number): Promise<BillingLedgerEntry[]>;
+  /**
+   * The user's metered usage over a Beijing-day range: billed tokens and what each day-model
+   * cost them, per the sources users pay for. Never the raw cost or the markup.
+   */
+  getUsage(range: BillingUsageRange): Promise<BillingUserUsageRow[]>;
+  /** Start a Stripe Checkout for one of the offered tiers; returns the page to send the user to. */
+  createCheckout(tierUsd: number): Promise<{ url: string }>;
+}
 
 export const SERVICE_SALT = new Uint8Array([
   0xd9, 0x4e, 0x54, 0x1d, 0x29, 0xc1, 0x03, 0x74, 0x73, 0x7e, 0xb3, 0xe3, 0x34, 0x6d, 0x8f, 0x21
@@ -476,6 +500,14 @@ export function validateBindingName(name: string): void {
   }
 }
 
+/** The emails an account holds, as AuthenticatedApi.getOwnEmails() reports them (lowercase). */
+export type OwnEmails = {
+  /** The address the account signs in by and is named after; null for a password account. */
+  loginEmail: string | null;
+  /** Every held address: the login email, then each address bound by a verification code. */
+  emails: string[];
+};
+
 /**
  * Throws unless `email` is acceptable as `AiChatAuthorInfo.commitEmail`: `local@domain`, at most
  * 254 characters, with no whitespace, control characters, or angle brackets. This is not full
@@ -734,8 +766,33 @@ export interface AuthenticatedApi extends RpcTarget {
   setOwnDisplayName(name: string): Promise<void>;
 
   /**
+   * The emails this account holds. An address is held by one account deployment-wide, and the
+   * deployment admin list (ADMINS) and the commit email accept only held addresses.
+   */
+  getOwnEmails(): Promise<OwnEmails>;
+
+  /**
+   * Start binding `email` to this account: sends it a verification code. Throws when another
+   * account holds the address, when the address is already this account's, when a code was just
+   * sent, or when the deployment cannot send email. Finish with confirmEmailVerification().
+   */
+  requestEmailVerification(email: string): Promise<void>;
+
+  /**
+   * Bind `email` to this account, given the code sent by requestEmailVerification(). Throws when
+   * the code is wrong or expired, or when another account has taken the address meanwhile.
+   */
+  confirmEmailVerification(email: string, code: string): Promise<void>;
+
+  /**
+   * Release a bound `email`, clearing the commit email too if it was that address. Throws for the
+   * login email, which is the account's name.
+   */
+  removeOwnEmail(email: string): Promise<void>;
+
+  /**
    * Set the email address used on git commits the user authors, or clear it with null to fall
-   * back to one derived from their user ID. Rejects an address `validateCommitEmail` refuses.
+   * back to one derived from their user ID. The address must be one of getOwnEmails().emails.
    */
   setOwnCommitEmail(email: string | null): Promise<void>;
 
@@ -855,6 +912,14 @@ export interface AuthenticatedApi extends RpcTarget {
    * especially if the gadget is owned by someone else.
    */
   listModels(kind?: ModelKind): Promise<AiChatAuthorInfo[]>;
+
+  /**
+   * The official reference unit prices (USD per million tokens) of the language models the
+   * deployment provides to the current user: the same list as `listModels("language")` in the
+   * same order, but without the Auto Router model, decision models and the user's own models,
+   * and without any model whose price is not published. Empty outside AI Gateway mode.
+   */
+  getModelPricing(): Promise<ModelPricing[]>;
 
   /**
    * Adds a new model to the user's configured set. The ID must not name a model the user already
@@ -1289,9 +1354,9 @@ export interface AuthenticatedApi extends RpcTarget {
    * @appApi ui id
    * @nullWhen the user has no gatekeeper of that id with an app, as listGatekeeperApps() lists
    *   them; for an ambient one the deployment only offers, provisionAmbientAccount() with that id
-   *   adds it
+   *   adds it; or (有缘心之助) `surface` is "admin" and the caller is not a deployment admin
    */
-  getGatekeeperApp(id: string): Promise<GatekeeperUiFrame | null>;
+  getGatekeeperApp(id: string, surface?: GatekeeperAppSurface): Promise<GatekeeperUiFrame | null>;
 
   /**
    * Mint a single-use ticket for a user selected on behalf of a gatekeeper app,
@@ -1323,6 +1388,13 @@ export interface AuthenticatedApi extends RpcTarget {
    * @nullWhen the caller is not a deployment admin; amIAdmin() says whether it is
    */
   getAdminApi(): Promise<RpcStub<AdminApi> | null>;
+
+  /**
+   * 有缘心之助：this user's own prepaid billing (balance, top-ups, usage), scoped to them.
+   *
+   * @nullWhen the deployment does not bill its users (it has no BILLING binding)
+   */
+  getBilling(): Promise<RpcStub<BillingUserApi> | null>;
 
   // TODO:
   // - Edit permissions on a connected account.
@@ -2571,7 +2643,73 @@ export interface AdminApi {
 
   /** 获取平台所有用户的行为与 Token 消耗用量统计 */
   getUsageStats(): Promise<UsageStatsResponse>;
+
+  /**
+   * 有缘心之助：prepaid billing administration, acting as the calling admin (every plan change and
+   * grant is recorded under their id in the billing ledger).
+   *
+   * @nullWhen the deployment does not bill its users (it has no BILLING binding)
+   */
+  getBillingAdmin(): Promise<RpcStub<BillingAdminClient> | null>;
 }
+
+/**
+ * 有缘心之助：the admin's billing capability as the browser holds it. Like BillingAdminApi, but the
+ * acting admin is the capability's own, never one the caller names.
+ */
+export interface BillingAdminClient extends RpcTarget {
+  /** The accounts of these users (see BillingAdminApi.getAccounts); a user with none is left out. */
+  getAccounts(userKeys: string[]): Promise<BillingAccountInfo[]>;
+  /** Move a user to `plan`, creating their account if they have none yet. */
+  setPlan(userKey: string, plan: BillingPlan): Promise<BillingAccountInfo>;
+  /** Add `amountUsd` (negative to take some back) to a user's balance, with a reason. */
+  grant(userKey: string, amountUsd: number, note: string): Promise<BillingAccountInfo>;
+  /** A user's ledger, newest first. */
+  listLedger(userKey: string, limit?: number): Promise<BillingLedgerEntry[]>;
+  /** Set a user's own markup (0–10), or null to follow the deployment default. */
+  setMarkup(userKey: string, markup: number | null): Promise<BillingAccountInfo>;
+  /** The usage report for a range, optionally of one user alone. */
+  getUsageReport(query: BillingUsageRange & { userKey?: string }): Promise<BillingUsageReport>;
+  /** Ledger entries in a range, newest first. */
+  listLedgerEntries(query: BillingLedgerQuery): Promise<BillingLedgerEntry[]>;
+  /** One user's metered requests on one day, newest first, paged by `before`. */
+  listUsageEvents(query: BillingUsageEventQuery): Promise<BillingUsageEvent[]>;
+}
+
+/** 单个用户的 Token 消耗与行为用量记录 */
+export type UserUsageRecord = {
+  /** 用户唯一标识（通常为 username 或 email） */
+  username: string;
+  /** 用户对外昵称 */
+  displayName: string;
+  /** 首次注册/进入系统时间 (ISO string) */
+  createdAt: string;
+  /** 最近一次交互或登录活跃时间 (ISO string) */
+  lastActive: string;
+  /** 累计消耗的 Token 总量 */
+  totalTokens: number;
+  /** 累计预估模型调用成本 (USD) */
+  estimatedCost: number;
+  /** 累计执行的 AI 会话交互轮次 */
+  callCount: number;
+  /** 累计创建的剧本/工作区总数 */
+  workspaceCount: number;
+};
+
+/** 平台全局汇总用量概览 */
+export type UsageOverviewStats = {
+  totalUsers: number;
+  totalWorkspaces: number;
+  totalTokens: number;
+  totalCost: number;
+  totalCalls: number;
+};
+
+/** 用量统计总响应体 */
+export type UsageStatsResponse = {
+  overview: UsageOverviewStats;
+  users: UserUsageRecord[];
+};
 
 /** A workspace as AdminWorkspaceView.describe() presents it. */
 export type AdminWorkspaceDescription = Pick<WorkspaceMetadata,
@@ -3160,41 +3298,1872 @@ export interface AdminUserView extends RpcTarget {
   getDiagnostics(): Promise<AdminUserDiagnostics>;
 }
 
-/** 单个用户的 Token 消耗与行为用量记录 */
-export type UserUsageRecord = {
-  /** 用户唯一标识（通常为 username 或 email） */
-  username: string;
-  /** 用户对外昵称 */
+/** A partial edit to one promoted format. Absent fields are left alone. */
+export type AdminFormatPatch = {
+  enabled?: boolean;
+  agentHint?: string;
+  /**
+   * Per-field presentation overrides. A field set to null reverts to the blueprint's declaration;
+   * a field left absent is unchanged.
+   */
+  overrides?: {[K in keyof BlueprintOutput]?: BlueprintOutput[K] | null};
+};
+
+/**
+ * A gatekeeper vendor offered as a sign-in method. The login/signup pages render a "Continue with
+ * ..." button per entry, alongside (never replacing) username/password. Built from auth-capable
+ * gatekeepers (VendorDescription.providesAuth) that are in the deployment's auth allowlist.
+ */
+export type AuthVendorInfo = {
+  /** The gatekeeper vendor id (the GATEKEEPER_<NAME> binding suffix, lowercased), e.g. "google". */
+  vendorId: string;
+  /** Display name, logo, and brand color from the gatekeeper's VendorDescription. */
   displayName: string;
-  /** 首次注册/进入系统时间 (ISO string) */
-  createdAt: string;
-  /** 最近一次交互或登录活跃时间 (ISO string) */
-  lastActive: string;
-  /** 累计消耗的 Token 总量 */
-  totalTokens: number;
-  /** 累计预估模型调用成本 (USD) */
-  estimatedCost: number;
-  /** 累计执行的 AI 会话交互轮次 */
-  callCount: number;
-  /** 累计创建的剧本/工作区总数 */
-  workspaceCount: number;
+  logo?: AvatarImage;
+  color?: string;
 };
 
-/** 平台全局汇总用量概览 */
-export type UsageOverviewStats = {
-  totalUsers: number;
-  totalWorkspaces: number;
-  totalTokens: number;
-  totalCost: number;
-  totalCalls: number;
+/**
+ * Deployment-level configuration that the client needs at boot to decide what UI to render.
+ * Returned by `PublicApi.getServerConfig()`. Contains no secrets.
+ */
+export type ServerConfig = {
+  /**
+   * Auth-capable, allowlisted gatekeeper vendors offered as sign-in methods. Empty when none are
+   * configured (password-only).
+   */
+  authVendors: AuthVendorInfo[];
+
+  /**
+   * Whether username/password login is available. Defaults to true; an installation can disable it
+   * (DISABLE_PASSWORD_AUTH) to be OAuth-only. Forced true if no auth vendor is configured, to avoid
+   * locking everyone out.
+   */
+  passwordAuthEnabled: boolean;
+
+  /**
+   * Whether the optional Cloudflare free-tier limits + top-up flow is enabled. When false (the
+   * default, e.g. self-hosted), usage is unlimited and the credits UI is hidden.
+   */
+  cloudflareLimitsEnabled: boolean;
+
+  /**
+   * Whether new account signups are allowed (admin-configurable, default true). The signup page
+   * hides the create-account form when false.
+   */
+  signupsEnabled: boolean;
+
+  /**
+   * Whether the deployment restricts account creation to an email allowlist (SIGNUP_ALLOWLIST).
+   * The signup page then explains that registration is invite-only.
+   */
+  signupAllowlistEnabled: boolean;
+
+  /**
+   * Whether email OTP registration/login is available: EMAIL_OTP_ENABLED and a configured email
+   * sender. The login page offers the email-code form only then.
+   */
+  emailOtpEnabled: boolean;
+
+  /**
+   * Whether users may search the user directory to find collaborators. When not explicitly
+   * configured, this defaults to the opposite of `signupsEnabled`. When false the share UI offers
+   * only an exact username/email field.
+   */
+  userSearchEnabled: boolean;
+
+  /**
+   * Site name shown next to the top-bar logo (admin-configurable). Empty falls back to
+   * DEFAULT_SITE_NAME.
+   */
+  siteName: string;
+
+  /** Custom deployment logo, or undefined to use the default Cloudflare OS mark. */
+  siteLogo?: AvatarImage;
+
+  /** Deployment-wide top-bar notice (centered text in the top navigation bar). Empty when none is set. */
+  announcement: string;
+
+  /** Deployment-wide full-width banner shown across the top of the app. Empty text hides it. */
+  banner: string;
+  bannerColor: BannerColor;
+
+  /**
+   * Deployment accent (brand) color as a hex string, or "" to use the default theme. The client
+   * overrides the brand CSS variables with this (and derived shades) at runtime.
+   */
+  accentColor: string;
+
+  /**
+   * The central notification service's VAPID public key (base64url), which browsers subscribe to
+   * Web Push with. Absent when this deployment can't send browser push, which hides the browser
+   * notification setting.
+   */
+  webPushPublicKey?: string;
+
+  /**
+   * The version id of the backend answering this connection, or undefined where it has none.
+   * Compared with what VERSION_PATH answers to notice a connection that outlived a deploy.
+   */
+  backendVersion?: string;
 };
 
-/** 用量统计总响应体 */
-export type UsageStatsResponse = {
-  overview: UsageOverviewStats;
-  users: UserUsageRecord[];
+/**
+ * Usage + Cloudflare-connection status for the optional limits flow. Returned by
+ * `AuthenticatedApi.getCloudflareUsage()`.
+ */
+export type CloudflareUsageInfo = {
+  /** Whether the limits flow is enabled at all. When false, the rest is informational only. */
+  cloudflareLimitsEnabled: boolean;
+  /** When true, the user has unlimited access (limits disabled) and counters are not tracked. */
+  unlimited: boolean;
+
+  /** Free-tier daily usage. */
+  dailyUsed: number;
+  dailyLimit: number;
+  remaining: number;
+  /** ISO timestamp when the daily window resets. */
+  resetAt?: string;
+
+  /** Whether the user has connected a Cloudflare account. */
+  connected: boolean;
+  /** The connected account's AI Gateway credit balance (USD), or null if unknown/not connected. */
+  balance: number | null;
+  accountId?: string;
+  accountName?: string;
+  /**
+   * True when connected but the user has multiple Cloudflare accounts and must pick which one to
+   * bill before usage can proceed. The client should prompt with selectCloudflareAccount().
+   */
+  needsAccountSelection?: boolean;
 };
 
+/** A Cloudflare account available to a connected user. Returned by `listCloudflareAccounts()`. */
+export type CloudflareAccountOption = {
+  accountId: string;
+  accountName: string;
+};
+
+/**
+ * Supported AI providers. "cloudflare-auto-router" is AI Gateway's Auto Router, which picks the
+ * model behind each request (see AUTO_ROUTER_MODEL_ID); it exists only inside a gateway.
+ */
+export type AiModelProvider =
+    "openai" | "anthropic" | "google" | "cloudflare" | "ollama" | "cloudflare-auto-router" |
+    // 有缘心之助：OpenCode Go（https://opencode.ai/docs/console/go/），直连其 OpenAI 兼容端点，
+    // 不经 AI Gateway；部署配了 OPENCODE_API_KEY 才提供。计价按各模型厂商的官方价。
+    "opencode-go";
+
+/** The model ID of AI Gateway's Auto Router, the one model of "cloudflare-auto-router". */
+export const AUTO_ROUTER_MODEL_ID = "cloudflare/auto";
+
+/** Information about the AI gateway configuration. Returned by `AuthenticatedApi.getAiConfig()`. */
+export type AiGatewayInfo = {
+  enabled: true;
+  /**
+   * The providers the deployment enables: the ones CF_AI_GATEWAY_PROVIDERS lists and the ones its
+   * admin turned on (see AdminApi.setGatewayProviderEnabled), less "cloudflare-auto-router",
+   * whose one model is the deployment's alone. A user can add a model of their own under these
+   * only.
+   */
+  enabledProviders: AiModelProvider[];
+  /**
+   * The ID of every model the deployment provides through AI Gateway, in any mode (see
+   * GatewayModelMode). A user can't edit or delete these, nor add a model under one of these IDs.
+   */
+  builtInModelIds: string[];
+  /**
+   * Whether users may add models of their own (see AdminApi.setUserModelsEnabled). When false,
+   * addModel() and updateModel() refuse, and the models the user added are neither listed nor
+   * resolved.
+   */
+  userModelsEnabled: boolean;
+} | {
+  enabled: false;
+};
+
+/**
+ * How a deployment offers one of the models it provides through AI Gateway:
+ *   - 'enabled':  offered in model pickers.
+ *   - 'hidden':   left out of pickers but still resolves, so the chats, spawners, preferences and
+ *                 gadget model bindings that already name it keep working.
+ *   - 'disabled': left out of pickers and does not resolve: a chat or spawner that names it is
+ *                 refused, and a gadget model binding minted for it fails at its next call. Its ID
+ *                 stays reserved, so a user can't add a model of their own under it.
+ */
+export const GATEWAY_MODEL_MODES = ['enabled', 'hidden', 'disabled'] as const;
+
+/** One of GATEWAY_MODEL_MODES. */
+export type GatewayModelMode = typeof GATEWAY_MODEL_MODES[number];
+
+/** Whether `value` is a GatewayModelMode. */
+export function isGatewayModelMode(value: unknown): value is GatewayModelMode {
+  return GATEWAY_MODEL_MODES.includes(value as GatewayModelMode);
+}
+
+/**
+ * How much reasoning a model is asked for on an agent's turns, least to most. The values are the
+ * model runtime's own (pi's ModelThinkingLevel). Each model takes some of them. One it lacks is
+ * fitted to the next higher one it has, or else the next lower, so 'off' on a model that cannot
+ * stop reasoning asks for its lowest level. A model that does no reasoning is sent none.
+ */
+export const REASONING_LEVELS =
+    ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
+
+/** One of REASONING_LEVELS. */
+export type ReasoningLevel = typeof REASONING_LEVELS[number];
+
+/** Whether `value` is a ReasoningLevel. */
+export function isReasoningLevel(value: unknown): value is ReasoningLevel {
+  return REASONING_LEVELS.includes(value as ReasoningLevel);
+}
+
+/**
+ * What a model is asked for while no reasoning level is set for it: 'adaptive' when the model
+ * itself decides whether and how much to reason, a level when the Workshop asks for that effort,
+ * and null when no level is sent.
+ */
+export type BuiltInReasoning = ReasoningLevel | 'adaptive' | null;
+
+/**
+ * The share of its compaction budget a chat's prompt may reach before the chat compacts, leaving
+ * room for the response.
+ */
+export const COMPACTION_TRIGGER_RATIO = 0.85;
+
+/**
+ * What a deployment's admin sets for one of its AI Gateway models. A field left out is unset: the
+ * model then has its built-in behaviour, or for `reasoning` the deployment's default level where
+ * one is set.
+ */
+export type GatewayModelSettings = {
+  /**
+   * The reasoning level of the agent's turns on the model, ahead of the deployment's default
+   * (see AdminApi.setDefaultReasoning). One-shot calls, such as titles, compaction summaries
+   * and gadget model bindings, ask for none either way.
+   */
+  reasoning?: ReasoningLevel;
+
+  /**
+   * The prompt budget, in tokens, that a chat on the model compacts against (see
+   * COMPACTION_TRIGGER_RATIO), in place of the model's built-in one. A positive whole number, at
+   * most the model's AdminModelView.maxCompactionInputBudget.
+   */
+  compactionInputBudget?: number;
+
+  /**
+   * For the Auto Router model only: the gateway models it may pick, as the gateway names them
+   * (`anthropic/claude-sonnet-5.5`, `openai/gpt-6-luna`, `@cf/*\/*`; `*` matches one segment).
+   * Unset, it picks among every model of the enabled providers. Each name must belong to an
+   * enabled provider, and a name whose provider is later turned off leaves the pool. The server
+   * refuses the list on any other model, and refuses an empty list or a malformed or foreign
+   * name; a name the gateway does not know fails each request, which the model's test reports.
+   */
+  allowedModels?: string[];
+};
+
+/**
+ * What a deployment's admin states that a model it adds can do. Nothing checks a stated fact
+ * against the provider: requests are built from it as it stands.
+ */
+export type GatewayModelCapabilities = {
+  /** Whether the model takes images as input, beside text. Absent while not stated. */
+  imageInput?: boolean;
+
+  /**
+   * The reasoning levels the model can be sent. A list with no level above 'off' states a model
+   * that does no reasoning. Absent while not stated.
+   */
+  reasoningLevels?: ReasoningLevel[];
+};
+
+/**
+ * The description of a model a deployment provides through AI Gateway. Its admin supplies one to
+ * add a model beside the SUGGESTED_MODELS of the providers the gateway enables.
+ */
+export type GatewayModel = {
+  /** Which AI provider hosts the model. */
+  provider: AiModelProvider;
+
+  /**
+   * Name of the model as specified to the provider's API, which is also the ID chats and
+   * preferences refer to it by.
+   */
+  id: string;
+
+  /** Display name. */
+  name: string;
+
+  /** The line the pickers show under the name, when SUGGESTED_MODELS gives the model one. */
+  description?: string;
+
+  /** The maximum tokens one request may total. */
+  contextWindow: number;
+
+  /** When present, both the requested response cap and the space reserved for it. */
+  outputLimit?: number;
+
+  /**
+   * The ID of a model of the same provider that the model runtime knows. While the runtime has
+   * no entry for this model's own ID, the model borrows that one's runtime flags: its request
+   * formats and, for what `capabilities` leaves unstated, its reasoning levels and the kinds of
+   * input it takes. Its name, limits and cost stay its own.
+   */
+  behavesLike?: string;
+
+  /**
+   * What the model is stated to do. Used only while the runtime has no entry for this model's
+   * own ID, where each stated fact comes ahead of what `behavesLike` lends.
+   */
+  capabilities?: GatewayModelCapabilities;
+};
+
+/** A model a deployment provides through AI Gateway, as its admin sees it. */
+export type AdminModel = GatewayModel & {
+  /** How the deployment offers the model. */
+  mode: GatewayModelMode;
+
+  /**
+   * The mode the model has while the admin leaves it alone: SUGGESTED_MODELS decides it for a
+   * suggested model, and an added model's is 'enabled'.
+   */
+  defaultMode: GatewayModelMode;
+
+  /** Whether the admin added the model, rather than SUGGESTED_MODELS listing it. */
+  added: boolean;
+
+  /** What the admin set for the model. Absent while nothing is set. */
+  settings?: GatewayModelSettings;
+};
+
+/** An AdminModel with what the admin UI needs in order to offer its settings. */
+export type AdminModelView = AdminModel & {
+  /** The reasoning levels the model can be sent, least to most. Empty when it takes none. */
+  reasoningLevels: ReasoningLevel[];
+
+  /**
+   * What the model is asked for while neither its settings nor the deployment's default give it
+   * a reasoning level.
+   */
+  builtInReasoning: BuiltInReasoning;
+
+  /** The compaction budget the model has while GatewayModelSettings sets none. */
+  builtInCompactionInputBudget: number;
+
+  /**
+   * The largest compaction budget the model may be given: the room its context window leaves for
+   * a prompt.
+   */
+  maxCompactionInputBudget: number;
+
+  /**
+   * Whether the model runtime has an entry for the model's own ID. When it has, the runtime's
+   * entry is used, and neither `behavesLike` nor `capabilities` is.
+   */
+  runtimeKnown: boolean;
+
+  /**
+   * For a model with a `behavesLike`, whether the model runtime knows the model it names. When
+   * it does not, there is nothing to borrow, and the model runs as one the runtime does not know
+   * for as long as it has no entry for the model's own ID either.
+   */
+  behavesLikeKnown?: boolean;
+};
+
+/** One of the providers AI Gateway serves, as a deployment's admin sees it. */
+export type AdminGatewayProvider = {
+  /** The provider. */
+  provider: AiModelProvider;
+
+  /**
+   * Who enabled the provider: the CF_AI_GATEWAY_PROVIDERS environment variable, or an admin (see
+   * AdminApi.setGatewayProviderEnabled). Absent while the provider is off.
+   */
+  enabledBy?: 'environment' | 'admin';
+
+  /**
+   * Whether the provider's requests need CF_AI_GATEWAY_API_TOKEN on a deployment that has none,
+   * so that they fail until it is set. It says nothing of the provider keys the gateway holds,
+   * which the Workshop can't see (see AdminApi.testGatewayProvider).
+   */
+  needsApiToken: boolean;
+};
+
+/**
+ * What one request of AdminApi.testGatewayProvider(), AdminApi.testGatewayModel() or
+ * AdminApi.testNewGatewayModel() found: the model asked, and whether it answered. A failure
+ * carries a message on one line, cut short: what the provider or the gateway answered, or why no
+ * answer came. It carries the HTTP status of the response only when the model runtime reports
+ * one, which it does not for every provider (a failed Google request has none): the message then
+ * says what there is. A pass of the Auto Router model names the gateway model that answered.
+ */
+export type GatewayModelTest = { model: string } &
+    ({ ok: true; routedModel?: string } | { ok: false; status?: number; message: string });
+
+/**
+ * One request of AdminApi.testNewGatewayModel(): its result, and the reasoning level it asked
+ * for. Null is the request sent with no level set.
+ */
+export type GatewayModelLevelTest = GatewayModelTest & { reasoning: ReasoningLevel | null };
+
+/** Configuration specifying how to connect to an AI model provider. */
+export type AiModelConfig = {
+  /** Which AI provider hosts the model? */
+  provider: AiModelProvider;
+
+  /** Name of the specific model, as specified to the provider's API. */
+  model: string;
+
+  /**
+   * Secret API token for the respective provider, for billing purposes. For providers "anthropic",
+   * "openai", and "ollama", an empty token means no key is sent at all, e.g. because a proxy
+   * authenticated through `extraHeaders` supplies its own.
+   *
+   * @secret
+   */
+  apiToken: string;
+
+  /**
+   * Cloudflare account ID owning the Workers AI deployment the token authorizes. Required for
+   * provider "cloudflare" (whose REST endpoint is account-scoped); unused for other providers.
+   */
+  accountId?: string;
+
+  /**
+   * URL of the API. If not specified, use the default for the provider. Overriding the URL is
+   * useful in order to use AI proxy products like Cloudflare's AI gateway, or even to use an
+   * alternative provider that provides a compatible API.
+   */
+  apiUrl?: string;
+
+  /**
+   * Additional HTTP headers to send with every request to the provider, keyed by header name.
+   * These override the provider's default headers of the same name (including authentication
+   * headers), which is useful for proxies that require their own credentials. Like `apiToken`
+   * and `apiUrl`, these are ignored when the Workshop routes requests through its own AI
+   * Gateway configuration rather than contacting the provider directly.
+   *
+   * @secret
+   */
+  extraHeaders?: Record<string, string>;
+
+  /**
+   * The maximum tokens one request may total, overriding the Workshop's built-in value for this
+   * model. Useful for a model the Workshop doesn't know, which is otherwise assumed to be small.
+   */
+  contextWindow?: number;
+
+  /**
+   * Overrides the built-in response cap for this model. Like `outputLimit` in the suggested-model
+   * table, it is both the requested response cap and the space reserved for it in the window.
+   */
+  outputLimit?: number;
+
+  /**
+   * The reasoning level of an agent's turns on the model. Absent gives the model's built-in
+   * behaviour. Set only on a deployment's AI Gateway models (see GatewayModelSettings).
+   */
+  reasoning?: ReasoningLevel;
+
+  /**
+   * Overrides the model's built-in compaction budget, up to the room its window leaves for a
+   * prompt. Set only on a deployment's AI Gateway models (see GatewayModelSettings).
+   */
+  compactionInputBudget?: number;
+
+  /**
+   * The model whose runtime flags this one borrows (see GatewayModel.behavesLike). Set only on
+   * the models a deployment's admin added to its AI Gateway.
+   */
+  behavesLike?: string;
+
+  /**
+   * What the model is stated to do (see GatewayModel.capabilities). Set only on the models a
+   * deployment's admin added to its AI Gateway.
+   */
+  capabilities?: GatewayModelCapabilities;
+
+  /** The pool the Auto Router model picks from; absent, the gateway's default pool applies. */
+  autoRouterPool?: AutoRouterPool;
+};
+
+/**
+ * The Auto Router model's pool: the listed gateway model names of enabled providers (see
+ * GatewayModelSettings.allowedModels), or else the enabled providers' every model.
+ */
+export type AutoRouterPool = { models: string[] } | { providers: AiModelProvider[] };
+
+/**
+ * An `AiModelConfig` whose secrets may be withheld, so that a stored configuration can be shown
+ * and edited without the client ever receiving its secrets. As returned by
+ * `AuthenticatedApi.getModelConfig()`, a `null` secret is a non-empty value that was withheld. As
+ * passed to `AuthenticatedApi.updateModel()` or `addModel()`, a `null` secret keeps (or copies)
+ * the stored value. It has none of the fields that only a deployment sets on its own models.
+ */
+export type RedactedAiModelConfig = Omit<AiModelConfig,
+    "apiToken" | "extraHeaders" | "reasoning" | "compactionInputBudget" | "behavesLike" |
+    "capabilities" | "autoRouterPool"> & {
+  /**
+   * `AiModelConfig.apiToken`, or null if withheld.
+   *
+   * @secret
+   */
+  apiToken: string | null;
+
+  /**
+   * `AiModelConfig.extraHeaders`, with each value null if withheld.
+   *
+   * @secret
+   */
+  extraHeaders?: Record<string, string | null>;
+};
+
+/**
+ * Workers AI adds the response cap to the prompt and rejects a request whose total exceeds the
+ * model's window, so every Cloudflare model reserves this much of it for the response.
+ */
+export const WORKERS_AI_OUTPUT_LIMIT = 32768;
+
+/**
+ * What a model does, which decides where it can be used. A `"language"` model writes text: it can
+ * chat and back a `LanguageModelBinding`. A `"decision"` model answers typed questions with
+ * probabilities: gadgets can bind it as a `DecisionModelBinding`, but it can't chat.
+ */
+export type ModelKind = "language" | "decision";
+
+/** One entry of SUGGESTED_MODELS. */
+type SuggestedModel = {
+  name: string;
+
+  /** A line the model pickers show under the name, when the name alone doesn't say what it does. */
+  description?: string;
+
+  /** The maximum tokens one request may total. */
+  contextWindow: number;
+
+  /** When present, both the requested response cap and the space reserved for it. */
+  outputLimit?: number;
+
+  /**
+   * When present, the preferred prompt budget used for compaction, below the model's hard context
+   * window. Can avoid long-context pricing (GPT-5.6 doubles above 272K) while retaining the full
+   * window as the hard limit.
+   */
+  compactionInputBudget?: number;
+
+  /**
+   * Makes the model's default mode 'hidden' rather than 'enabled' (see GatewayModelMode): still
+   * resolvable for stored references, not offered in pickers. Set on models superseded by a newer
+   * one, which chats, spawners, and preferences created earlier may still name. A deployment's
+   * admin can override the default for its AI Gateway.
+   */
+  hidden?: true;
+
+  /** The model's kind; absent means `"language"`. */
+  kind?: ModelKind;
+};
+
+// 有缘心之助：下架型号（Kimi K2.7 Code、GLM 5.2、DeepSeek V4 Pro 0813、GPT-6 Astra、
+// GPT-6.1 Sol、Gemini 3.6 Flash）保留条目但标记 hidden：选择器不再提供，历史对话与定时任务仍能解析。
+// The literal is kept apart from the export so SuggestedModelId can derive the model ids from it.
+const SUGGESTED_MODEL_CATALOG = {
+  // First so that, when its provider is on, Auto leads the model pickers and is the model a new
+  // user or chat gets by default, unless the admin lists the providers in another order.
+  "cloudflare-auto-router": {
+    // The router answers with whichever model it picks, so the window is the smallest documented
+    // in its pool (https://developers.cloudflare.com/ai-gateway/features/auto-router/#models:
+    // Workers AI's gpt-oss-20b, 128K), and the output limit is reserved as Workers AI reserves
+    // one, in case a Workers AI model is picked.
+    [AUTO_ROUTER_MODEL_ID]: {
+      name: "Auto", description: "Best model for each request",
+      contextWindow: 128000, outputLimit: WORKERS_AI_OUTPUT_LIMIT,
+    },
+  },
+  "cloudflare": {
+    // First, so that it is the Workers AI model a deployment defaults to.
+    "@cf/deepseek-ai/deepseek-v4.1-flash-1017": {
+      name: "DeepSeek V4.1 Flash (Workers AI)", contextWindow: 1048576,
+      outputLimit: WORKERS_AI_OUTPUT_LIMIT,
+    },
+    "@cf/moonshotai/kimi-k2.7-code": {
+      name: "Kimi K2.7 Code (Workers AI)", contextWindow: 262144,
+      outputLimit: WORKERS_AI_OUTPUT_LIMIT,
+    },
+    "@cf/zai-org/glm-5.3": {
+      name: "GLM 5.3 (Workers AI)", contextWindow: 1048576, outputLimit: WORKERS_AI_OUTPUT_LIMIT,
+    },
+    "@cf/zai-org/glm-5.2": {
+      name: "GLM 5.2 (Workers AI)", contextWindow: 262144, outputLimit: WORKERS_AI_OUTPUT_LIMIT,
+    },
+    "@cf/zai-org/glm-5.3-flash": {
+      name: "GLM 5.3 Flash (Workers AI)", contextWindow: 1048576,
+      outputLimit: WORKERS_AI_OUTPUT_LIMIT, hidden: true,
+    },
+    "@cf/deepseek-ai/deepseek-v4-pro-0813": {
+      name: "DeepSeek V4 Pro 0813 (Workers AI)", contextWindow: 1048576,
+      outputLimit: WORKERS_AI_OUTPUT_LIMIT, hidden: true,
+    },
+    "@cf/cloudflare/clef": {name: "Clef (Workers AI)", contextWindow: 65536, kind: "decision"},
+    "@cf/cloudflare/clef-flash": {
+      name: "Clef Flash (Workers AI)", contextWindow: 65536, kind: "decision",
+    },
+  },
+  "anthropic": {
+    "claude-opus-5-5": {name: "Claude Opus 5.5", contextWindow: 1000000},
+    "claude-sonnet-5-5": {name: "Claude Sonnet 5.5", contextWindow: 1000000},
+    "claude-haiku-5-5": {name: "Claude Haiku 5.5", contextWindow: 1000000},
+    "claude-fable-5-2": {name: "Claude Fable 5.2", contextWindow: 1000000},
+    "claude-fable-5-1": {name: "Claude Fable 5.1", contextWindow: 1000000, hidden: true},
+    "claude-opus-5": {name: "Claude Opus 5", contextWindow: 1000000, hidden: true},
+    "claude-sonnet-5": {name: "Claude Sonnet 5", contextWindow: 1000000, hidden: true},
+    "claude-haiku-4-5": {name: "Claude Haiku 4.5", contextWindow: 200000, hidden: true},
+  },
+  "openai": {
+    // pi's GPT-6 catalog reports a 272K window, but these models support 1.05M. Use 272K as the
+    // preferred compaction budget, not as the hard context limit.
+    "gpt-6.2-sol": {
+      name: "GPT-6.2 Sol", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+    },
+    "gpt-6.2-astra": {
+      name: "GPT-6.2 Astra", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+    },
+    "gpt-6.1-sol": {
+      name: "GPT-6.1 Sol", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000, hidden: true,
+    },
+    "gpt-6.1-terra": {
+      name: "GPT-6.1 Terra", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+    },
+    "gpt-6-sol": {
+      name: "GPT-6 Sol", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+      hidden: true,
+    },
+    "gpt-6-luna": {
+      name: "GPT-6 Luna", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+    },
+    "gpt-6-astra": {
+      name: "GPT-6 Astra", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+      hidden: true,
+    },
+    "gpt-5.6-sol": {
+      name: "GPT 5.6 Sol", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+      hidden: true,
+    },
+    "gpt-5.6-luna": {
+      name: "GPT 5.6 Luna", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+      hidden: true,
+    },
+    "gpt-5.6-terra": {
+      name: "GPT 5.6 Terra", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+      hidden: true,
+    },
+  },
+  "google": {
+    "gemini-3.8-flash": {name: "Gemini 3.8 Flash", contextWindow: 1048576},
+    "gemini-4-hydrogen": {name: "Gemini 4 Hydrogen", contextWindow: 1048576},
+    "gemini-4-argon": {name: "Gemini 4 Argon", contextWindow: 1048576},
+    "gemini-4-carbon": {name: "Gemini 4 Carbon", contextWindow: 1048576},
+    "gemini-3.6-flash": {name: "Gemini 3.6 Flash", contextWindow: 1048576, hidden: true},
+  },
+  "ollama": {
+  },
+  // 有缘心之助：便宜的开放模型，经 OpenCode Go 提供。首个是该服务商的默认模型。
+  "opencode-go": {
+    "deepseek-v4.1-flash": {name: "DeepSeek V4.1 Flash", contextWindow: 1000000, outputLimit: 384000},
+    "glm-5.3-flash": {name: "GLM 5.3 Flash", contextWindow: 1000000, outputLimit: 131072},
+    "qwen3.8-flash": {name: "Qwen3.8 Flash", contextWindow: 1000000, outputLimit: 131072},
+    "mimo-v2.6-flash": {name: "MiMo V2.6 Flash", contextWindow: 1048576, outputLimit: 131072},
+    "minimax-m3.1-flash": {name: "MiniMax M3.1 Flash", contextWindow: 1000000, outputLimit: 512000},
+    "kimi-k2.7-code": {name: "Kimi K2.7 Code", contextWindow: 262144, outputLimit: 262144},
+    "glm-5.3": {name: "GLM 5.3", contextWindow: 1000000, outputLimit: 131072},
+    "glm-5.2": {name: "GLM 5.2", contextWindow: 1000000, outputLimit: 131072},
+  },
+} satisfies Record<AiModelProvider, Record<string, SuggestedModel>>;
+
+/**
+ * Models built into the Workshop, by provider and model id. Pickers skip the hidden ones, unless
+ * the admin of an AI Gateway deployment enabled them there.
+ */
+export const SUGGESTED_MODELS: Record<AiModelProvider, Record<string, SuggestedModel>> =
+    SUGGESTED_MODEL_CATALOG;
+
+/** A model ID listed in SUGGESTED_MODELS, optionally narrowed to one provider's catalog. */
+export type SuggestedModelId<P extends AiModelProvider = AiModelProvider> =
+  { [K in P]: keyof (typeof SUGGESTED_MODEL_CATALOG)[K] & string }[P];
+
+/** The kind of a model, named by its provider and its ID on the provider's API. */
+export function modelKind(provider: string, model: string): ModelKind {
+  return SUGGESTED_MODELS[provider as AiModelProvider]?.[model]?.kind ?? "language";
+}
+
+/**
+ * A model's official unit prices, in USD per million tokens. The same numbers the provider's
+ * pricing page publishes; what a deployment actually charges is its own business (see
+ * `AuthenticatedApi.getModelPricing()`).
+ */
+export type ModelPrice = {
+  /** Per million input tokens. */
+  input: number;
+
+  /** Per million output tokens. */
+  output: number;
+
+  /** Per million input tokens read from the provider's prompt cache. */
+  cacheRead: number;
+
+  /** Per million input tokens written to the provider's prompt cache; 0 where writes are free. */
+  cacheWrite: number;
+
+  /**
+   * The rates a request pays instead once its input exceeds `inputTokensAbove` tokens, for the
+   * models whose provider prices long prompts higher. Absent when one rate covers the whole
+   * context window.
+   */
+  longContext?: {
+    /** The number of input tokens above which this tier applies. */
+    inputTokensAbove: number;
+    /** Per million input tokens at this tier. */
+    input: number;
+    /** Per million output tokens at this tier. */
+    output: number;
+    /** Per million input tokens read from the prompt cache at this tier. */
+    cacheRead: number;
+    /** Per million input tokens written to the prompt cache at this tier. */
+    cacheWrite: number;
+  };
+};
+
+/** A deployment-provided model and its official unit price, as `getModelPricing()` lists it. */
+export type ModelPricing = {
+  /** Which AI provider hosts the model. */
+  provider: AiModelProvider;
+
+  /** The model's ID on the provider's API, matching `listModels()`. */
+  id: string;
+
+  /** Display name. */
+  name: string;
+
+  /** The model's current official unit prices. */
+  price: ModelPrice;
+
+  /**
+   * The next announced price change, when the provider has published one: `from` is the UTC
+   * date (`YYYY-MM-DD`) on which `price` takes effect.
+   */
+  nextPrice?: { from: string; price: ModelPrice };
+};
+
+/**
+ * Providers whose pi API adapter refuses a custom fetch, so their inference cannot ride the
+ * Workers AI binding and needs CF_AI_GATEWAY_API_TOKEN over HTTPS. pi's Google adapter throws
+ * "Custom fetch is not supported by the Google Generative AI adapter" whenever the fetch it is
+ * given is not globalThis.fetch, and the client it builds on offers no hook to route around that:
+ * @google/genai's `GoogleGenAI` takes only `httpOptions`, whose knobs are
+ * baseUrl/apiVersion/headers/timeout/extraBody/retryOptions.
+ * https://github.com/earendil-works/pi/blob/v0.84.2/packages/ai/src/api/google-generative-ai.ts#L80
+ *
+ * pi's Vertex adapter throws the same way, so a google-vertex provider would belong here too; it
+ * is absent only because this deployment has no such provider.
+ * https://github.com/earendil-works/pi/blob/v0.84.2/packages/ai/src/api/google-vertex.ts#L98
+ */
+export const HTTPS_ONLY_PROVIDERS: ReadonlySet<string> = new Set<AiModelProvider>(["google"]);
+
+/**
+ * Metadata about a workspace (one Overseer DO and everything in it). Includes everything needed
+ * to render the workspace list on the front page.
+ */
+export type WorkspaceMetadata = {
+  /**
+   * Unique ID for this workspace, used with `openWorkspace()`. This is a url-safe base64 value
+   * chosen randomly when the workspace is created.
+   */
+  id: string;
+
+  /**
+   * Human-readable workspace title. Can be modified. (Per-gadget titles live on the gadget
+   * workpieces themselves; see WorkpieceSummary.)
+   */
+  title: string;
+
+  /** Total cost of AI inference in dollars, if known. */
+  totalCost?: number;
+
+  /** Whether the user has pinned this workspace to the top of their list. */
+  pinned?: boolean;
+
+  /** Set while the user has muted this workspace's notifications. */
+  notificationMute?: NotificationMute;
+
+  /**
+   * Set when the workspace is not owned by the current user. Presence of this field indicates the
+   * user is a collaborator, not the owner.
+   */
+  owner?: AiChatAuthorInfo;
+
+  /**
+   * The viewing user's effective role for this workspace. The owner is always "build". Used by the
+   * frontend to decide whether to render the full editor ("build") or the UI-only shell ("use").
+   * Absent implies "build" for backwards compatibility.
+   */
+  role?: CollaboratorRole;
+
+  /**
+   * True when the workspace has observed data marked `containsRestrictedData` (see
+   * `ObservationDescription`). It can still be shared, with collaborators verified per
+   * gatekeeper (if `ownerInvitesOnly` is also set, only the owner can add them), but its web
+   * fetches reach only the hosts the deployment admin trusts (none by default) or, where the admin
+   * allows it, a URL a user approves, and every action requires manual approval.
+   */
+  containsRestrictedData?: boolean;
+
+  /**
+   * True when the workspace has observed data marked `ownerInvitesOnly` (see
+   * `ObservationDescription`). Only collaborators the owner added directly have access: share
+   * links can no longer be created, copied, or redeemed, and only the owner can add collaborators.
+   */
+  ownerInvitesOnly?: boolean;
+
+  /**
+   * Various objects in the API specify a gadgetId, but make the property optional. When omitted,
+   * the default gadget ID should be assumed. This is largely for backwards compatibility with
+   * records that were stored before workspaces could have multiple gadgets.
+   *
+   * TODO(multi-gadget): Do a migration to backfill all gadget IDs, then eliminate the concept of
+   * a default gadget from the API.
+   */
+  defaultGadgetId?: WorkpieceId;
+
+  // TODO:
+  // - created / modified / activity times
+  // - icon? thumbnail?
+}
+
+/**
+ * WorkspaceMetadata extended with timestamps. These are available when listing workspaces from the
+ * user's collection (listWorkspaces()), but not from the Overseer (which doesn't track them).
+ */
+export type WorkspaceMetadataWithTimestamps = WorkspaceMetadata & {
+  created: Date;
+  lastActive: Date;
+}
+
+/**
+ * The icons an output format may be drawn with. A closed set because we want them to look consistent.
+ * The glyphs themselves live in the frontend, so only these keys ever cross the wire.
+ */
+export const OUTPUT_ICONS = ["fileText", "gridNine", "presentation", "appWindow", "flowArrow",
+    "kanban", "chartBar", "table", "notebook", "listChecks"] as const;
+
+/** One of `OUTPUT_ICONS`, naming a glyph the frontend knows how to draw. */
+export type OutputIcon = typeof OUTPUT_ICONS[number];
+
+/**
+ * Whether an unknown value names one of the icons this deployment can draw. Used wherever an icon
+ * arrives from outside the kernel: a published blueprint, an admin override, or the browser.
+ */
+export function isOutputIcon(value: unknown): value is OutputIcon {
+  return typeof value === "string" && (OUTPUT_ICONS as readonly string[]).includes(value);
+}
+
+/**
+ * What instantiating a blueprint produces: a Document, a Spreadsheet, a Workflow, etc. Declared
+ * by the blueprint's author (see `BlueprintMetadata.output`), inherited by every gadget instantiated
+ * from it, and used wherever that gadget is shown in place of generic gadget.
+ *
+ * Declaring this is presentation only. Any user can publish a blueprint calling itself a
+ * Document; that must be harmless. Being offered as one of the deployment's standard formats (in
+ * the New menu, or the agent's preferred list) is a separate, admin-curated decision.
+ */
+export type BlueprintOutput = {
+  /**
+   * Stable grouping slug, e.g. "document". Outputs sharing an id are grouped together on the
+   * outputs page.
+   */
+  id: string;
+
+  noun: string;
+  plural: string;
+
+  icon: OutputIcon;
+};
+
+/**
+ * One entry of the "New ..." menu, as returned by `listOutputFormats()`. This names a blueprint the
+ * deployment has promoted, instantiated with `newWorkspaceFromBlueprint(blueprintId, ...)` like any
+ * other.
+ */
+export type OutputFormatOffer = {
+  blueprintId: string;
+
+  /**
+   * How to name and draw it: the blueprint's own declaration with any deployment override
+   * applied. Also what the created gadget inherits.
+   */
+  output: BlueprintOutput;
+
+  /** The blueprint's description. */
+  description: string;
+
+  /** The blueprint needs bindings wired up before it can run. */
+  requiresSetup: boolean;
+};
+
+/** The result of `AuthenticatedApi.listOutputs()`. */
+export type ListOutputsResult = {
+  /** Every output indexed so far. */
+  outputs: OutputSummary[];
+
+  /**
+   * Set while workspaces predating the index are still being swept into it, which happens once per
+   * user after a deployment upgrades. Each call sweeps a bounded number of them, so a caller that
+   * wants the rest calls again until this is false.
+   *
+   * False means stop asking, not that the index is complete. A workspace that couldn't be reached
+   * is passed over rather than retried forever, and a sweep that reached none of them gives up for
+   * now instead of spinning. Either way the gap closes when the workspace is next opened, and the
+   * next call to this method resumes any sweep that was left unfinished.
+   */
+  catchingUp: boolean;
+};
+
+/**
+ * One entry in the user's output index: something a workspace produced that the user can open
+ * directly.
+ */
+export type OutputSummary = {
+  /** The workspace that contains this output (an `openWorkspace()` id). */
+  workspaceId: string;
+
+  /**
+   * The workpiece within that workspace. `(workspaceId, workpieceId)` uniquely identifies an
+   * output.
+   */
+  workpieceId: WorkpieceId;
+
+  /**
+   * The format this output was built as, if it came from a blueprint declaring one. Absent for a
+   * gadget built from scratch, which displays as a generic app.
+   */
+  output?: BlueprintOutput;
+
+  title: string;
+  workspaceTitle: string;
+  created: Date;
+
+  /**
+   * When the containing workspace was last active. Outputs have no activity timestamp of their
+   * own yet, so all outputs of a workspace share this value.
+   */
+  lastActive: Date;
+
+  /**
+   * Set when the containing workspace is owned by someone else (i.e. it was shared with the
+   * caller).
+   */
+  owner?: AiChatAuthorInfo;
+
+  /**
+   * The caller's role, cached on their last open and refreshed when a revocation downgrades them,
+   * so a listing can offer only the actions it permits; the workspace still authorizes each one
+   * when attempted. Absent for the caller's own workspaces, and for a shared one whose last open
+   * predates this field.
+   */
+  role?: CollaboratorRole;
+}
+
+/**
+ * Describes the client-side UI code for a Gadget. Such code is intended to run inside an iframe
+ * sandbox with no access to the outside world except through an RPC interface to the Workshop
+ * and to the Gadget's server.
+ */
+export type UiBundle = {
+  // URL from which the main bundle of UI code can be downloaded. This download contains all the
+  // Gadget's client-side assets. The URL is content-addressed to make it highly cacheable, even
+  // across multiple Gadgets sharing the same implementation (blueprint).
+  //
+  // TODO: Specify the format of what this URL returns. A raw HTML page doesn't quite work because
+  //   the client needs to initialize the sandbox with some platform libraries before loading the
+  //   Gadget itself.
+//  url: string;
+
+  /**
+   * A legacy UI's `client.js`: one module, which has no default export and imports only `data:`
+   * URLs. The page runs it with the `gadget` stub, `RpcTarget` and `RpcStub` as globals.
+   * TODO: For now we just return the code but we should switch to serving over HTTP as described
+   *   above, for caching. Or... maybe we should actually serve over RPC, but also employ the
+   *   Cache API in the browser? Or some other local storage?
+   */
+  jsCode: string;
+} | {
+  /**
+   * `client.js`, the UI's entry, then every other module it reaches through its imports, each
+   * with its relative imports rewritten to the internal keys the page's import map resolves (see
+   * `ui-page.ts`). Anyone who can use the gadget receives these, so nothing only `server.js`
+   * imports is ever included.
+   *
+   * The page starts the UI by calling `main(gadget, host)` on `client.js`'s default export, where
+   * `host` is a `GadgetHost`, and sets no globals: the `gadget` stub reaches only code `main()`
+   * passes it to, and the modules import `RpcTarget` and `RpcStub` from "capnweb", which the page
+   * maps to the Cap'n Web its RPC session uses.
+   *
+   * That keeps the stub from code that isn't handed it, not from code trying to get it: the
+   * modules share one realm, where one can intercept what another passes around. Nor is the
+   * page's connection to the server reserved for its runtime. Any module can post the iframe's
+   * RPC handshake to the Workshop, and in a browser-mode export any module can replace the
+   * globals the export's RPC session runs through.
+   */
+  modules: UiModule[];
+};
+
+/**
+ * What the page running a gadget's UI offers it besides the gadget's server: the second argument
+ * of `main(gadget, host)` (see `UiBundle.modules`). The Workshop implements it for the live view,
+ * and browser-mode export implements it too, so each method also says what it does during an
+ * export, where there is no Workshop UI.
+ *
+ * It travels on the frame's one RPC session with the page, beside `gadget`, so that a capability
+ * the host gives the gadget's UI, passed on to the gadget's server (or the reverse), never
+ * proxies through the frame.
+ */
+export interface GadgetHost {
+  /**
+   * Shows the user the chat of an agent this gadget spawned, named by its
+   * `SpawnedAgent.getChatToken()` (see `AiChatMetadata.chatToken`). The Workshop opens the chat in
+   * its chat sidebar. Does nothing where there is no chat sidebar (a use-only view, or a
+   * browser-mode export) or while the gadget isn't on screen. Throws if the token names no chat in
+   * this workspace.
+   */
+  openAgentChat(chatToken: string): Promise<void>;
+}
+
+/** One module of a Gadget UI. */
+export type UiModule = {
+  /** The module's path in the gadget's file tree, with no `.` or `..` segments. */
+  path: string;
+
+  /** The module's code, with its relative imports rewritten. */
+  code: string;
+};
+
+/**
+ * A git author/committer identity, as recorded in commits in a workspace's git object store.
+ * Derived from the committing user's profile: the display name becomes `name` and the profile ID
+ * the `email` (profile IDs that aren't email addresses get an `@localhost` placeholder appended).
+ */
+export type CommitIdentity = {
+  /** Human-readable name, e.g. "Kenton Varda". */
+  name: string;
+
+  /** Email address, e.g. "kenton@cloudflare.com" or "kenton@localhost". */
+  email: string;
+};
+
+/**
+ * Metadata of one commit in a workspace's git object store, as returned by
+ * Overseer.getCommitLog(). Commits are immutable, so results may be cached by oid.
+ */
+export type CommitInfo = {
+  /** The commit's oid (40-hex SHA-1), as found in e.g. WorkpieceSummary.commitId. */
+  oid: string;
+
+  /** Parent commit oids; empty for a root commit. */
+  parents: string[];
+
+  /** The commit message, as stored (git normalization gives it a trailing newline). */
+  message: string;
+
+  /** The commit author. */
+  author: CommitIdentity;
+
+  /** The author timestamp. */
+  timestamp: Date;
+};
+
+/**
+ * One entry of a commit's tree, as returned by Overseer.listTree(): a directory carrying its own
+ * entries, or a leaf of one of git's four non-directory modes. `name` is a single path segment
+ * (never containing `/`); a file's path is the `/`-join of the names down to it. A `symlink` and
+ * a `submodule` (gitlink) are listed with their kind and have no readable text (see
+ * FileAtCommit). Nested rather than a flat path list so the tree needs one call per commit and
+ * no parsing, and each name travels once. Carries no oids or sizes.
+ */
+export type TreeNode =
+  | { name: string; kind: "file" | "executable" | "symlink" | "submodule" }
+  | { name: string; kind: "dir"; children: TreeNode[] };
+
+/**
+ * One file's content at a commit, as returned by Overseer.readFilesAtCommit(). `text` carries
+ * the file's UTF-8 content; `absent` means the path names no entry at that commit (or names a
+ * directory); `unreadable` means the entry exists but is not a regular file -- a symlink or a
+ * submodule -- and carries a descriptive, path-flavored message suitable for display in place
+ * of the file.
+ *
+ * `blob` names a regular file by its git blob instead of carrying its content: the caller reads
+ * the bytes with Overseer.readBlob(). It is how content that is not text arrives (a NUL byte, or
+ * invalid UTF-8), and how every file over MAX_BUFFERED_BLOB_SIZE arrives. The server has not
+ * checked that a file over that size is text, so the caller applies the same rules to its bytes.
+ */
+export type FileAtCommit =
+  | { kind: "text"; text: string }
+  | { kind: "blob"; blob: BytesRef }
+  | { kind: "absent" }
+  | { kind: "unreadable"; message: string };
+
+/**
+ * Maximum number of paths one Overseer.readFilesAtCommit() call may name. Callers with more
+ * paths chunk them across calls.
+ */
+export const MAX_READ_FILES_PER_CALL = 64;
+
+/**
+ * Text bytes after which Overseer.readFilesAtCommit() stops decoding and omits the remaining
+ * requested paths from its response (the client re-requests them). Keeps one response well
+ * under the RPC message ceiling even with the UTF-16 inflation of serialized text. The first
+ * file is always returned whole, however large, so every call makes progress. A `blob` entry
+ * carries no content, so it does not count toward this budget.
+ */
+export const READ_FILES_RESPONSE_BUDGET = 8 * 1024 * 1024;
+
+/**
+ * Specifies the state of an action in the action log:
+ * * pending: Action has not been applied yet. It is waiting for approval.
+ * * approved: Action was approved and applied.
+ * * rejected: Action was rejected by the user.
+ */
+export type ActionState = "pending" | "approved" | "rejected";
+
+/**
+ * One entry in a workspace's action log, discriminated by `type`: an action a gadget asked a
+ * gatekeeper to take, an observation it made, or a hook it bound.
+ */
+export type ActionLogEntry = {
+  /** Sequential ID number for the action. Counts up from when the workspace was created. */
+  id: number;
+
+  /**
+   * Which gatekeeper produced this action? Omitted if the log entry came from a non-gatekeeper
+   * source (e.g. webFetch tool).
+   */
+  gatekeeperId?: WorkpieceId;
+
+  /**
+   * The chat this entry was made from: the chat whose agent made it, or whose slash command or
+   * gadget code did. Absent for a hook firing and for gadget code running outside any chat.
+   */
+  chatId?: number;
+
+  resourceTitle: string;
+  resourceUrl?: string;
+
+  createdAt: Date;
+  appliedAt?: Date;
+
+  state: ActionState;
+} & ({
+  type: "action";
+  description: ActionDescription;
+  /**
+   * Who resolved the action (approved or rejected it). Set when the action leaves "pending"; absent
+   * while still pending (or for legacy actions resolved before this was tracked). For an
+   * auto-approved action this is the user who enabled the rule -- auto-approvals run under their
+   * authority (see `autoApproved`).
+   */
+  resolvedBy?: AiChatAuthorInfo;
+
+  /**
+   * True when the action was applied automatically by an auto-approval rule rather than by a human
+   * clicking Approve. Only ever set alongside state "approved" (there is no automatic rejection).
+   */
+  autoApproved?: boolean;
+
+  /**
+   * True for the creation queued by createExternalResource. Approving it requires one of the
+   * approver's accounts for the gatekeeper's vendor (see GatekeeperClient.getCreationSpec()), in
+   * which the resource is created.
+   */
+  creation?: true;
+} | {
+  type: "observation";
+  description: ObservationDescription;
+} | {
+  type: "bindHook";
+
+  description: HookDescription;
+
+  /** Hook that was created by this action. `undefined` if it was later deleted. */
+  hookId?: number;
+
+  /** Is the hook currently enabled? */
+  enabled: boolean;
+
+  // Note that `state` is not meaningful for hooks. Instead of being "approved" or "rejected", they
+  // are enabled/disabled, which the user can freely toggle as often as they want.
+});
+
+/** How the approver of a creation (see ActionLogEntry.creation) chose to make it. */
+export type CreationApproval = {
+  /** The approver's connected account, for the gatekeeper's vendor, to create the resource in. */
+  accountId: number;
+
+  /**
+   * What the approver chose in that account's creation configurator (see
+   * AuthenticatedApi.startCreationConfigurator()): a vendor-defined URL only the gatekeeper reads.
+   * Omitted when they made no choice, as for a type without one.
+   */
+  configuration?: string;
+};
+
+/** A hook bound in a workspace: a gatekeeper event that wakes a gadget's code. */
+export type BoundHookInfo = {
+  id: number;
+
+  /** The gatekeeper that delivers this hook. */
+  gatekeeperId: WorkpieceId;
+
+  /** The gadget whose code this hook wakes. */
+  gadgetId: WorkpieceId;
+
+  resourceTitle?: string;
+  resourceUrl?: string;
+  description: HookDescription;
+  enabled: boolean;
+};
+
+/**
+ * Configuration for an AI spawner binding. This binding allows the gadget to programmatically
+ * create new agents, that is, start new agent chat threads, which appear in the gadget's agent
+ * chat UI as new conversations. Agents created this way don't typically edit the gadget code, but
+ * rather use the `executeCode` tool to directly invoke the gadget's bindings to perform tasks.
+ * Beyond the bindings configured here, a gadget hands an agent per-task capabilities -- RPC stubs
+ * representing specific resources or callbacks relevant to that agent session -- as the arguments
+ * of calls made on the stub that the binding's `spawnCallable()` returns.
+ *
+ * For example, a gadget that responds to emails might invoke an agent for each email message that
+ * arrives, with an RPC stub that allows it to reply to that email -- but prohibits the agent from
+ * seeing or replying to any other email, to guard against prompt injection or information leakage
+ * between email threads.
+ */
+export type AgentSpawnerConfig = {
+  /** Display name for the binding, shown in the binding list. */
+  displayName: string,
+
+  /**
+   * Model ID to run, of the gadget owner's available models. Can be `null` to just create a chat
+   * that doesn't actually run an agent -- the prompt, or the calls made on a callable agent, are
+   * appended to the chat for a human to pick up.
+   */
+  modelId: string | null,
+
+  /**
+   * The bindings available to agents spawned by this spawner: binding name (as it appears as
+   * `env.NAME` in the spawned agent's executeCode environment) -> target workpiece. This is the
+   * spawner's initial set: afterwards the chat agent may add more with `setGadgetBinding`, each
+   * a proposal that takes effect once the user accepts the chat's changes. When an agent is
+   * spawned, the spawner's bindings are snapshotted into the spawned chat's seed binding layer
+   * (entries whose targets no longer exist are dropped); the spawned agent sees only these
+   * bindings, never the workspace's default binding list.
+   *
+   * The entries are deliberately not limited to bindings held by the gadget that owns the
+   * spawner: a spawner may define bindings of its own, with its own names and targets.
+   *
+   * Once a gadget binds the spawner, every binding target joins each "use" collaborator's
+   * verification scope transitively: spawning is reachable from the gadget UI, and the spawned
+   * agent reads these bindings with the spawner creator's authority.
+   */
+  env: Record<string, WorkpieceId>,
+};
+
+/**
+ * The `vendorId` with which the agent's requestConnection asks the user to add an agent spawner
+ * (see AgentSpawnerConfig) rather than connect a gatekeeper vendor's resource. No vendor can have
+ * it: vendor ids come from binding names, which have no hyphen.
+ */
+export const AGENT_SPAWNER_CONNECTION_ID = "agent-spawner";
+
+/**
+ * Interface to a workspace's Overseer, used to display the Gadget Workshop shell UI around that
+ * workspace. Workspace-level concerns live here: the gadget registry, committed code (git
+ * commits in the workspace's shared object store, each gadget's head recorded in
+ * WorkpieceSummary.commitId), per-chat uncommitted changes (a revisioned stream of code changes per
+ * chat, applied on top of commits; see ChatCodeBase), chats, actions/hooks, sharing, and
+ * blueprint listing. Per-gadget operations live on the GadgetClient sub-capability (see
+ * createGadget()/getGadget()).
+ */
+export interface Overseer extends RpcTarget {
+  /** Get metadata describing this workspace. */
+  getMetadata(): Promise<WorkspaceMetadata>;
+
+  /**
+   * Get metadata describing this workspace and subscribe to changes.
+   *
+   * `callback` will be called once immediately with the current metadata, then again any time it
+   * changes.
+   *
+   * Disposing the returned `RpcStub` will cancel the subscription.
+   */
+  subscribeToMetadata(
+      callback: RpcStub<(metadata: WorkspaceMetadata) => void>)
+      : Promise<RpcStub<{}>>;
+
+  /**
+   * Watch who is viewing the workspace: receive the viewer roster, then updates as it changes.
+   * The current roster comes first, then incremental updates as viewers come and go. A viewer is
+   * present for the lifetime of the openWorkspace() session.
+   */
+  subscribeToPresence(subscriber: RpcStub<PresenceSubscriber>): Promise<RpcStub<{}>>;
+
+  /** Rename the workspace: change its title. */
+  setTitle(title: string): Promise<void>;
+
+  /**
+   * Instruct the workspace to delete itself, removing it from the User's workspace list and
+   * deleting all data. Further method calls will fail.
+   *
+   * TODO: Implement undelete, maybe using PITR...
+   */
+  deleteSelf(): Promise<void>;
+
+  /**
+   * Subscribe to the workspace's workpiece list, which lists its gadgets, each by ID and title.
+   *
+   * The subscriber receives one entry() per existing workpiece, followed by ready(), then
+   * incremental entry()/removed() calls as workpieces are created, renamed, or deleted, and
+   * whenever a summary field changes (a gadget's head, a worktree's accepted or head commit).
+   * Gadgets and worktrees are delivered (see WorkpieceSummary for which subscriptions see
+   * worktrees).
+   *
+   * Disposing the returned `RpcStub` will cancel the subscription.
+   */
+  subscribeToWorkpieces(subscriber: RpcStub<WorkpiecesSubscriber>): Promise<RpcStub<{}>>;
+
+  /**
+   * Create a new gadget workpiece in this workspace. `title` is required -- gadgets have no
+   * default title. The new gadget starts with no files and no bindings.
+   *
+   * If `chatId` is provided, the creation is provisional to that chat, exactly like code edits
+   * made with a chat open: a `changes` message records it in the chat log (see
+   * `createdGadgets`), and the gadget remains pending (see WorkpieceSummary.chatId) until
+   * the user accepts the chat's changes through that message (merging deletes the pending marker;
+   * reverting deletes the gadget). Without `chatId` the gadget is created permanently, with an
+   * empty initial commit as its head (see WorkpieceSummary.commitId). Throws if `chatId` names a
+   * spawned agent's chat (see AiChatMetadata.spawnerName), which may hold changes only to
+   * worktrees.
+   *
+   * `bindingName` is the name under which the gadget appears in chat envs and the workspace
+   * default binding list (see validateBindingName()). When absent, the server chooses one from
+   * the title (via the quick model when configured, else a generic fallback). Gadget binding
+   * names are unique within the workspace: throws if the name is already taken by another
+   * gadget -- including one still pending in another chat (retry after that chat's changes are
+   * accepted or reverted).
+   */
+  createGadget(title: string, chatId?: number, bindingName?: string)
+      : Promise<RpcStub<GadgetClient>>;
+
+  /**
+   * Get the gadget with the given workpiece ID. To allow for pipelining, this throws an
+   * exception if there is no such gadget.
+   *
+   * A collaborator without "build" access is verified as an observer of this one gadget here,
+   * rather than when opening the workspace, so `configureObservers` is invoked as described for
+   * AuthenticatedApi.openWorkspace(). Failing to verify for one gadget leaves the others that
+   * collaborator holds untouched. Ignored for everyone else, whom opening the workspace verified.
+   */
+  getGadget(id: WorkpieceId, configureObservers?: RpcStub<ObserverConfigCallback>)
+      : Promise<RpcStub<GadgetClient>>;
+
+  /**
+   * Read a commit's whole tree as nested TreeNodes: the root directory's entries, each
+   * directory carrying its own, in git tree order (byte order of names, a directory sorting as
+   * if its name had a trailing `/`). Only tree objects are read -- never blobs -- so the
+   * response is proportional to the commit's entry count. Commits are immutable, so responses
+   * are cacheable client-side by commit ID. Like readFilesAtCommit(), the read may pull missing
+   * trees through the gatekeeper that provided the commit.
+   *
+   * Together with readFilesAtCommit() this is how clients read committed code: a workpiece's
+   * tree at its head or accepted commit (outside any chat, or when the open chat has no pin for
+   * it), and the base content of a chat's pins (see ChatCodeBase), one file at a time as it is
+   * opened or edited.
+   */
+  listTree(commitId: string): Promise<TreeNode[]>;
+
+  /**
+   * Read the content of the named files at a commit. Returns one `[path, FileAtCommit]` entry
+   * per requested path, in request order (a list of pairs rather than a path-keyed object so
+   * that file names like `__proto__`, which RPC deserialization drops from object keys, survive
+   * in transit -- see CodeChange in `@gadgets/workshop-shared/code-change`). Blobs missing from
+   * the workspace's git store are pulled in one batch through the gatekeeper that provided the
+   * commit; a pull failure fails the whole call, since it is transient or actionable rather than
+   * a fact about any one file, whereas per-file conditions -- absent path, symlink, submodule,
+   * binary content -- are reported per entry (see FileAtCommit). No file is refused for its size:
+   * one over MAX_BUFFERED_BLOB_SIZE (see `@gadgets/workshop-shared/gatekeeper`) comes back as a
+   * `blob` entry, to read with readBlob().
+   *
+   * At most MAX_READ_FILES_PER_CALL paths per call. The server stops decoding once the
+   * accumulated text exceeds READ_FILES_RESPONSE_BUDGET and omits the remaining paths from the
+   * result, so a missing entry means "not answered, ask again" -- never "absent", which is
+   * always stated explicitly. Responses are cacheable by (commit ID, path).
+   */
+  readFilesAtCommit(commitId: string, paths: string[])
+      : Promise<[path: string, FileAtCommit][]>;
+
+  /**
+   * List the paths whose entry differs between two commits' trees: added, removed, or changed
+   * in content or mode, sorted by code unit (as `Array.prototype.sort()` sorts). Only files are
+   * listed, never a directory: a symlink or submodule is listed as a file is, and a name that is
+   * a file in one tree and a directory in the other lists the file and the paths within the
+   * directory. The two commits may come in either order; the list is the same.
+   *
+   * Like listTree(), only tree objects are read, never blobs, and a subtree with the same id
+   * in both is not read at all, so the cost is proportional to what differs. The result is
+   * immutable and cacheable by the pair of commit IDs.
+   *
+   * This is how a client finds the files a merge changed: where a chat's pin has a `baseCommit`
+   * other than its `mergedCommit` (see ChatGadgetPinState), the files that differ between the
+   * two are changed in the chat even where none of the chat's code changes touch them.
+   */
+  listChangedPaths(fromCommit: string, toCommit: string): Promise<string[]>;
+
+  /**
+   * Walk the commit graph from `fromCommit` (that commit first, then its ancestry), returning up
+   * to `depth` commits' metadata -- all reachable commits when `depth` is omitted. Traversal
+   * order for merge commits follows git log's default (reverse chronological). Like
+   * listTree(), results are immutable and cacheable.
+   */
+  getCommitLog(fromCommit: string, depth?: number): Promise<CommitInfo[]>;
+
+  /**
+   * Submit one code change on a chat's branch: how a client edits files.
+   * This is the only way to edit code: committed code cannot be written directly -- gadget heads
+   * only advance when a chat's changes are accepted (see mergeChanges()).
+   *
+   * `submission.change` is expressed against the chat's content as of
+   * `(submission.generation, submission.revision)` -- that is, the submitter has applied every
+   * accepted change of that generation's stream up to and including that revision (see
+   * ChatCodeBase). The server transforms the change over any changes accepted since, validates it,
+   * appends it to the stream, and broadcasts it (AiChatSubscriber.changeApplied()); the returned
+   * `(generation, revision)` is where it landed.
+   *
+   * `submission.pins` must carry one declaration per *permanent* gadget the change touches that is
+   * not yet pinned in the chat, each naming the head commit the client's content derives from.
+   * The server checks that each declared base is the gadget's current head, or its first parent
+   * (tolerating a race with one concurrent merge), and establishes the pin atomically with the
+   * change. A declaration identical to the existing pin is accepted idempotently; one naming a
+   * different `baseCommit` (a race between two first editors) throws. Exception: a gadget still
+   * pending in this chat has no head commit to pin (see WorkpieceSummary.commitId), so its changes
+   * carry no declaration and build its content up from nothing (see ChatCodeBase). A worktree
+   * declaration is accepted iff its `baseCommit` is the worktree's accepted commit -- the
+   * content as of the chat's last accept, the analog of a gadget's head -- exactly, with no
+   * parent tolerance (only this chat's accept moves it, and that closes the generation).
+   *
+   * Retries: `submission.clientId` names the client's editing session and `submission.seq`
+   * numbers its submissions from 1. The server remembers each session's last accepted seq and
+   * where it landed -- independently of the changes themselves, so recognition survives
+   * materialization, epoch resets, and destructive generation bumps -- and answers a retry of
+   * that seq with the recorded result instead of applying it twice. A transport failure must
+   * therefore be retried with the *same* seq and an identical payload, never renumbered or
+   * re-composed (OT, unlike a CRDT, does not tolerate double-application); a same-seq
+   * submission whose content differs is a client bug and is rejected. A seq one past the last
+   * accepted (or 1 from a new session) is the next change; anything else is rejected -- discard
+   * local edits and rebuild under a fresh clientId. Only the last submission is remembered, so
+   * keep at most one in flight.
+   *
+   * While an agent turn is active, the call throws a retryable error: keep the queued change and
+   * resubmit after the turn ends. (The UI already locks editing during turns; this backstops
+   * races.)
+   *
+   * A spawned agent's chat (see AiChatMetadata.spawnerName) may hold changes only to its
+   * worktrees, as its agent may: a submission touching a gadget there is rejected.
+   *
+   * A submission still rooted in the *previous* generation, when that generation was closed by
+   * a merge (a content-preserving bump; see ChatCodeBase.generation), is transformed across the
+   * boundary and lands in the current generation, so typing straight through someone's accept
+   * is seamless. Such a submission's pin declarations are ignored (they describe pre-merge
+   * heads; the server derives the new pins itself), and it is rejected if it touches a gadget
+   * in ChatCodeBase.prior.discontinuousGadgets (the merge visibly changed that gadget's
+   * content) or a gadget that has since been re-pinned at a different base.
+   *
+   * Every other rejection means the client's local state is unusable: a generation ended by a
+   * destructive bump (revert, draft discard, turn abort), a revision older than the server's
+   * retained transform window, or an invalid change all mean the client must discard its local
+   * edits and rebuild from fresh metadata.
+   */
+  submitCodeChange(chatId: number, submission: CodeChangeSubmission)
+      : Promise<{generation: number, revision: number}>;
+
+  /** Get an existing gatekeeper by workpiece ID. Throws if the ID doesn't exist. */
+  getGatekeeperById(id: WorkpieceId): Promise<GatekeeperClient<any>>;
+
+  /**
+   * Try to create a new gatekeeper for this resource URL, such as a repository or MCP server.
+   * The gatekeeper is a connection to that one resource of a connected account, such as a GitHub
+   * repository or an MCP server's endpoint.
+   *
+   * `accountId` is the user's connected account to use to access this resource. To determine an
+   * appropriate account, use `subscribeConnectedAccounts()` with a `filter` for this URL, then
+   * let the user choose one.
+   *
+   * The new gatekeeper is a workspace-level workpiece; it is not bound into any gadget's `env` by
+   * default. Use GadgetClient.bind() / bindWithSuggestedName() to expose it to a gadget, or pass
+   * its id to acceptConnectionRequest() to hand it to the agent that asked for it.
+   */
+  newGatekeeper(accountId: number, resourceUrl: string): Promise<GatekeeperClient<any> | null>;
+
+  /**
+   * Create a new gatekeeper for an AI model binding. The model can be any returned by
+   * `AuthenticatedApi.listModels()`. A language model's gatekeeper provides a
+   * `LanguageModelBinding`, a decision model's a `DecisionModelBinding`.
+   */
+  newAiModelGatekeeper(modelId: string): Promise<GatekeeperClient<any>>;
+
+  /**
+   * Create a new gatekeeper for an agent spawner binding. This allows the gadget to
+   * programmatically spawn AI agents to complete tasks.
+   */
+  newAgentSpawnerGatekeeper(config: AgentSpawnerConfig): Promise<GatekeeperClient<any>>;
+
+  /**
+   * Fetch one page of action history, newest first by id (creation order). "all" (the default)
+   * pages every record and a record type pages that type — pending records included, each at its
+   * creation position; `filter: "pending"` pages only the currently-pending records — the query
+   * half of the query-for-state/subscribe-for-deltas contract (see subscribeToActions()).
+   *
+   * Page size is a server constant. Pages are full until the last: absence of `nextBeforeId`
+   * means the history is exhausted; otherwise it is the id of the last returned entry, to pass
+   * as `beforeId` for the next-older page.
+   */
+  listActions(options?: {beforeId?: number, filter?: ActionHistoryFilter})
+      : Promise<ActionHistoryPage>;
+
+  /**
+   * Approve an action that is currently in the "pending" state. The action will be performed on
+   * approval. Approving a creation (see ActionLogEntry.creation) requires `creation`: how the
+   * approver chose to make it.
+   */
+  approveAction(id: number, creation?: CreationApproval): Promise<void>;
+
+  /**
+   * Reject an action that is in the "pending" state. This notifies the gatekeeper that it will not
+   * be approved in the future.
+   */
+  rejectAction(id: number): Promise<void>;
+
+  /**
+   * List the hooks waking the workspace's gadgets: scheduled tasks (the scheduler's) and more.
+   * A hook is a callback through which a gatekeeper wakes a gadget: for a scheduled task (the
+   * scheduler gatekeeper), or for an incoming email or GitHub event.
+   *
+   * A gatekeeper binds a hook disabled, when the gadget or an agent registers for it, and it
+   * delivers nothing until enableHook(). The scheduler offers no way to unregister a schedule:
+   * stopping or removing one is disabling or deleting its hook (disableHook(), deleteHook()).
+   *
+   * The list spans the whole workspace; each entry names the gadget it wakes (see
+   * BoundHookInfo.gadgetId), so a per-gadget view must filter on that.
+   */
+  listHooks(): Promise<BoundHookInfo[]>;
+
+  /**
+   * Enable the hook with the given ID, so callbacks begin flowing: a scheduled task needs it.
+   * Until then the task does not run.
+   */
+  enableHook(id: number): Promise<void>;
+
+  /**
+   * Disable the hook with the given ID: callbacks stop, and a scheduled task is removed. Enabling
+   * the hook again re-creates the task's schedule from its original timing, so a one-time task
+   * whose time has passed meanwhile never runs.
+   */
+  disableHook(id: number): Promise<void>;
+
+  /**
+   * Permanently delete the hook, disabling it first, which removes a scheduled task for good.
+   */
+  deleteHook(id: number): Promise<void>;
+
+  /**
+   * Enable auto-approval of actions carrying the given `actionKind` (the
+   * ActionDescription.actionKind) on the gatekeeper identified by `gatekeeperId`. Future actions
+   * with that kind's tag whose author marked them `autoApprovable` are then applied automatically
+   * without manual approval, and any matching action(s) already pending are applied immediately.
+   *
+   * Auto-approval rules are workspace-wide per gatekeeper: approving an action kind approves it
+   * no matter which gadget invokes it.
+   *
+   * Once the workspace has read restricted data (`WorkspaceMetadata.containsRestrictedData`), rules
+   * are stored but never fire: every action pends for manual approval.
+   */
+  setAutoApprovedActionKind(gatekeeperId: WorkpieceId, actionKind: ActionKind): Promise<void>;
+
+  /**
+   * Remove the auto-approval rule for `tag` on the given gatekeeper; matching actions then
+   * require manual approval again.
+   */
+  removeAutoApprovedActionKind(gatekeeperId: WorkpieceId, tag: string): Promise<void>;
+
+  /** List the currently-enabled auto-approval rules. */
+  listAutoApprovedActionKinds(): Promise<Array<{ gatekeeperId: WorkpieceId; actionKind: ActionKind }>>;
+
+  /**
+   * List the auto-approvable action kinds offered by gatekeepers bound in this workspace. Each
+   * entry identifies its connection and reports whether a matching auto-approval rule is enabled.
+   */
+  listPreApprovableActions(): Promise<PreApprovableAction[]>;
+
+  /**
+   * Accept an agent's pending connection request (a "connectionRequest" chat message). The caller
+   * is responsible for having actually created the gatekeeper (via newGatekeeper()) and passes the
+   * resulting gatekeeper id. The gatekeeper is surfaced to the agent as a named binding in the
+   * chat's env, under the name the agent chose when it made the request (see
+   * `connectionRequest.bindingName`). This marks the request accepted, updates the inline card,
+   * and resumes the agent so it can use the resource.
+   */
+  acceptConnectionRequest(requestId: string, result: {gatekeeperId: WorkpieceId}): Promise<void>;
+
+  /**
+   * Deny an agent's pending connection request. Updates the inline card. Does NOT resume the agent:
+   * the turn stays ended so the user can decide what to tell the agent to do instead.
+   */
+  denyConnectionRequest(requestId: string): Promise<void>;
+
+  /**
+   * Approve an agent's pending request to fetch a URL (a "webFetchRequest" chat message) that the
+   * workspace's restricted mode refuses. Updates the inline card and resumes the agent, which may
+   * then fetch that URL, and follow its redirects, until the user's next prompt.
+   */
+  approveWebFetchRequest(requestId: string): Promise<void>;
+
+  /** Deny an agent's pending request to fetch a URL. Like denyConnectionRequest, the turn stays ended. */
+  denyWebFetchRequest(requestId: string): Promise<void>;
+
+  /**
+   * Subscribe to action adds/updates. Dispose the returned stub to unsubscribe.
+   *
+   * The subscription delivers live deltas only — nothing pre-existing is replayed. Query for
+   * state, subscribe for deltas: fetch the current pending set via
+   * listActions({filter: "pending"}) and resolved history via the other filters. As with
+   * subscribeToChat(), initiate the subscribe call before those reads — there is no need to
+   * await its return, only to start it first — so nothing can slip between the snapshot the
+   * pages reflect and the stream.
+   *
+   * The `startAfter` parameter is intended to be used when resubscribing after a disconnect:
+   * specify the time of the last action seen, in order to ensure no actions were missed during
+   * the disconnect. The bound is inclusive -- records last changed at exactly that time are
+   * re-delivered (entries are upserts) -- and the replay arrives in change-time order, not
+   * creation order. If not specified, the subscription starts from the current time.
+   *
+   * Do NOT use `startAfter` as a way to enumerate historical data. Use `listActions()` instead.
+   * To ensure no holes between a subscription and historical data, call `subscribeToActions()`
+   * immediately before `listActions()`, similar to `subscribeToChat()`.
+   */
+  subscribeToActions(subscriber: RpcStub<ActionsSubscriber>, startAfter?: Date): Promise<RpcStub<{}>>;
+
+  /**
+   * Mark a chat read for the current user, up to and including the timeline record at
+   * `throughSequence` (an `AiChatMessage.sequence`). If omitted, marks the whole chat read, through
+   * its latest visible message. This never moves the user's read position backwards; use
+   * `markChatUnread()` for that. Does nothing if the chat doesn't exist, and throws if the sequence
+   * is beyond the end of the chat. Not available in use-only sessions. See "Unread tracking" above
+   * `ChatReadState`.
+   */
+  markChatRead(chatId: number, throughSequence?: number): Promise<void>;
+
+  /**
+   * Mark a chat unread for the current user, starting at the timeline record at `fromSequence`: the
+   * user's read position moves to just before it, so that message and every visible message after
+   * it count as unread. If omitted, marks only the chat's latest visible message unread. Messages
+   * from before unread tracking was introduced never become unread. Returns true if the user's read
+   * state changed, or false if it was already in that state or the chat doesn't exist. Throws if the
+   * sequence is beyond the end of the chat. Not available in use-only sessions.
+   */
+  markChatUnread(chatId: number, fromSequence?: number): Promise<boolean>;
+
+  /**
+   * Enable or mute this chat's unread inbox entry, badges and alerts for the current user. Sending
+   * a first message or slash command enables notifications by default in new chats. Approval alerts
+   * bypass that default-off state, but honor an explicit mute. Existing chats stay subscribed by
+   * default; an explicit preference always takes precedence. Read history and unread dividers
+   * are preserved. Changing the preference clears queued alerts, so enabling
+   * only alerts about future activity. Throws if the chat or workspace is no longer available.
+   * Not available in use-only sessions.
+   */
+  setChatNotificationsEnabled(chatId: number, enabled: boolean): Promise<void>;
+
+  /** List past AI chats, with each one's id and title. */
+  listChats(): Promise<AiChatMetadata[]>;
+
+  /**
+   * List available language models; decision models are left out. The first listed model should
+   * be the default, unless the user has chosen something else.
+   */
+  listModels(): Promise<AiChatAuthorInfo[]>;
+
+  /**
+   * Fetch one page of messages in the chat history for the given chat thread. If `beforeSequence`
+   * is absent, fetch the current tail. Otherwise, fetch messages before that sequence.
+   *
+   * Note that if you plan to subscribe to updates, you should initiate the subscription first,
+   * before fetching history. Otherwise, you could theoretically miss a message that is sent
+   * between when you fetch the history and when you subscribe.
+   *
+   * In typical usage, the client subscribes to all chat activity upfront, but only fetches
+   * histories if and when the user opens a specific.
+   */
+  getChatHistory(chatId: number, beforeSequence?: number): Promise<AiChatHistoryPage>;
+
+  /** Fetch a single message from a chat thread. */
+  getChatMessage(chatId: number, sequence: number): Promise<AiChatMessage | undefined>;
+
+  /**
+   * Subscribe to all new chat messages (across all threads), the agent's replies among them.
+   *
+   * If `startAt` is given, it must be a date in the past. All messages starting from that date
+   * will be sent upfront. This is intended to allow resubscribing after being disconnected. If
+   * `startAt` is omitted, only new messages will be sent.
+   *
+   * Generally, a client should subscribe to chats immediately on loading the gadget editor. If
+   * the client needs to call any methods like `listChats()` to backfill content, it should make
+   * these calls after `subscribeToChat()`, so that there's no chance of missing a message. (It is
+   * not necessary to wait for `subscribeToChat()` to return -- only to initiate the call before
+   * other read calls.)
+   */
+  subscribeToChat(subscriber: RpcStub<AiChatSubscriber>, startAfter?: Date): Promise<RpcStub<{}>>;
+
+  /**
+   * Records that this client shows chat `chatId` until the returned handle is disposed, and
+   * permanently enrolls this user for private unread updates without enabling notifications.
+   * When a turn finishes in a chat someone is viewing, the workspace resends that turn's last model
+   * request just before the provider's cached copy of it would expire, so the user's next message
+   * costs less and starts sooner. The resends are billed like the turn. They stop when the last
+   * viewer leaves, at the chat's next turn, an hour after the turn, or before they would cost
+   * more than the cache miss they avoid. Throws if the chat doesn't exist.
+   */
+  viewChat(chatId: number): Promise<RpcStub<{}>>;
+
+  /**
+   * Lists the slash commands available in this workspace: the built-in ones, and those of the
+   * Gatekeepers currently attached to it, including ambient ones.
+   */
+  listSlashCommands(): Promise<SlashCommandChoice[]>;
+
+  /**
+   * Starts a new chat in this workspace with an initial message or slash-command request.
+   * A slash command always creates a visible chat event, even when it does not produce a message
+   * for the agent.
+   * Slash-command requests cannot include capsules or attachments.
+   *
+   * `modelId` is one of the IDs in the result of `listModels()`, or null to inhibit AI response
+   * (useful when using chat to talk between humans). Returns the new chat's id without waiting
+   * for the agent's turn; `waitForAgent()` waits for it to end.
+   *
+   * `formats` records where the message names one of the deployment's standard output formats, so
+   * the transcript can draw it as a chip. Display only -- what the agent reads is the noun, which
+   * is already in the text.
+   */
+  newChat(initialMessage: string | SlashCommandRequest, modelId: string | null,
+          capsules?: CapsuleSpecifier[], attachments?: ChatAttachmentHandle[],
+          formats?: MessageFormatRef[]): Promise<number>;
+
+  /**
+   * Send a message to the chat from this client. Sending a message causes the LLM to start
+   * running if it isn't already.
+   * While it runs, plain text with no capsules, attachments or formats steers it, on the running
+   * turn's model whatever `modelId` is, even null: it waits in `AiChatMetadata.queuedSteers` until
+   * the agent reads it. Anything else, or anything sent after `stopAgent()`, throws until the
+   * agent finishes.
+   * If a slash command produces no message, only its visible invocation event is committed and the
+   * agent does not run.
+   * Slash-command requests cannot include capsules or attachments.
+   *
+   * `modelId` is one of the IDs in the result of `listModels()`, or null to inhibit AI response
+   * (useful when using chat to talk between humans). Returns without waiting for the agent's
+   * turn; `waitForAgent()` waits for it to end.
+   *
+   */
+  sendChatMessage(chatId: number, message: string | SlashCommandRequest, modelId: string | null,
+                  capsules?: CapsuleSpecifier[], attachments?: ChatAttachmentHandle[],
+                  formats?: MessageFormatRef[]): Promise<void>;
+
+  /**
+   * Store raw bytes, such as a file to attach, as an immutable Git blob and return its OID. The OID
+   * comes back after durable storage. Retrying identical bytes returns the same OID. This does not
+   * change any worktree or message. Use the OID in a chat attachment, or in a worktree's whole-file
+   * `setBytes` change together with the payload's byte length. The blob must be present in this
+   * workspace's Git store.
+   *
+   * There is no size limit. A `Uint8Array` travels in one RPC message; for large content, pass
+   * `{stream, byteLength}` instead, which the server stores as it arrives without holding it
+   * whole. `byteLength` must be the stream's exact length: it is verified, and a stream that
+   * ends short of it or runs past it fails the call and stores no blob (though pieces already
+   * written may remain, unreferenced, as after any interrupted write). Either way, the OID is
+   * returned only once the whole blob is durably stored.
+   */
+  uploadBlob(content: Uint8Array | { stream: ReadableStream<Uint8Array>; byteLength: number })
+      : Promise<GitOid>;
+
+  /**
+   * Read a blob in this workspace's Git store, such as one a `blob` FileAtCommit or a chat's
+   * `setBytes` change names: the counterpart of uploadBlob(). Like readFilesAtCommit(), the read
+   * pulls a blob missing from the store through the gatekeeper that provided it.
+   */
+  readBlob(oid: GitOid): Promise<ReadableStream<Uint8Array>>;
+
+  /**
+   * Fetch the bytes of a committed chat attachment over RPC. The canonical metadata is already
+   * present in the message's ChatAttachmentRef. Images are inlined there, so this is normally used
+   * only to download non-image attachments on demand.
+   */
+  getChatAttachmentContent(chatId: number, id: string): Promise<Uint8Array>;
+
+  /**
+   * Update the title of a chat. Usually not needed as a title is generated automatically from
+   * the first message.
+   */
+  setChatTitle(chatId: number, title: string): Promise<void>;
+
+  /**
+   * Indicates that the user has requested that the chat's proposed changes be merged into the
+   * mainline. Always merges *everything* the chat proposes -- changes not yet materialized into a
+   * `changes` message are swept in first, and there is no way to accept only a subset.
+   *
+   * Accepting is only ever a fast-forward: every gadget touched by the merged changes must have
+   * its chat pin's ChatGadgetPinState.mergedCommit equal to the gadget's current head commit.
+   * If mainline has advanced past any pin, nothing at all is merged and the call returns a
+   * "stale" outcome (an expected result, not an exception; see MergeChangesResult): call
+   * updateChatFromMainline(), resolve any conflicts, and retry. Where the pin's `baseCommit` is
+   * a merge commit not yet accepted, whose first parent is `mergedCommit`, the head moves
+   * through it: to the merge commit itself if the chat changed nothing since, else to a new
+   * commit on top of it.
+   *
+   * A chat has something to accept when it holds a pin, a gadget or binding edge pending in it,
+   * or a blueprint proposal that is neither merged nor reverted. Otherwise this is a no-op and
+   * records nothing.
+   *
+   * A successful merge closes the chat's current **epoch**: all merged content now lives in
+   * commits, so the chat's code base resets to empty (every pin is dropped, the change stream
+   * restarts at revision 0 under a new generation, and the merge message records
+   * `epochBoundary`). Subsequent edits re-pin lazily against the new heads. The generation bump
+   * is content-preserving: ChatCodeBase.prior describes the closed stream, and in-flight
+   * submissions rooted in it are transformed onto the new generation rather than discarded (see
+   * submitCodeChange()), so a client typing through someone's accept loses nothing.
+   *
+   * A blueprint release the chat proposes to merge into a gadget (see
+   * AiChatMessageBody.blueprintMerges) is accepted with the rest: the gadget's new head gains
+   * the release as a parent, unless its history already holds it, and the gadget follows that
+   * blueprint from then on.
+   *
+   * Each file is taken as it stands, conflict markers included. A caller should first resolve
+   * the conflicts that the chat's still-proposed `changes` messages list
+   * (AiChatMessageBody.blueprintMerges[].conflictPaths and mainlineMerge.gadgets[].conflictPaths),
+   * as the Workshop UI does before accepting: it looks for a `<<<<<<< ` or `>>>>>>> ` line left
    * in each of those files, and asks the user whether to accept them as they are.
    */
   mergeChanges(chatId: number): Promise<MergeChangesResult>;
@@ -3517,6 +5486,21 @@ export type AiChatMetadata = {
    * `Overseer.stopAgent`). Absent when none.
    */
   queuedSteers?: {text: string, author: AiChatAuthorInfo}[];
+
+  /**
+   * True when notifications default off until each user's first participation. Absent on
+   * legacy chats, which stay subscribed. This source policy is available before unread tracking
+   * starts; the user's effective preference and explicit override come from `ChatReadState`.
+   */
+  notificationsRequireParticipation?: boolean;
+
+  /**
+   * An opaque random ID for the chat. Unlike `id`, a small integer anyone could guess, it can name
+   * the chat to a gadget: the agent spawner that created the chat hands it to the gadget
+   * (`SpawnedAgent.getChatToken()`), whose UI passes it to `GadgetHost.openAgentChat()` to show the
+   * chat. It grants no access to the chat. Absent on chats created before it was introduced.
+   */
+  chatToken?: string;
 
   /** If this was started from an agent spawner, the spawner's display name. */
   spawnerName?: string;
@@ -4300,6 +6284,9 @@ export type AiChatMessageBody = {
    */
   resourceUrlPattern?: string;
 
+  /** Stable vendor-scoped type ID. Authoritative over the legacy pattern when present. */
+  resourceTypeId?: string;
+
   /** Why the agent wants this connection. Shown to the user to inform their decision. */
   reason: string;
 
@@ -4385,8 +6372,11 @@ export type ChatAttachmentRef = {
   id: string;
   /** Original immutable upload blob. Absent on legacy attachments. */
   oid?: GitOid;
+  /** MIME type the sender declared for the attachment, normalized when sending. */
   mimeType: string;
+  /** Display filename, sanitized when sending. Absent when the sender gave none. */
   name?: string;
+  /** Size of the attachment in bytes. */
   size: number;
 
   /**
@@ -4708,6 +6698,8 @@ export type AiToolCall = {
   toolName: "requestConnection";
   input: {
     vendorId: string;
+    /** Stable type ID from listConnectableResources; omitting it retains URL-based selection. */
+    resourceTypeId?: string;
     resourceUrl?: string;
     reason: string;
 
@@ -4729,8 +6721,11 @@ export type AiToolCall = {
   input: {
     vendorId: string;
 
-    /** `urlPattern` of the creatable resource type. */
-    resourceUrlPattern: string;
+    /** Stable ID of the creatable resource type, from listConnectableResources. */
+    resourceTypeId?: string;
+
+    /** Legacy persisted tool calls used the type's exact URL pattern instead. */
+    resourceUrlPattern?: string;
 
     /** Title of the new resource, e.g. a document's title. */
     title: string;
@@ -5422,7 +7417,9 @@ export type GatekeeperCreationSpec = {
   type: "gatekeeper";
   vendorId: string;        // identifies the gatekeeper adapter (e.g. "google")
   resourceUrl?: string;    // absent until a resource created by createExternalResource exists
-  typeUrlPattern: string;  // URL pattern from the vendor's SupportedResource (not the specific URL)
+  /** Stable vendor-scoped type ID, absent on records created before stable IDs. */
+  resourceTypeId?: string;
+  typeUrlPattern: string;  // Matching/prefill snapshot and exact-match fallback for legacy records.
   /** The configuration createExternalResource suggested (see its `configuration`). */
   configuration?: string;
 } | {
@@ -5522,7 +7519,10 @@ export type BlueprintBinding = {
    */
   gatekeeperName: string;
 
-  /** URL pattern describing the type of resource this binding accepts. */
+  /** Stable vendor-scoped type ID. Authoritative when present, including after pattern changes. */
+  resourceTypeId?: string;
+
+  /** Matching hint; legacy bindings without an ID resolve only by exact current pattern. */
   typeUrlPattern: string;
 
   /** The specific resource URL from the source gadget (suggestion only). */
@@ -5758,7 +7758,8 @@ export interface GadgetClient extends WorkpieceClient {
    * Get the gadget's deployed UI code, to be run inside an iframe sandbox.
    *
    * Returns null if the gadget has no deployed UI code (e.g. if it's new, or if it's just an AI
-   * agent with no code).
+   * agent with no code). Throws, naming the file and line, when the UI's imports break the rules
+   * for UI code.
    */
   getUiBundle(chatId?: number): Promise<UiBundle | null>;
 
@@ -5820,7 +7821,8 @@ export interface GadgetClient extends WorkpieceClient {
    *
    * If `chatId` is provided, the binding is treated like an edit made in the given chat -- it is
    * proposed, but someone needs to click "accept changes" (call `mergeChanges()`) to make it
-   * final. Until then it exists only in the given chat.
+   * final. Until then it exists only in the given chat. Throws if `chatId` names a spawned
+   * agent's chat (see AiChatMetadata.spawnerName), which may hold changes only to worktrees.
    */
   bind(name: string, target: WorkpieceId, chatId?: number): Promise<void>;
 
@@ -6046,4 +8048,3 @@ export type ShareLinkInfo = {
 };
 
 export * from "./script-skills";
->>>>>>> 1880a17a (feat: 邀请邮件通知、注册白名单与邮箱 OTP)

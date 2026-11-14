@@ -20,11 +20,17 @@ const QUICK_MODEL_ID = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
  */
 const GATEWAY_PROVIDERS: ReadonlySet<string> = new Set<AiModelProvider>([
   "anthropic", "openai", "google", "cloudflare", "cloudflare-auto-router",
+  // 有缘心之助：不经 AI Gateway，而是直连 OpenCode Go（见 ai-models.ts 的 getModelViaOpenCodeGo），
+  // 但和网关模型一样由部署提供、由管理员在「管理 → 模型」开关。
+  "opencode-go",
 ]);
 
-/** The providers a model may be added under: the gateway's, less Auto Router's, which has one. */
-const ADDABLE_PROVIDERS: ReadonlySet<string> =
-    new Set([...GATEWAY_PROVIDERS].filter(provider => provider !== "cloudflare-auto-router"));
+/**
+ * The providers a model may be added under: the gateway's, less Auto Router's, which has one, and
+ * OpenCode Go's, whose models are priced from a fixed table of vendor prices (OPENCODE_GO_MODELS).
+ */
+const ADDABLE_PROVIDERS: ReadonlySet<string> = new Set([...GATEWAY_PROVIDERS]
+    .filter(provider => provider !== "cloudflare-auto-router" && provider !== "opencode-go"));
 
 /** Throws unless AI Gateway serves `provider`. */
 export function assertGatewayProvider(provider: string): void {
@@ -87,6 +93,8 @@ export class AiGatewayConfig {
   readonly sameAccountGateway?: string;
   readonly accountId: string;
   readonly apiToken?: string;
+  /** 有缘心之助：OpenCode Go 的 key（OPENCODE_API_KEY），它的模型不经网关直连。 */
+  readonly openCodeGoKey?: string;
   /**
    * Workers AI binding, used as the gateway transport whenever present unless
    * CF_AI_GATEWAY_USE_BINDING=false opts out: binding requests are pre-authenticated in-account,
@@ -111,6 +119,7 @@ export class AiGatewayConfig {
     }
     this.accountId = env.CF_AI_GATEWAY_ACCOUNT_ID;
     this.apiToken = env.CF_AI_GATEWAY_API_TOKEN || undefined;
+    this.openCodeGoKey = env.OPENCODE_API_KEY || undefined;
     // Normalized once, so a stray " False " opts out rather than reading as unset and silently
     // picking the other transport.
     const useBinding = env.CF_AI_GATEWAY_USE_BINDING?.trim().toLowerCase();
@@ -290,7 +299,10 @@ export class GatewayModels {
               { enabledBy: this.gateway.providers.has(provider) ? "environment" : "admin" }),
           // What getModelViaGateway refuses a request for. Only an admin can enable a provider
           // in that state: the environment enabling one keeps `gateway` from being built.
-          needsApiToken: !this.gateway.bindingFor(provider) && !this.gateway.apiToken,
+          // OpenCode Go 不经网关，缺的是它自己的 OPENCODE_API_KEY。
+          needsApiToken: provider === "opencode-go"
+              ? !this.gateway.openCodeGoKey
+              : !this.gateway.bindingFor(provider) && !this.gateway.apiToken,
         }));
   }
 

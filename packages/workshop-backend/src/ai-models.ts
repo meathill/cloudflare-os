@@ -43,6 +43,8 @@ import {
   estimateSharedHeadTokens, hasGpt56PromptCaching, splitSystemPrompt,
 } from "./system-prompt-blocks.js";
 import { getGoogleModelCost, GEMINI_3_8_FLASH_FALLBACK } from "./gemini-pricing.js";
+import type { BillingChargeResult, BillingUsageSource } from "@gadgets/workshop-shared/billing";
+import { assertBillingAllowed, billingEnabled, billingPayer, chargeBilling } from "./billing.js";
 
  /**
   * Routing to bill a user's own Cloudflare account for inference (BYOK path once the free tier is
@@ -76,7 +78,39 @@ type ModelRoutingOptions = {
   sessionAffinity?: string;
   userGateway?: UserGatewayRouting;
   metadata?: GatewayMetadataContext;
+  /**
+   * 有缘心之助：收到每个请求的计费结果（计费关闭或不计费时为 null），供 agent turn 在余额耗尽时中止，
+   * 并把扣费挂到调用方的 waitUntil 上。
+   */
+  onCharge?: (charge: Promise<BillingChargeResult | null>) => void;
 };
+
+// 有缘心之助：每类模型调用记到哪个计费来源。
+const BILLING_SOURCES: Record<GatewayMetadataContext["source"], BillingUsageSource> = {
+  "chat": "chat",
+  "thread-title": "title",
+  "gadget-title": "title",
+  "model-binding": "gadget-llm",
+  "cache-warm": "cache-warm",
+};
+
+// 有缘心之助：模型请求完成后按目录价向发起人计费（见 billing.ts）。BYOK 的请求由用户自己的
+// Cloudflare 账户付费，不再计一次。
+function withBilling(env: Cloudflare.Env, initiator: AiChatAuthorInfo,
+                     options: ModelRoutingOptions, handle: ModelHandle): ModelHandle {
+  let payer = billingEnabled(env) && !options.userGateway ? billingPayer(initiator) : undefined;
+  if (!payer) return handle;
+  let source = BILLING_SOURCES[options.metadata?.source ?? "chat"];
+  let stream = handle.stream;
+  handle.stream = (model, context, streamOptions) => {
+    let events = stream(model, context, streamOptions);
+    let charge = events.result()
+        .then(message => chargeBilling(env, payer, message.usage.cost.total, source));
+    options.onCharge?.(charge);
+    return events;
+  };
+  return handle;
+}
 
 /**
  * Per-call stream options accepted by a ModelHandle, extending pi's own options with
@@ -255,6 +289,79 @@ const DEEPSEEK_V4_1_FLASH_FALLBACK: Model<"openai-completions"> = {
   cost: { input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0 },
 };
 
+/**
+ * 有缘心之助：OpenCode Go 上提供的模型，计价按各厂商官方价（每百万 Tokens，美元），而不是 Go 的订阅价。
+ * 来源：models.dev 中各厂商自己的条目（2026-11-13）。DeepSeek 官方分峰谷价，这里取峰时价（偏保守）；
+ * MiniMax M3.1 Flash 在 models.dev 的 MiniMax 条目里尚无，取 Go 价目表（Go 对未议价模型按厂商原价）。
+ */
+export const OPENCODE_GO_MODELS: Record<string, {
+  cost: Model<Api>["cost"]; input: Model<Api>["input"]; thinkingFormat?: "deepseek";
+}> = {
+  "deepseek-v4.1-flash": {
+    cost: { input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0 }, input: ["text", "image"],
+    thinkingFormat: "deepseek",
+  },
+  "glm-5.3-flash": { cost: { input: 0.15, output: 0.5, cacheRead: 0.03, cacheWrite: 0 }, input: ["text", "image"] },
+  "qwen3.8-flash": { cost: { input: 0.15, output: 0.47, cacheRead: 0.016, cacheWrite: 0.2 }, input: ["text", "image"] },
+  "mimo-v2.6-flash": { cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 }, input: ["text", "image"] },
+  "minimax-m3.1-flash": { cost: { input: 0.15, output: 0.6, cacheRead: 0.015, cacheWrite: 0 }, input: ["text", "image"] },
+  "kimi-k2.7-code": { cost: { input: 0.95, output: 4, cacheRead: 0.19, cacheWrite: 0 }, input: ["text", "image"] },
+  "glm-5.3": { cost: { input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0 }, input: ["text"] },
+  "glm-5.2": { cost: { input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0 }, input: ["text"] },
+};
+
+/** OpenCode Go 的 OpenAI 兼容端点（chat/completions）。 */
+export const OPENCODE_GO_BASE_URL = "https://opencode.ai/inference/go/openai/v1";
+
+/** Go 要求客户端用自己的 User-Agent 标明身份。 */
+export const OPENCODE_GO_USER_AGENT = "jianjian-writer/1.0";
+
+// OpenCode Go 上一个模型的 pi 描述（没有价目的模型没有描述，也就不能运行）。
+function openCodeGoModel(modelId: string): Model<"openai-completions"> | undefined {
+  let entry = Object.hasOwn(OPENCODE_GO_MODELS, modelId) ? OPENCODE_GO_MODELS[modelId] : undefined;
+  if (!entry) return undefined;
+  let suggested = SUGGESTED_MODELS["opencode-go"][modelId];
+  return {
+    id: modelId,
+    name: suggested?.name ?? modelId,
+    api: "openai-completions",
+    provider: "opencode-go",
+    baseUrl: OPENCODE_GO_BASE_URL,
+    reasoning: true,
+    input: entry.input,
+    cost: entry.cost,
+    contextWindow: suggested?.contextWindow ?? 128_000,
+    maxTokens: suggested?.outputLimit ?? 32_768,
+    compat: {
+      supportsStore: false,
+      supportsDeveloperRole: false,
+      supportsStrictMode: true,
+      supportsLongCacheRetention: false,
+      ...(entry.thinkingFormat
+          ? { thinkingFormat: entry.thinkingFormat, requiresReasoningContentOnAssistantMessages: true }
+          : {}),
+    },
+  };
+}
+
+// Go 直连：部署的 OPENCODE_API_KEY 鉴权；x-opencode-session 用 chat 的会话亲和，Go 据此路由与缓存。
+function getModelViaOpenCodeGo(env: Cloudflare.Env, config: AiModelConfig,
+                               sessionAffinity: string | undefined): ModelHandle {
+  if (!env.OPENCODE_API_KEY) throw new Error("此部署没有配置 OpenCode Go（OPENCODE_API_KEY）。");
+  let model = openCodeGoModel(config.model);
+  if (!model) throw new Error(`OpenCode Go 模型 ${config.model} 没有官方价，不能按量计费。`);
+  return makeHandle({
+    model: { ...model, ...modelTokenWindow(config, model) },
+    apiKey: env.OPENCODE_API_KEY,
+    headers: {
+      "User-Agent": OPENCODE_GO_USER_AGENT,
+      ...(sessionAffinity ? { "x-opencode-session": sessionAffinity } : {}),
+    },
+    sessionAffinity,
+    reasoning: config.reasoning,
+  });
+}
+
 // Consult pi's builtin catalog for cost/compat metadata of a known model id. Unknown models are
 // fine (synthesized with zero cost).
 function catalogModel(provider: AiModelProvider, modelId: string): Model<Api> | undefined {
@@ -264,6 +371,7 @@ function catalogModel(provider: AiModelProvider, modelId: string): Model<Api> | 
   if (!model && provider === "openai" && modelId === GPT_6_1_TERRA_FALLBACK.id) {
     return GPT_6_1_TERRA_FALLBACK;
   }
+  if (!model && provider === "opencode-go") return openCodeGoModel(modelId);
   if (!model && provider === "cloudflare" && modelId === DEEPSEEK_V4_1_FLASH_FALLBACK.id) {
     return DEEPSEEK_V4_1_FLASH_FALLBACK;
   }
@@ -862,6 +970,15 @@ function toWellFormedJson(value: unknown): unknown {
 export function getModel(env: Cloudflare.Env, config: AiModelConfig,
                          initiator: AiChatAuthorInfo,
                          options: ModelRoutingOptions = {}): ModelHandle {
+  return withBilling(env, initiator, options, resolveModel(env, config, initiator, options));
+}
+
+function resolveModel(env: Cloudflare.Env, config: AiModelConfig,
+                      initiator: AiChatAuthorInfo,
+                      options: ModelRoutingOptions): ModelHandle {
+  if (config.provider === "opencode-go") {
+    return getModelViaOpenCodeGo(env, config, options.sessionAffinity);
+  }
   // BYOK: a connected user's own Cloudflare account pays for everything (all providers, including
   // Workers AI), routed through the user's own AI Gateway with unified billing. Honored regardless
   // of whether a platform AI Gateway is configured, so connected users are always billed correctly.
@@ -1189,6 +1306,8 @@ function getModelDirect(config: AiModelConfig, sessionAffinity?: string): ModelH
       });
     case "cloudflare-auto-router":
       throw new Error("The Auto Router model runs only through an AI Gateway.");
+    case "opencode-go":
+      throw new Error("OpenCode Go models are provided by the deployment only.");
     default:
       config.provider satisfies never;
       throw new Error(`Unknown provider "${config.provider}".`);
@@ -1217,6 +1336,20 @@ type DecisionModel = (context: ClassifierContext) => Promise<ClassifierResult>;
 export function getDecisionModel(env: Cloudflare.Env, config: AiModelConfig,
                                  initiator: AiChatAuthorInfo,
                                  metadataContext?: GatewayMetadataContext): DecisionModel {
+  let model = resolveDecisionModel(env, config, initiator, metadataContext);
+  // 有缘心之助：判定完成后按发起人计费（见 billing.ts）。
+  let payer = billingEnabled(env) ? billingPayer(initiator) : undefined;
+  if (!payer) return model;
+  return async context => {
+    let result = await model(context);
+    await chargeBilling(env, payer, result.usage?.cost.total ?? 0, "gadget-decision");
+    return result;
+  };
+}
+
+function resolveDecisionModel(env: Cloudflare.Env, config: AiModelConfig,
+                              initiator: AiChatAuthorInfo,
+                              metadataContext?: GatewayMetadataContext): DecisionModel {
   // pi's catalog entry supplies the API, cost and window; only the address varies by route.
   const catalog = (CLOUDFLARE_WORKERS_AI_CLASSIFIER_MODELS as
       Record<string, ClassifierModel<ClassifierApi>>)[config.model];
@@ -1336,6 +1469,8 @@ export class LanguageModelGatekeeper
     // A binding makes one-shot calls, which ask for no reasoning level. Without the level it was
     // minted with, its model is described as one with none set, whatever the admin has set since.
     let { reasoning, ...config } = await bindingConfig(this.env, this.ctx.props);
+    // 有缘心之助：每次调用 binding 都开一个 session，余额不足时在这里拦下。
+    await assertBillingAllowed(this.env, billingPayer(this.ctx.props.initiator));
     let model = getModel(this.env, config, this.ctx.props.initiator, {
       metadata: this.ctx.props.metadata,
     });
@@ -1408,6 +1543,7 @@ export class DecisionModelGatekeeper
       : Promise<DecisionModelBinding> {
     let { initiator, metadata } = this.ctx.props;
     let config = await bindingConfig(this.env, this.ctx.props);
+    await assertBillingAllowed(this.env, billingPayer(initiator));
     return new DecisionModelBindingImpl(getDecisionModel(this.env, config, initiator, metadata));
   }
 

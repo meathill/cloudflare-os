@@ -1,7 +1,11 @@
-import { ADMIN_ACCESS_ERROR_CODES, AdminApi, AdminAuditPage, AdminAuditQuery, AdminAuditStats, AdminAuditStatsQuery, AdminFormat, AdminFormatPatch, AdminInspectOptions, AdminModel, AdminResourceVendor, AdminSettingChange, AdminSettingMethod, AdminSettingsView, AdminUserPage, AdminUserQuery, AdminUserView, AdminVia, AdminWorkspaceAccess, AdminWorkspacePage, AdminWorkspaceQuery, AdminWorkspaceView, AiModelConfig, AiModelProvider, AmbientGatekeeperMode, BannerColor, BlueprintPublicInfo, DeploymentUpdateStatus, GatewayModel, GatewayModelLevelTest, GatewayModelMode, GatewayModelSettings, GatewayModelTest, MAX_ADMIN_AUDIT_RETENTION_DAYS, MAX_ANNOUNCEMENT_LENGTH, MAX_INSTANCE_INSTRUCTIONS_LENGTH, MAX_SITE_NAME_LENGTH, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, ReasoningLevel, SUGGESTED_MODELS, createAdminAccessError, getAdminAccessErrorCode, isAdminWorkspaceAccess, isAmbientGatekeeperMode, isBannerColor, isHexColor, UsageOverviewStats, UsageStatsResponse } from '@gadgets/workshop-shared/api';
+import { ADMIN_ACCESS_ERROR_CODES, AdminApi, AdminAuditPage, AdminAuditQuery, AdminAuditStats, AdminAuditStatsQuery, AdminFormat, AdminFormatPatch, AdminInspectOptions, AdminModel, AdminResourceVendor, AdminSettingChange, AdminSettingMethod, AdminSettingsView, AdminUserPage, AdminUserQuery, AdminUserView, AdminVia, AdminWorkspaceAccess, AdminWorkspacePage, AdminWorkspaceQuery, AdminWorkspaceView, AiModelConfig, AiModelProvider, AmbientGatekeeperMode, BannerColor, BlueprintPublicInfo, DeploymentUpdateStatus, GatewayModel, GatewayModelLevelTest, GatewayModelMode, GatewayModelSettings, GatewayModelTest, MAX_ADMIN_AUDIT_RETENTION_DAYS, MAX_ANNOUNCEMENT_LENGTH, MAX_INSTANCE_INSTRUCTIONS_LENGTH, MAX_SITE_NAME_LENGTH, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, ReasoningLevel, SUGGESTED_MODELS, createAdminAccessError, getAdminAccessErrorCode, isAdminWorkspaceAccess, isAmbientGatekeeperMode, isBannerColor, isHexColor, UsageOverviewStats, UsageStatsResponse, type BillingAdminClient } from '@gadgets/workshop-shared/api';
+import type {
+  BillingAccountInfo, BillingLedgerEntry, BillingLedgerQuery, BillingPlan, BillingService,
+  BillingUsageEvent, BillingUsageEventQuery, BillingUsageRange, BillingUsageReport,
+} from '@gadgets/workshop-shared/billing';
 import { GatekeeperVendor, getResourceTypeId, findResourceType } from '@gadgets/workshop-shared/gatekeeper';
 import { DurableObject } from 'cloudflare:workers';
-import { RpcTarget, type RpcStub } from 'capnweb';
+import { RpcStub, RpcTarget } from 'capnweb';
 import { validateRpc } from 'capnweb-validate';
 import { createWorkshopLogger } from "./observability";
 import { sanitizeBlueprintOutput } from './blueprint-archive.js';
@@ -1759,5 +1763,60 @@ export class AdminApiImpl extends RpcTarget implements AdminApi {
 
   getUsageStats(): Promise<UsageStatsResponse> {
     return this.admin.getUsageStats();
+  }
+
+  async getBillingAdmin(): Promise<RpcStub<BillingAdminClient> | null> {
+    if (!this.env.BILLING) return null;
+    // @ts-expect-error Cap'n Web RPC stubs and native RPC targets are compatible but the type
+    //     system doesn't know this.
+    return new BillingAdminClientImpl(this.env.BILLING, this.adminUserId);
+  }
+}
+
+// 有缘心之助：管理员的计费能力。操作人固定为铸造时的管理员，浏览器无法冒用他人身份记流水。
+@validateRpc()
+class BillingAdminClientImpl extends RpcTarget implements BillingAdminClient {
+  constructor(private billing: Service<BillingService>, private adminUserId: string) {
+    super();
+  }
+
+  async getAccounts(userKeys: string[]): Promise<BillingAccountInfo[]> {
+    using admin = await this.billing.admin();
+    return admin.getAccounts(userKeys);
+  }
+
+  async setPlan(userKey: string, plan: BillingPlan): Promise<BillingAccountInfo> {
+    using admin = await this.billing.admin();
+    return admin.setPlan(userKey, plan, this.adminUserId);
+  }
+
+  async grant(userKey: string, amountUsd: number, note: string): Promise<BillingAccountInfo> {
+    using admin = await this.billing.admin();
+    return admin.grant(userKey, amountUsd, note, this.adminUserId);
+  }
+
+  async listLedger(userKey: string, limit?: number): Promise<BillingLedgerEntry[]> {
+    using admin = await this.billing.admin();
+    return admin.listLedger(userKey, limit);
+  }
+
+  async setMarkup(userKey: string, markup: number | null): Promise<BillingAccountInfo> {
+    using admin = await this.billing.admin();
+    return admin.setMarkup(userKey, markup, this.adminUserId);
+  }
+
+  async getUsageReport(query: BillingUsageRange & { userKey?: string }): Promise<BillingUsageReport> {
+    using admin = await this.billing.admin();
+    return admin.getUsageReport(query);
+  }
+
+  async listLedgerEntries(query: BillingLedgerQuery): Promise<BillingLedgerEntry[]> {
+    using admin = await this.billing.admin();
+    return admin.listLedgerEntries(query);
+  }
+
+  async listUsageEvents(query: BillingUsageEventQuery): Promise<BillingUsageEvent[]> {
+    using admin = await this.billing.admin();
+    return admin.listUsageEvents(query);
   }
 }
