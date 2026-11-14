@@ -28,6 +28,10 @@ import { AccountDescription, ActionKind, ActionDescription, AgentCatalog, Avatar
 import type { CodeChange } from "./code-change.js";
 import type { GitOid } from "./gatekeeper.js";
 import type { UiFeatureFlags } from "./feature-flags.js";
+import type { GatekeeperAppSurface } from "./gatekeeper.js";
+import type {
+  BillingAccountInfo, BillingLedgerEntry, BillingPlan, BillingUserApi,
+} from "./billing.js";
 
 export const SERVICE_SALT = new Uint8Array([
   0xd9, 0x4e, 0x54, 0x1d, 0x29, 0xc1, 0x03, 0x74, 0x73, 0x7e, 0xb3, 0xe3, 0x34, 0x6d, 0x8f, 0x21
@@ -1219,9 +1223,9 @@ export interface AuthenticatedApi extends RpcTarget {
    * @appApi ui id
    * @nullWhen the user has no gatekeeper of that id with an app, as listGatekeeperApps() lists
    *   them; for an ambient one the deployment only offers, provisionAmbientAccount() with that id
-   *   adds it
+   *   adds it; or (有缘心之助) `surface` is "admin" and the caller is not a deployment admin
    */
-  getGatekeeperApp(id: string): Promise<GatekeeperUiFrame | null>;
+  getGatekeeperApp(id: string, surface?: GatekeeperAppSurface): Promise<GatekeeperUiFrame | null>;
 
   /**
    * Mint a single-use ticket for a user selected on behalf of a gatekeeper app,
@@ -1251,6 +1255,13 @@ export interface AuthenticatedApi extends RpcTarget {
    * @nullWhen the caller is not a deployment admin; amIAdmin() says whether it is
    */
   getAdminApi(): Promise<RpcStub<AdminApi> | null>;
+
+  /**
+   * 有缘心之助：this user's own prepaid billing (balance, top-ups, usage), scoped to them.
+   *
+   * @nullWhen the deployment does not bill its users (it has no BILLING binding)
+   */
+  getBilling(): Promise<RpcStub<BillingUserApi> | null>;
 
   // TODO:
   // - Edit permissions on a connected account.
@@ -2151,6 +2162,29 @@ export interface AdminApi {
 
   /** 获取平台所有用户的行为与 Token 消耗用量统计 */
   getUsageStats(): Promise<UsageStatsResponse>;
+
+  /**
+   * 有缘心之助：prepaid billing administration, acting as the calling admin (every plan change and
+   * grant is recorded under their id in the billing ledger).
+   *
+   * @nullWhen the deployment does not bill its users (it has no BILLING binding)
+   */
+  getBillingAdmin(): Promise<RpcStub<BillingAdminClient> | null>;
+}
+
+/**
+ * 有缘心之助：the admin's billing capability as the browser holds it. Like BillingAdminApi, but the
+ * acting admin is the capability's own, never one the caller names.
+ */
+export interface BillingAdminClient extends RpcTarget {
+  /** The accounts of these users (see BillingAdminApi.getAccounts); a user with none is left out. */
+  getAccounts(userKeys: string[]): Promise<BillingAccountInfo[]>;
+  /** Move a user to `plan`, creating their account if they have none yet. */
+  setPlan(userKey: string, plan: BillingPlan): Promise<BillingAccountInfo>;
+  /** Add `amountUsd` (negative to take some back) to a user's balance, with a reason. */
+  grant(userKey: string, amountUsd: number, note: string): Promise<BillingAccountInfo>;
+  /** A user's ledger, newest first. */
+  listLedger(userKey: string, limit?: number): Promise<BillingLedgerEntry[]>;
 }
 
 /** 单个用户的 Token 消耗与行为用量记录 */
@@ -2339,7 +2373,10 @@ export type CloudflareAccountOption = {
  * model behind each request (see AUTO_ROUTER_MODEL_ID); it exists only inside a gateway.
  */
 export type AiModelProvider =
-    "openai" | "anthropic" | "google" | "cloudflare" | "ollama" | "cloudflare-auto-router";
+    "openai" | "anthropic" | "google" | "cloudflare" | "ollama" | "cloudflare-auto-router" |
+    // 有缘心之助：OpenCode Go（https://opencode.ai/docs/console/go/），直连其 OpenAI 兼容端点，
+    // 不经 AI Gateway；部署配了 OPENCODE_API_KEY 才提供。计价按各模型厂商的官方价。
+    "opencode-go";
 
 /** The model ID of AI Gateway's Auto Router, the one model of "cloudflare-auto-router". */
 export const AUTO_ROUTER_MODEL_ID = "cloudflare/auto";
@@ -2850,6 +2887,17 @@ const SUGGESTED_MODEL_CATALOG = {
     "gemini-3.6-flash": {name: "Gemini 3.6 Flash", contextWindow: 1048576, hidden: true},
   },
   "ollama": {
+  },
+  // 有缘心之助：便宜的开放模型，经 OpenCode Go 提供。首个是该服务商的默认模型。
+  "opencode-go": {
+    "deepseek-v4.1-flash": {name: "DeepSeek V4.1 Flash", contextWindow: 1000000, outputLimit: 384000},
+    "glm-5.3-flash": {name: "GLM 5.3 Flash", contextWindow: 1000000, outputLimit: 131072},
+    "qwen3.8-flash": {name: "Qwen3.8 Flash", contextWindow: 1000000, outputLimit: 131072},
+    "mimo-v2.6-flash": {name: "MiMo V2.6 Flash", contextWindow: 1048576, outputLimit: 131072},
+    "minimax-m3.1-flash": {name: "MiniMax M3.1 Flash", contextWindow: 1000000, outputLimit: 512000},
+    "kimi-k2.7-code": {name: "Kimi K2.7 Code", contextWindow: 262144, outputLimit: 262144},
+    "glm-5.3": {name: "GLM 5.3", contextWindow: 1000000, outputLimit: 131072},
+    "glm-5.2": {name: "GLM 5.2", contextWindow: 1000000, outputLimit: 131072},
   },
 } satisfies Record<AiModelProvider, Record<string, SuggestedModel>>;
 

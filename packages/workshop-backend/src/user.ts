@@ -2155,10 +2155,26 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   // An auto-provisioned account is never reconnected, so without this the description stored when it
   // was minted would never pick up a gatekeeper upgrade (e.g. a newly declared management UI).
   // Best-effort: a failing describe() keeps the stored description.
-  async #refreshAccountDescription(record: ConnectedAccountRecord): Promise<void> {
+  // Returns false when the account reported itself superseded and was removed, so the caller
+  // provisions a replacement.
+  async #refreshAccountDescription(record: ConnectedAccountRecord): Promise<boolean> {
     try {
       let description = await record.account.describe();
-      if (JSON.stringify(description) === JSON.stringify(record.description)) return;
+      if (description.superseded) {
+        try {
+          await record.account.revoke();
+        } catch (err) {
+          logger.warn("revoke() failed for a superseded account", {
+            event: "account.auto.superseded.revoke.failed", vendorId: record.vendorId, error: err,
+          });
+        }
+        this.storage.connectedAccounts.delete(record.id);
+        logger.info("replacing a superseded auto-provisioned account", {
+          event: "account.auto.superseded", vendorId: record.vendorId, accountId: record.id,
+        });
+        return false;
+      }
+      if (JSON.stringify(description) === JSON.stringify(record.description)) return true;
       let current = this.storage.connectedAccounts.get(record.id);
       if (current) this.storage.connectedAccounts.put({ ...current, description });
     } catch (err) {
@@ -2167,6 +2183,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
         vendorId: record.vendorId, accountId: record.id, error: err,
       });
     }
+    return true;
   }
 
   // Dedup concurrent #ensureAutoProvisionedAccounts() calls. The provisioning loop awaits cross-worker
@@ -2192,7 +2209,9 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     for (let rec of this.#connectedAccountRecords()) {
       if (!rec.autoProvisioned) continue;
       provisioned.add(rec.vendorId);
-      refreshes.push(this.#refreshAccountDescription(rec));
+      refreshes.push(this.#refreshAccountDescription(rec).then(kept => {
+        if (!kept) provisioned.delete(rec.vendorId);
+      }));
     }
     await Promise.all(refreshes);
 
@@ -2254,7 +2273,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
    * fresh by the caller so admin-gated features reflect the user's current status.
    */
   async startAccountAppUi(
-      accountId: number, options: Pick<AppUiContext, "isAdmin">,
+      accountId: number, options: Pick<AppUiContext, "isAdmin" | "surface">,
   ): Promise<GatekeeperUiFrame> {
     let record = this.storage.connectedAccounts.get(accountId);
     if (!record?.description.providesUi) throw new Error("No such app.");
@@ -2262,7 +2281,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       props: { selectorUserId: this.ctx.id.toString(), appAccountId: accountId },
     });
     return (record.account as unknown as SingletonAccountStub)
-        .startAppUi({ isAdmin: options.isAdmin, userSelectionExchange });
+        .startAppUi({ isAdmin: options.isAdmin, surface: options.surface ?? "app", userSelectionExchange });
   }
 
   // The account record behind one of this user's gatekeeper apps, or undefined

@@ -76,6 +76,10 @@ import { recordAnalytics } from "./analytics";
 import { reportIssue } from "@gadgets/observability/error-reporting";
 import type { ProductAnalyticsConnectionType, ProductAnalyticsGadgetInput } from "./analytics";
 import { checkUsageAndBalance } from "./ai-gateway-billing/limits/usage-checker";
+import {
+  authorizeBilling, balanceExhausted, BillingRefusedError, billingPayer, chargeBilling,
+  WEB_SEARCH_RAW_COST_USD,
+} from "./billing.js";
 import { normalizeAgentCatalog } from "./agent-catalog";
 import { refreshCachedBalance } from "./ai-gateway-billing/cloudflare/connection-service";
 import { SharingManager, SharingCaller, accessIncludesGadget } from "./sharing";
@@ -785,6 +789,9 @@ class OverseerImpl implements AgentHooks {
 
   // Per-chat in-memory state for running agents.
   #liveChats = new Map<number, LiveChatContext>();
+  // 有缘心之助：每个 chat 最近一轮的计费人，供之后的缓存保温 ping 计费。只在内存里：DO 重启后
+  // 下一轮会重新记下，期间的 ping 不计费。
+  #chatPayers = new Map<number, string>();
   #chatSubscribers: Set<RpcStub<AiChatSubscriber>> = new Set();
   readonly cacheWarmer: ChatCacheWarmer;
 
@@ -1625,9 +1632,13 @@ class OverseerImpl implements AgentHooks {
         this.storage,
         (record, resolvedBy, autoApproved) =>
             this.applyPendingAction(record, resolvedBy, autoApproved));
-    this.cacheWarmer = new ChatCacheWarmer(ctx.id.toString(), (chatId, resent) =>
-        this.#addRequestCost(
-            chatId, resent.usage, resent.aiGatewayLogId, resent.aiGatewayLogRoute, false));
+    this.cacheWarmer = new ChatCacheWarmer(ctx.id.toString(), (chatId, resent) => {
+      this.#addRequestCost(
+          chatId, resent.usage, resent.aiGatewayLogId, resent.aiGatewayLogRoute, false);
+      // 有缘心之助：缓存保温的 ping 记到该 chat 最近一轮的发起人。
+      let payer = this.#chatPayers.get(chatId);
+      if (payer) this.ctx.waitUntil(chargeBilling(this.env, payer, resent.usage.cost.total, "cache-warm"));
+    });
 
     // Mirror every gadget-registry change into the owner's outputs index. Subscribing here makes
     // the registry the single chokepoint, so creation, acceptance, renaming, reverting and
@@ -6330,6 +6341,11 @@ class OverseerImpl implements AgentHooks {
            (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GOOGLE_API_KEY;
   }
 
+  chargeWebSearch(chatId: number): void {
+    let payer = this.#chatPayers.get(chatId);
+    if (payer) this.ctx.waitUntil(chargeBilling(this.env, payer, WEB_SEARCH_RAW_COST_USD, "web-search"));
+  }
+
   // Record an observation that originated from a built-in agent tool (not a gatekeeper).
   // The `gatekeeperId` is set to the BUILTIN_TOOL_GATEKEEPER_ID sentinel so that downstream
   // code (which expects a gatekeeper to dereference for approve/reject) never touches it —
@@ -7889,6 +7905,22 @@ class OverseerImpl implements AgentHooks {
         // When the Cloudflare limits flow is disabled, checkUsageAndBalance() always allows.
         // (This runs inside the try so the `finally` below still clears the active-agent state and
         // emits a stream "clear" — otherwise the UI would spin forever on a block.)
+        // 有缘心之助：预付费计费按发起人拦截；部署没有 BILLING binding 时不生效（见 billing.ts）。
+        let payer = billingPayer(initiator);
+        if (payer) {
+          this.#chatPayers.set(chatId, payer);
+          let billing = await authorizeBilling(this.env, payer);
+          if (billing && !billing.allowed) {
+            turn.setErrorType("usage_limit");
+            failure = {message: billing.reason ?? "余额不足，请先充值。", code: "usage_limit"};
+            turnLogger.debug("agent run finished", {
+              event: "agent.run.finished", outcome: "usage_limit",
+              durationMs: Date.now() - startedAt,
+            });
+            return;
+          }
+        }
+
         let byokRouting: UserGatewayRouting | undefined;
         if (this.ownerId) {
           let ownerStub = this.users.get(this.users.idFromString(this.ownerId));
@@ -7918,6 +7950,12 @@ class OverseerImpl implements AgentHooks {
               sessionAffinity,
               userGateway: byokRouting,
               metadata: { source: "chat", gadgetId: this.ctx.id.toString(), chatId },
+              // 有缘心之助：一步的扣费把余额花光时，停在这一步之后，而不是等整轮结束。
+              onCharge: charge => this.ctx.waitUntil(charge.then(result => {
+                if (balanceExhausted(result) && owns() && !liveChat.cancelController.signal.aborted) {
+                  liveChat.cancelController.abort(new BillingRefusedError("余额已用完，本轮已停止。请充值后继续。"));
+                }
+              })),
             });
         turn.setModel(chosenModel.model);
 
@@ -7935,6 +7973,15 @@ class OverseerImpl implements AgentHooks {
       });
     } catch (err: unknown) {
       if (!owns()) return;
+      // 有缘心之助：余额在这一轮里用完（见上面的 onCharge），按用量上限结束，而不是当成用户停止。
+      if (err === liveChat.cancelController.signal.reason && err instanceof BillingRefusedError) {
+        turnLogger.debug("agent run finished", {
+          event: "agent.run.finished", outcome: "usage_limit",
+          durationMs: Date.now() - startedAt,
+        });
+        failure = {message: err.message, code: "usage_limit"};
+        return;
+      }
       // The turn threw the user's stop (see cancelAgent): it ended as asked, so it is not reported
       // or logged as a failure, and the chat marks it as stopped. Any other error after Stop is a
       // real failure and is reported as one.

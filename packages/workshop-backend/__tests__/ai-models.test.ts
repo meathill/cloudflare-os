@@ -1196,6 +1196,15 @@ describe("gateway model reasoning levels", () => {
     ["cloudflare", "@cf/cloudflare/clef", null],
     ["cloudflare", "@cf/cloudflare/clef-flash", null],
     ["cloudflare-auto-router", "cloudflare/auto", null],
+    // 有缘心之助：OpenCode Go 的模型不带 thinkingLevelMap，不设等级时不发 effort。
+    ["opencode-go", "deepseek-v4.1-flash", null],
+    ["opencode-go", "glm-5.3-flash", null],
+    ["opencode-go", "qwen3.8-flash", null],
+    ["opencode-go", "mimo-v2.6-flash", null],
+    ["opencode-go", "minimax-m3.1-flash", null],
+    ["opencode-go", "kimi-k2.7-code", null],
+    ["opencode-go", "glm-5.3", null],
+    ["opencode-go", "glm-5.2", null],
   ];
   it.each(BUILT_IN)("says what %s model %s is asked for while no level is set",
       (provider, model, builtIn) => {

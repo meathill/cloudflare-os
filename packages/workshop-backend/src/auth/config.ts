@@ -6,6 +6,8 @@
 // "Continue with ..." button alongside the normal username/password form (unless password auth is
 // disabled). All OFF by default.
 
+import { emailEnabled } from "../email.js";
+
 /**
  * Parse the AUTH_GATEKEEPERS allowlist into a list of gatekeeper vendor ids (lowercased). These are
  * the gatekeepers permitted to drive sign-in; a vendor must also actually advertise `providesAuth`
@@ -88,12 +90,27 @@ export function isDeploymentAdmin(env: Cloudflare.Env, name: string): boolean {
 // such as the Kelvin sign onto "k", which would let a look-alike name match an admin's.
 const asciiLowerCase = (text: string) => text.replace(/[A-Z]/g, letter => letter.toLowerCase());
 
+/** Whether email-code sign-in is on: EMAIL_OTP_ENABLED=true and an email channel to send codes. */
+export function isEmailOtpEnabled(env: Cloudflare.Env): boolean {
+  return env.EMAIL_OTP_ENABLED === "true" && emailEnabled(env);
+}
+
 /**
  * Whether username/password login + signup is available. Enabled by default. An installation can
- * set DISABLE_PASSWORD_AUTH=true to be OAuth-only — but that only takes effect when at least one
- * auth gatekeeper is allowlisted, otherwise we'd lock everyone out, so password auth stays on.
+ * set DISABLE_PASSWORD_AUTH=true to sign in only through auth gatekeepers or email codes — but that
+ * only takes effect when one of them is available, otherwise we'd lock everyone out, so password
+ * auth stays on.
  */
 export function isPasswordAuthEnabled(env: Cloudflare.Env): boolean {
   if (env.DISABLE_PASSWORD_AUTH !== "true") return true;
-  return !hasAuthGatekeepers(env);
+  return !hasAuthGatekeepers(env) && !isEmailOtpEnabled(env);
+}
+
+/**
+ * Whether new password accounts may be created. Password accounts carry no email, so wherever an
+ * email can register instead -- email codes, or an allowlist deciding by address -- signup goes
+ * through email alone. Existing password accounts keep signing in per isPasswordAuthEnabled().
+ */
+export function isPasswordSignupEnabled(env: Cloudflare.Env): boolean {
+  return isPasswordAuthEnabled(env) && !isEmailOtpEnabled(env) && !signupAllowlistEnabled(env);
 }

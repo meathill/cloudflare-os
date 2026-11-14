@@ -38,7 +38,7 @@ const OFFERED: [AiModelProvider, string][] = [
 ];
 
 function cost(provider: AiModelProvider, model: string) {
-  return getModel(env, { provider, model, apiToken: "unused" }, INITIATOR).model.cost;
+  return getModel({ ...env, OPENCODE_API_KEY: "test" }, { provider, model, apiToken: "unused" }, INITIATOR).model.cost;
 }
 
 describe("模型目录计费", () => {

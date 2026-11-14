@@ -3,9 +3,10 @@ import { validateRpc } from "capnweb-validate";
 import type { JWTPayload } from "jose";
 import { PublicApi, ROUTER_TAG_PROBE_PATH, VERSION_PATH, AuthenticatedApi, Overseer, WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, RedactedAiModelConfig, AiGatewayInfo, ModelKind, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, ObserverConfigCallback, BlueprintLibrarySummary, BlueprintPublicInfo, BlueprintUserSummary, BlueprintBindingAssignment, AgentSpawnerConfig, WorkpieceId, BLUEPRINT_SCREENSHOT_PATH_PREFIX, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ServerConfig, CloudflareUsageInfo, CloudflareAccountOption, LoginAttempt, GatekeeperAppInfo, AdminApi, GatekeeperVendorInfo, OutputFormatOffer, ListOutputsResult, UserDirectoryRecord, createOpenWorkspaceError, getOpenWorkspaceErrorCode, OPEN_WORKSPACE_ERROR_CODES, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, NotificationSubscriber, NotificationMute, WebPushSubscription, type UnreadStateSubscriber, AdminVia } from '@gadgets/workshop-shared/api';
 import type { UiFeatureFlags } from "@gadgets/workshop-shared/feature-flags";
+import { BILLING_STRIPE_WEBHOOK_PATH, type BillingUserApi } from "@gadgets/workshop-shared/billing";
 import type { UnreadStateScope } from "@gadgets/workshop-shared/api";
 import { backendVersion, getServerConfig } from "./deployment-config.js";
-import { isDeploymentAdmin, isPasswordAuthEnabled, isSignupAllowed, signupAllowlistEnabled, getAuthGatekeeperAllowlist } from "./auth/config.js";
+import { isDeploymentAdmin, isEmailOtpEnabled, isPasswordAuthEnabled, isPasswordSignupEnabled, isSignupAllowed, getAuthGatekeeperAllowlist } from "./auth/config.js";
 import { getAuthVendorBinding } from "./auth/auth-vendors.js";
 import { getUsageInfo } from "./ai-gateway-billing/limits/usage-checker.js";
 import { listConnectedAccounts, selectAccount } from "./ai-gateway-billing/cloudflare/connection-service.js";
@@ -16,8 +17,9 @@ import { deploymentOutputForBlueprint, listFormatOffers, readAdminConfig } from 
 // Re-export the optional-feature Durable Objects + entrypoints so they can be bound in wrangler.
 export { PendingLogin, LoginConnectCallbackImpl };
 export { EmailOtp } from "./email-otp.js";
-import { emailEnabled, sendEmail } from "./email.js";
-import { GatekeeperUiFrame, GatekeeperUserSelection } from "@gadgets/workshop-shared/gatekeeper";
+import { emailOtpIpThrottleName } from "./email-otp.js";
+import { sendEmail } from "./email.js";
+import { GatekeeperUiFrame, GatekeeperUserSelection, type GatekeeperAppSurface } from "@gadgets/workshop-shared/gatekeeper";
 import { DecisionModelGatekeeper, LanguageModelGatekeeper } from "./ai-models";
 import { getGatewayModels } from "./ai-gateway.js";
 import { AdminSettings, AdminApiImpl } from "./admin-settings.js";
@@ -689,7 +691,10 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
         }));
   }
 
-  async getGatekeeperApp(vendorId: string): Promise<GatekeeperUiFrame | null> {
+  async getGatekeeperApp(vendorId: string, surface: GatekeeperAppSurface = "app")
+      : Promise<GatekeeperUiFrame | null> {
+    let isAdmin = this.#isAdmin();
+    if (surface === "admin" && !isAdmin) return null;
     // Self-sufficient: listProvidedAccounts provisions auto-provisioned accounts first (idempotent),
     // so a direct URL load of /gatekeepers/$id works without racing the Header's listGatekeeperApps.
     let user = this.#user;  // one stub for both calls
@@ -697,7 +702,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     let app = accounts.find(account => account.vendorId === vendorId && account.description.providesUi);
     if (!app) return null;
     // isAdmin is supplied fresh per open so admin-gated features reflect the user's current status.
-    return user.startAccountAppUi(app.accountId, { isAdmin: this.#isAdmin() });
+    return user.startAccountAppUi(app.accountId, { isAdmin, surface });
   }
 
   async createGatekeeperUserSelection(
@@ -724,6 +729,14 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     // @ts-expect-error Cap'n Web RPC stubs and native RPC targets are compatible but the type
     //     system doesn't know this.
     return new AdminApiImpl(this.ctx, this.env, adminUserId, this.via);
+  }
+
+  async getBilling(): Promise<RpcStub<BillingUserApi> | null> {
+    if (!this.env.BILLING) return null;
+    // The user DO is named by the profile id, which is also the billing key (see billing.ts).
+    // @ts-expect-error Cap'n Web RPC stubs and native RPC stubs are compatible but the type
+    //     system doesn't know this.
+    return this.env.BILLING.forUser(this.#userId.name!);
   }
 }
 
@@ -788,7 +801,8 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       private abortSession: (reason: Error) => void,
       private accessSession: { payload: JWTPayload; jwt: string } | undefined,
       private cliAdminsOnly: boolean,
-      private via: AdminVia) {
+      private via: AdminVia,
+      private clientIp?: string) {
     super();
     this.users = this.ctx.exports.UserDurableObject;
   }
@@ -932,10 +946,15 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
   }
 
   async requestEmailOtp(email: string): Promise<void> {
-    if (this.env.EMAIL_OTP_ENABLED !== "true" || !emailEnabled(this.env)) {
+    if (!isEmailOtpEnabled(this.env)) {
       throw new Error("此部署未启用邮箱验证码登录。");
     }
     let address = normalizeEmailAddress(email);
+    if (this.clientIp) {
+      await this.ctx.exports.EmailOtp.get(
+          this.ctx.exports.EmailOtp.idFromName(emailOtpIpThrottleName(this.clientIp)),
+          this.#doOptions).throttle();
+    }
     let user = this.users.get(this.users.idFromName(address), this.#doOptions);
     let exists = (await user.whoamiIfExists()) !== null;
     // Existing accounts may sign in by code whenever the feature is on; a new account is created
@@ -966,7 +985,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
   }
 
   async verifyEmailOtp(email: string, code: string): Promise<string | null> {
-    if (this.env.EMAIL_OTP_ENABLED !== "true" || !emailEnabled(this.env)) {
+    if (!isEmailOtpEnabled(this.env)) {
       throw new Error("此部署未启用邮箱验证码登录。");
     }
     let address = normalizeEmailAddress(email);
@@ -995,10 +1014,8 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     if (!(await readAdminConfig(this.env)).signupsEnabled) {
       throw new Error("New signups are currently disabled on this deployment.");
     }
-    // Password accounts carry no email, so an email allowlist cannot decide their fate: with the
-    // allowlist on, password signup is closed and email OTP becomes the way in.
-    if (signupAllowlistEnabled(this.env)) {
-      throw new Error("密码注册已关闭：此部署只允许名单内的邮箱通过邮箱验证码注册。");
+    if (!isPasswordSignupEnabled(this.env)) {
+      throw new Error("密码注册已关闭：请使用邮箱验证码注册。");
     }
 
     username = normalizeUsername(username);
@@ -1096,6 +1113,11 @@ export default {
       return handleClientErrorRequest(req, env, ctx);
     }
 
+    // 有缘心之助：Stripe webhook 原样交给计费 Worker，由它验签入账（它没有公网路由）。
+    if (url.pathname === BILLING_STRIPE_WEBHOOK_PATH && env.BILLING) {
+      return env.BILLING.fetch(req);
+    }
+
     if (url.pathname === "/api/device-session/callback") {
       let expectedUserDoId: string | undefined;
       if (env.CF_ACCESS_AUD) {
@@ -1182,7 +1204,8 @@ export default {
 
       return await newWorkersRpcResponse(req,
           new PublicApiImpl(ctx, env, abortSession, accessSession,
-              !local && cli, cli ? "cli" : "api"),
+              !local && cli, cli ? "cli" : "api",
+              req.headers.get("CF-Connecting-IP") ?? undefined),
           { abortSignal: abortController.signal });
     }
 

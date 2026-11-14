@@ -314,7 +314,7 @@ describe("GatewayModels", () => {
       ...Object.keys(SUGGESTED_MODELS.cloudflare),
     ]);
     expect(models.providerSettings.map(({ provider }) => provider)).toEqual(
-        ["openai", "anthropic", "cloudflare-auto-router", "cloudflare", "google"]);
+        ["openai", "anthropic", "cloudflare-auto-router", "cloudflare", "google", "opencode-go"]);
     expect(models.addableProviders).toEqual(["openai", "anthropic", "cloudflare"]);
   });
 
@@ -651,7 +651,7 @@ describe("GatewayModels", () => {
   });
 
   describe("providers", () => {
-    const CATALOG_ORDER = ["cloudflare-auto-router", "cloudflare", "anthropic", "openai", "google"];
+    const CATALOG_ORDER = ["cloudflare-auto-router", "cloudflare", "anthropic", "openai", "google", "opencode-go"];
     const GEMINI = "gemini-3.8-flash";
     const NO_TOKEN = 'Provider "google" cannot use the Workers AI binding transport, and no ' +
         "CF_AI_GATEWAY_API_TOKEN is configured for the HTTPS one.";
@@ -701,22 +701,24 @@ describe("GatewayModels", () => {
             { provider: "anthropic", enabledBy: "environment", needsApiToken: false },
             { provider: "openai", needsApiToken: false },
             { provider: "google", enabledBy: "admin", needsApiToken: false },
+            // 有缘心之助：OpenCode Go 不经网关，缺的是 OPENCODE_API_KEY。
+            { provider: "opencode-go", needsApiToken: true },
           ]);
       // The environment's listing comes first, so a provider it lists can't be turned off.
       expect(gatewayModels({ addedProviders: ["anthropic", "cloudflare"] }, "anthropic")
           .providerSettings.map(({ enabledBy }) => enabledBy))
-          .toEqual([undefined, "admin", "environment", undefined, undefined]);
+          .toEqual([undefined, "admin", "environment", undefined, undefined, undefined]);
     });
 
     it("reports a provider whose requests need a token the deployment lacks", () => {
       // Whether the provider is on or off.
-      expect(needsToken(tokenless())).toEqual(["google"]);
-      expect(needsToken(tokenless(), ["google", "openai"])).toEqual(["google"]);
+      expect(needsToken(tokenless())).toEqual(["google", "opencode-go"]);
+      expect(needsToken(tokenless(), ["google", "openai"])).toEqual(["google", "opencode-go"]);
       // With a token, over HTTPS alone or beside the binding, none does.
-      expect(needsToken(gatewayEnv("anthropic,google"))).toEqual([]);
+      expect(needsToken({ ...gatewayEnv("anthropic,google"), OPENCODE_API_KEY: "go-key" })).toEqual([]);
       expect(needsToken(env({
         CF_AI_GATEWAY_ACCOUNT_ID: "account-id", CF_AI_GATEWAY_API_TOKEN: "gateway-token",
-        CF_AI_GATEWAY_PROVIDERS: "anthropic", WORKERS_AI: undefined,
+        CF_AI_GATEWAY_PROVIDERS: "anthropic", WORKERS_AI: undefined, OPENCODE_API_KEY: "go-key",
       }), ["google"])).toEqual([]);
     });
 
@@ -756,7 +758,8 @@ describe("GatewayModels", () => {
         const request = () => getModel(
             deployment, { provider, model: "test-model", apiToken: "" }, USER);
         if (needsApiToken) {
-          expect(request, provider).toThrow("cannot use the Workers AI binding transport");
+          expect(request, provider).toThrow(provider === "opencode-go"
+              ? "OPENCODE_API_KEY" : "cannot use the Workers AI binding transport");
         } else {
           expect(request, provider).not.toThrow();
         }
@@ -777,7 +780,8 @@ describe("GatewayModels", () => {
         return String(err).includes("is not supported through AI Gateway");
       }
     })();
-    const addable = !unroutable && provider !== "cloudflare-auto-router";
+    // 有缘心之助：OpenCode Go 的模型按固定的厂商价目表计价，也不能添加。
+    const addable = !unroutable && provider !== "cloudflare-auto-router" && provider !== "opencode-go";
 
     const models = gatewayModels({
       addedModels: [{ provider, id: "test-model", name: "Test", contextWindow: 1000 }],

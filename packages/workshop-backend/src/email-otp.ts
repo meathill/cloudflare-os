@@ -12,13 +12,46 @@ export const EMAIL_OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 /** Wrong guesses allowed before the code is retired. */
 export const EMAIL_OTP_MAX_ATTEMPTS = 5;
 
+const THROTTLE_KEY = "throttle";
+/** Codes one client IP may request per window, across every address it asks for. */
+export const EMAIL_OTP_IP_LIMIT = 10;
+/** The window EMAIL_OTP_IP_LIMIT counts over. */
+export const EMAIL_OTP_IP_WINDOW_MS = 60 * 60 * 1000;
+
 type OtpRecord = {
   codeHash: string;
   expiresAt: number;
   attempts: number;
 };
 
+type ThrottleRecord = {
+  windowStart: number;
+  count: number;
+};
+
+/** The instance name that throttles one client IP, kept apart from the per-email names. */
+export function emailOtpIpThrottleName(ip: string): string {
+  return `ip:${ip}`;
+}
+
 export class EmailOtp extends DurableObject<Cloudflare.Env> {
+  /**
+   * Count one request against a fixed window on an instance named by emailOtpIpThrottleName().
+   * Throws once the window's limit is spent, so a single client cannot spray codes at many inboxes.
+   */
+  async throttle(now: number = Date.now()): Promise<void> {
+    let record = this.ctx.storage.kv.get<ThrottleRecord>(THROTTLE_KEY);
+    if (!record || now - record.windowStart >= EMAIL_OTP_IP_WINDOW_MS) {
+      record = { windowStart: now, count: 0 };
+    }
+    if (record.count >= EMAIL_OTP_IP_LIMIT) {
+      throw new Error("请求验证码过于频繁，请稍后再试。");
+    }
+    record.count += 1;
+    this.ctx.storage.kv.put(THROTTLE_KEY, record);
+    await this.ctx.storage.setAlarm(record.windowStart + EMAIL_OTP_IP_WINDOW_MS);
+  }
+
   /**
    * Stage a freshly minted code for this address. Throws while the previous send is still in its
    * resend cooldown, so an endpoint cannot be used to flood one inbox.
@@ -71,5 +104,6 @@ export class EmailOtp extends DurableObject<Cloudflare.Env> {
 
   async alarm(): Promise<void> {
     this.ctx.storage.kv.delete(CODE_KEY);
+    this.ctx.storage.kv.delete(THROTTLE_KEY);
   }
 }

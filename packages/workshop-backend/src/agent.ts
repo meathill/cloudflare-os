@@ -594,6 +594,9 @@ export interface AgentHooks {
    */
   getWebSearchApiKey(): string | undefined;
 
+  /** 有缘心之助：给一次完成的 webSearch 计费（Grounding 按次收费，不经模型 handle）。 */
+  chargeWebSearch(chatId: number): void;
+
   /**
    * Deployment-wide, admin-authored instructions to append to the agent's system prompt. Returns
    * "" when none are set. Read on each turn so admin edits take effect promptly.
@@ -3641,6 +3644,7 @@ async function runAgentPass(
         try {
           let apiKey = hooks.getWebSearchApiKey();
           let result = await googleWebSearch({ query, apiKey });
+          hooks.chargeWebSearch(chatId);
 
           await hooks.recordAgentObservation(
               chatId,

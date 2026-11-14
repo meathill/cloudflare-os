@@ -106,10 +106,16 @@ declare global {
       // no gatekeeper sign-in (password / CF Access only).
       AUTH_GATEKEEPERS?: string;
 
-      // Set to "true" to disable username/password login + signup (gatekeeper sign-in only). Only
-      // takes effect when at least one auth gatekeeper is allowlisted (otherwise password auth stays
-      // on to avoid locking everyone out).
+      // Set to "true" to disable username/password login + signup. Only takes effect when at least
+      // one auth gatekeeper is allowlisted or email codes are on (otherwise password auth stays on
+      // to avoid locking everyone out).
       DISABLE_PASSWORD_AUTH?: string;
+
+      // 有缘心之助：OpenCode Go 的 API key。配了才提供 opencode-go 服务商的模型（见 ai-models.ts）。
+      OPENCODE_API_KEY?: string;
+
+      // 有缘心之助：预付费计费 Worker（主仓库 packages/billing）。缺省时不拦不扣，见 billing.ts。
+      BILLING?: Service<import("@gadgets/workshop-shared/billing").BillingService>;
 
       // Enables the Cloudflare free-tier limits + top-up flow when set to "true".
       ENABLE_CLOUDFLARE_LIMITS?: string;
