@@ -8,6 +8,7 @@ import { hashPassword } from "./passwordHash";
 import { useServerConfig, useServerConfigError, useSiteName } from "./ServerConfigContext";
 import { useDocumentTitle } from "./useDocumentTitle";
 import OAuthButtons from "./components/auth/OAuthButtons";
+import EmailOtpForm from "./components/auth/EmailOtpForm";
 import SiteLogo from "./components/SiteLogo";
 import { useConnectionLost } from "./RpcContext";
 import {
@@ -112,10 +113,14 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
   const authVendors = serverConfig.authVendors ?? [];
   const signupsEnabled = serverConfig.signupsEnabled;
   const signupAllowlistEnabled = serverConfig.signupAllowlistEnabled;
-  // The password create-account form requires password auth, open signups, and no email allowlist:
-  // with an allowlist on, only listed emails may register, and password accounts carry no email.
+  // A code sign-in creates the account on first use, so the same form registers new users.
+  const emailOtpEnabled = serverConfig.emailOtpEnabled && signupsEnabled;
+  // The password create-account form requires password auth, open signups, and no way to register
+  // by email instead (codes or an allowlist): password accounts carry no email (see
+  // isPasswordSignupEnabled on the server).
   const passwordAuthEnabled =
-    serverConfig.passwordAuthEnabled && signupsEnabled && !signupAllowlistEnabled;
+    serverConfig.passwordAuthEnabled && signupsEnabled && !signupAllowlistEnabled &&
+    !serverConfig.emailOtpEnabled;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col items-center justify-start overflow-y-auto bg-kumo-base px-4 py-8">
@@ -157,7 +162,7 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
           </Banner>
         )}
 
-        {signupsEnabled && signupAllowlistEnabled && (
+        {signupsEnabled && signupAllowlistEnabled && !emailOtpEnabled && (
           <Banner
             variant="default"
             title="仅限受邀注册"
@@ -165,6 +170,25 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
           >
             此部署只允许名单内的邮箱注册。请回到登录页，使用邮箱验证码登录或注册。
           </Banner>
+        )}
+
+        {emailOtpEnabled && (
+          <EmailOtpForm
+            rpcStub={rpcStub}
+            submitLabel="邮箱注册"
+            onSignedIn={(token) => {
+              localStorage.setItem("authToken", token);
+              handleSignupSuccess();
+            }}
+          />
+        )}
+
+        {emailOtpEnabled && passwordAuthEnabled && (
+          <div className="flex items-center gap-3 my-6">
+            <div className="h-px flex-1 bg-kumo-line" />
+            <span className="text-xs text-kumo-subtle">或</span>
+            <div className="h-px flex-1 bg-kumo-line" />
+          </div>
         )}
 
         {passwordAuthEnabled && (
@@ -176,7 +200,7 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
                 label="用户名"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                autoFocus
+                autoFocus={!emailOtpEnabled}
                 autoComplete="username"
                 disabled={loading}
                 placeholder="例如：writer"
@@ -240,7 +264,7 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
           </div>
         )}
 
-        {passwordAuthEnabled && (
+        {(passwordAuthEnabled || emailOtpEnabled) && (
           <p className="text-center text-sm text-kumo-subtle mt-6">
             已有账号？{" "}
             <Link

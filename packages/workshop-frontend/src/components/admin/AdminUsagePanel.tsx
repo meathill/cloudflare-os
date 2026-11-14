@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import type { RpcStub } from 'capnweb'
-import { Button, Input, useKumoToastManager } from '@cloudflare/kumo'
+import { Button, Input, Pagination, useKumoToastManager } from '@cloudflare/kumo'
 import {
   Users,
   Scroll,
@@ -11,6 +11,8 @@ import {
   SortDescending,
 } from '@phosphor-icons/react'
 import type { AdminApi, UsageStatsResponse } from '@gadgets/workshop-shared/api'
+import UserBillingCell from '../../features/billing/UserBillingCell'
+import { useBillingAdmin } from '../../features/billing/useBillingAdmin'
 
 interface AdminUsagePanelProps {
   admin: RpcStub<AdminApi>
@@ -18,6 +20,13 @@ interface AdminUsagePanelProps {
 
 type SortField = 'lastActive' | 'totalTokens' | 'callCount' | 'workspaceCount' | 'createdAt' | 'estimatedCost'
 type SortOrder = 'asc' | 'desc'
+
+// 有缘心之助：一页的用户数，也是一次计费查询的人数（不超过 BILLING_ACCOUNTS_PER_REQUEST）。
+const PAGE_SIZE = 50
+const PAGINATION_LABELS = {
+  navigation: '用户分页', firstPage: '第一页', previousPage: '上一页', nextPage: '下一页', lastPage: '最后一页',
+  pageNumber: '页码',
+}
 
 function formatCostDisplay(cost: number) {
   if (!cost || cost <= 0) return '$0.0000'
@@ -62,6 +71,8 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
   const [sortField, setSortField] = useState<SortField>('lastActive')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const toasts = useKumoToastManager()
+  const [page, setPage] = useState(1)
+  const [markingInternal, setMarkingInternal] = useState(false)
 
   async function fetchUsage(isManual = false) {
     if (isManual) setRefreshing(true)
@@ -87,7 +98,22 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
     fetchUsage(false)
   }, [admin])
 
+  // 有缘心之助：开启计费前把现有团队都设为内部用户（只记账不扣费）。
+  async function markAllInternal() {
+    if (!billing || !data || !window.confirm(`把这 ${data.users.length} 位用户都设为内部用户（只记账不扣费）？`)) return
+    setMarkingInternal(true)
+    try {
+      for (const user of data.users) billing.replace(await billing.api.setPlan(user.username, 'internal'))
+      toasts.add({ title: `已将 ${data.users.length} 位用户设为内部用户`, variant: 'success' })
+    } catch (err) {
+      toasts.add({ title: err instanceof Error ? err.message : '设置失败', variant: 'error' })
+    } finally {
+      setMarkingInternal(false)
+    }
+  }
+
   function handleSort(field: SortField) {
+    setPage(1)
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
@@ -121,6 +147,11 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
     })
     return list
   }, [data?.users, searchQuery, sortField, sortOrder])
+
+  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
+  const currentPage = Math.min(page, pageCount)
+  const pageUsers = filteredUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  const billing = useBillingAdmin(admin, pageUsers.map((user) => user.username))
 
   if (loading) {
     return (
@@ -259,10 +290,16 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
               共统计到 {data?.users.length ?? 0} 位用户数据，按活跃度及用量展示。
             </p>
           </div>
-          <div className="w-full sm:w-64">
-            <Input
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            {billing && (
+              <Button variant="secondary" loading={markingInternal} onClick={markAllInternal}>全部设为内部</Button>
+            )}
+            <Input className="sm:w-64"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setPage(1)
+              }}
               placeholder="搜索用户名或昵称..."
             />
           </div>
@@ -340,17 +377,18 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
                     )}
                   </div>
                 </th>
+                {billing && <th className="py-3 px-4 text-right">余额 · 方案</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-kumo-line/60">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-kumo-subtle text-sm">
+                  <td colSpan={billing ? 8 : 7} className="py-12 text-center text-kumo-subtle text-sm">
                     {searchQuery ? '没有找到符合条件的用户' : '暂无用户活动记录'}
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
+                pageUsers.map((user) => (
                   <tr
                     key={user.username}
                     className="hover:bg-kumo-tint/40 transition-colors"
@@ -388,12 +426,21 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
                     <td className="py-3 px-4 text-xs text-kumo-subtle">
                       {formatDateTime(user.createdAt)}
                     </td>
+                    {billing && (
+                      <td className="py-3 px-4">
+                        <UserBillingCell billing={billing} userKey={user.username} />
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+        {filteredUsers.length > PAGE_SIZE && (
+          <Pagination className="mt-4" page={currentPage} setPage={setPage} perPage={PAGE_SIZE}
+            totalCount={filteredUsers.length} labels={PAGINATION_LABELS} />
+        )}
       </div>
     </div>
   )

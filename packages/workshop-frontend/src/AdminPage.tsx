@@ -20,6 +20,10 @@ import { RestrictedWebFetchCard } from './features/web-fetch/RestrictedWebFetchC
 import { isAdminTab, resolveAdminTab } from './adminTab'
 import { logRpcFailure } from './rpcErrors'
 import AdminUsagePanel from './components/admin/AdminUsagePanel'
+import GatekeeperAppPage from './GatekeeperAppPage'
+
+// 有缘心之助：剧作引擎（GATEKEEPER_CUSTOM）的管理视图承载团队写作经验与贡献者白名单。
+const WRITING_EXPERIENCE_APP_ID = 'custom'
 
 // Preset accent colors offered in the Theme section ('' = default brand).
 const ACCENT_PRESETS: { label: string; value: string }[] = [
@@ -486,7 +490,8 @@ export default function AdminPage() {
         onValueChange={handleTabChange}
         tabs={[
           { value: 'general', label: '常规' },
-          { value: 'usage', label: '用量统计' },
+          { value: 'usage', label: '用户与计费' },
+          { value: 'experience', label: '写作经验' },
           { value: 'gatekeepers', label: '连接服务' },
           { value: 'formats', label: '格式' },
           { value: 'models', label: '模型' },
@@ -530,6 +535,15 @@ export default function AdminPage() {
       {/* 用量统计看板 */}
       {activeTab === 'usage' && admin && (
         <AdminUsagePanel admin={admin.api} />
+      )}
+
+      {/* 预付费计费：方案、手动加额度、流水 */}
+
+      {/* 团队写作经验：只在管理后台可见 */}
+      {activeTab === 'experience' && (
+        <div className="h-[75vh] overflow-hidden rounded-xl border border-kumo-line">
+          <GatekeeperAppPage appId={WRITING_EXPERIENCE_APP_ID} surface="admin" />
+        </div>
       )}
 
       {/* Standard output formats */}

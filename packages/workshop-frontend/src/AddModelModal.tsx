@@ -42,6 +42,8 @@ const API_TOKEN_PLACEHOLDERS: Record<AiModelProvider, string> = {
   ollama: '(optional)',
   // Never shown: Auto Router's one model is the deployment's (see AiGatewayInfo.enabledProviders).
   'cloudflare-auto-router': '',
+  // 有缘心之助：只由部署提供（OPENCODE_API_KEY），用户不自带 key。
+  'opencode-go': '',
 }
 
 // Providers whose client can send no API key at all, so a proxy that extra headers authenticate
