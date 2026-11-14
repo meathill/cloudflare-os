@@ -2373,7 +2373,10 @@ export type CloudflareAccountOption = {
  * model behind each request (see AUTO_ROUTER_MODEL_ID); it exists only inside a gateway.
  */
 export type AiModelProvider =
-    "openai" | "anthropic" | "google" | "cloudflare" | "ollama" | "cloudflare-auto-router";
+    "openai" | "anthropic" | "google" | "cloudflare" | "ollama" | "cloudflare-auto-router" |
+    // 有缘心之助：OpenCode Go（https://opencode.ai/docs/console/go/），直连其 OpenAI 兼容端点，
+    // 不经 AI Gateway；部署配了 OPENCODE_API_KEY 才提供。计价按各模型厂商的官方价。
+    "opencode-go";
 
 /** The model ID of AI Gateway's Auto Router, the one model of "cloudflare-auto-router". */
 export const AUTO_ROUTER_MODEL_ID = "cloudflare/auto";
@@ -2884,6 +2887,17 @@ const SUGGESTED_MODEL_CATALOG = {
     "gemini-3.6-flash": {name: "Gemini 3.6 Flash", contextWindow: 1048576, hidden: true},
   },
   "ollama": {
+  },
+  // 有缘心之助：便宜的开放模型，经 OpenCode Go 提供。首个是该服务商的默认模型。
+  "opencode-go": {
+    "deepseek-v4.1-flash": {name: "DeepSeek V4.1 Flash", contextWindow: 1000000, outputLimit: 384000},
+    "glm-5.3-flash": {name: "GLM 5.3 Flash", contextWindow: 1000000, outputLimit: 131072},
+    "qwen3.8-flash": {name: "Qwen3.8 Flash", contextWindow: 1000000, outputLimit: 131072},
+    "mimo-v2.6-flash": {name: "MiMo V2.6 Flash", contextWindow: 1048576, outputLimit: 131072},
+    "minimax-m3.1-flash": {name: "MiniMax M3.1 Flash", contextWindow: 1000000, outputLimit: 512000},
+    "kimi-k2.7-code": {name: "Kimi K2.7 Code", contextWindow: 262144, outputLimit: 262144},
+    "glm-5.3": {name: "GLM 5.3", contextWindow: 1000000, outputLimit: 131072},
+    "glm-5.2": {name: "GLM 5.2", contextWindow: 1000000, outputLimit: 131072},
   },
 } satisfies Record<AiModelProvider, Record<string, SuggestedModel>>;
 
