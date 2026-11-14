@@ -80,6 +80,7 @@ import GadgetExportMenu from './GadgetExportMenu'
 import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER, MENU_POSITIONER_STYLE } from './components/menuStyles'
 import { isImeComposing } from './keyboardEvent'
 import { ChatTokenIndex } from './features/chat/agents/chatTokenIndex'
+import { useCostMarkup } from './features/billing/BillingContext'
 
 const NO_GADGETS: ReadonlySet<WorkpieceId> = new Set()
 
@@ -478,6 +479,8 @@ function NoGadgetPlaceholder({ height }: { height: string }) {
 // ─── component ────────────────────────────────────────────────────────────────
 
 export default function GadgetEditor() {
+  // 有缘心之助：花费按用户实际被扣的倍率显示。
+  const costMarkup = useCostMarkup()
   const params = useParams({ strict: false }) as { id?: string }
   const id = params.id
   const navigate = useNavigate()
@@ -1889,7 +1892,7 @@ export default function GadgetEditor() {
 
           {metadata.totalCost != null && (
             <span className="ml-3 mr-2 text-[12px] leading-4 font-normal tracking-[-0.2px] text-kumo-subtle">
-              {formatHeaderCost(metadata.totalCost)}
+              {formatHeaderCost(metadata.totalCost * costMarkup)}
             </span>
           )}
 

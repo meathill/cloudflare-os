@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { GatekeeperUiFrame } from '@gadgets/workshop-shared/gatekeeper'
+import type { GatekeeperAppSurface, GatekeeperUiFrame } from '@gadgets/workshop-shared/gatekeeper'
 import { useAuthenticatedApi } from './AuthContext'
 import SandboxedGatekeeperApp from './SandboxedGatekeeperApp'
 import { reportIssue } from './errorReporting'
@@ -13,7 +13,11 @@ function disposeFrame(frame: GatekeeperUiFrame | null) {
  * Renders a gatekeeper's full-page management app (a sandboxed SPA the gatekeeper serves).
  * Fetches the app frame (iframe HTML + `ui` capability) from the backend and hosts it.
  */
-export default function GatekeeperAppPage({ appId }: { appId: string }) {
+export default function GatekeeperAppPage({ appId, surface = 'app' }: {
+  appId: string
+  /** 有缘心之助：'admin' opens the app's admin-only view inside the admin panel. */
+  surface?: GatekeeperAppSurface
+}) {
   const { authenticatedApi } = useAuthenticatedApi()
   // Wrap the frame in an object: it holds a `ui` RPC stub, and we never want useState's setter to
   // treat a stored value as an updater function.
@@ -24,7 +28,7 @@ export default function GatekeeperAppPage({ appId }: { appId: string }) {
     let cancelled = false
     let acquired: GatekeeperUiFrame | null = null
     authenticatedApi
-      .getGatekeeperApp(appId)
+      .getGatekeeperApp(appId, surface)
       .then((frame) => {
         if (!frame) {
           if (!cancelled) setError('此部署中没有此应用。')
@@ -48,7 +52,7 @@ export default function GatekeeperAppPage({ appId }: { appId: string }) {
       cancelled = true
       disposeFrame(acquired)
     }
-  }, [authenticatedApi, appId])
+  }, [authenticatedApi, appId, surface])
 
   if (error) {
     return (

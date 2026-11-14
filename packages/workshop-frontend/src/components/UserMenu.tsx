@@ -3,10 +3,13 @@ import { DropdownMenu } from '@cloudflare/kumo'
 import { useAuthenticatedApi } from '../AuthContext'
 import { useAvatar } from '../useAvatar'
 import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER, MENU_POSITIONER_STYLE } from './menuStyles'
+import { useBilling } from '../features/billing/BillingContext'
+import { formatUsd } from '../features/billing/formatUsd'
 
 export default function UserMenu() {
   const { authenticatedApi, logout, currentUser, isAdmin } = useAuthenticatedApi()
   const navigate = useNavigate()
+  const billing = useBilling()
 
   const avatarUrl = useAvatar(authenticatedApi, currentUser?.id)
 
@@ -38,6 +41,17 @@ export default function UserMenu() {
         >
           个人资料
         </DropdownMenu.Item>
+        {billing && (
+          <DropdownMenu.Item
+            onClick={() => navigate({ to: '/billing' })}
+            className={MENU_ITEM}
+          >
+            余额与充值
+            {billing.summary && (
+              <span className="ml-auto pl-4 text-kumo-subtle">{formatUsd(billing.summary.balanceUsd)}</span>
+            )}
+          </DropdownMenu.Item>
+        )}
         {isAdmin && (
           <DropdownMenu.Item
             onClick={() => navigate({ to: '/admin' })}

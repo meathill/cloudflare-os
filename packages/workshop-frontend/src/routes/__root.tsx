@@ -9,6 +9,7 @@ import { useAuth, CF_ACCESS_MODE } from '../useAuth'
 import { AuthProvider } from '../AuthContext'
 import { HANDOFF_PATH } from '../connectHandoff'
 import { FeatureFlagsProvider } from '../FeatureFlagsContext'
+import { BillingProvider } from '../features/billing/BillingContext'
 import Header from '../components/Header'
 import AppShell from '../components/AppShell/AppShell'
 import LoginPage from '../LoginPage'
@@ -128,21 +129,23 @@ function RootComponent() {
   return (
     <AuthProvider authenticatedApi={authenticatedApi} onLogout={logout}>
       <FeatureFlagsProvider>
-        <TooltipProvider>
-          <Toasty>
-            <UnreadStateBridge authenticatedApi={authenticatedApi}
-              scope={workspace ? {workspaceId: workspace.params.id} : 'summary'}>
-              <NotificationBridge authenticatedApi={authenticatedApi} />
-              <BrowserPushBridge />
-              <NativeAppBridge />
-              <PageUpdateNotice />
-              <AuthenticatedShell
-                authenticatedApi={authenticatedApi}
-                isWorkspaceEditor={isWorkspaceEditor}
-              />
-            </UnreadStateBridge>
-          </Toasty>
-        </TooltipProvider>
+        <BillingProvider>
+          <TooltipProvider>
+            <Toasty>
+              <UnreadStateBridge authenticatedApi={authenticatedApi}
+                scope={workspace ? {workspaceId: workspace.params.id} : 'summary'}>
+                <NotificationBridge authenticatedApi={authenticatedApi} />
+                <BrowserPushBridge />
+                <NativeAppBridge />
+                <PageUpdateNotice />
+                <AuthenticatedShell
+                  authenticatedApi={authenticatedApi}
+                  isWorkspaceEditor={isWorkspaceEditor}
+                />
+              </UnreadStateBridge>
+            </Toasty>
+          </TooltipProvider>
+        </BillingProvider>
       </FeatureFlagsProvider>
     </AuthProvider>
   )
