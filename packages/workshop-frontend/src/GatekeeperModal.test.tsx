@@ -232,7 +232,7 @@ describe('GatekeeperModal configurator readiness', () => {
     })
 
     const addConnection = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .find(button => button.textContent === 'Add connection')!
+      .find(button => button.textContent === '添加连接')!
     expect(addConnection.disabled).toBe(true)
   })
 })
@@ -314,14 +314,14 @@ describe('GatekeeperModal grouped resource types', () => {
           ...(lead === 'creation-only' ? [{ ...CATALOG, connectable: false, creatable: true }] : [])] },
       })
 
-      await vi.waitFor(() => expect(button('Add connection').disabled).toBe(false))
+      await vi.waitFor(() => expect(button('添加连接').disabled).toBe(false))
       expect(api.startResourceConfigurator).toHaveBeenCalledExactlyOnceWith(1, SERVICE.urlPattern)
       expect(testState.configurator).toEqual({
         acceptedResourceUrlPatterns: [SERVICE.urlPattern],
         initialResourceUrl: testState.collectedUrl, resourceUrlPattern: SERVICE.urlPattern,
       })
       expect(buttonLabels()).not.toContain('授予访问权限')
-      await act(async () => button('Add connection').click())
+      await act(async () => button('添加连接').click())
       expect(getOverseer).toHaveBeenCalledOnce()
     },
   )
@@ -361,9 +361,9 @@ describe('GatekeeperModal grouped resource types', () => {
       accountResources: { 1: [{ ...SERVICE, connectable: false, creatable: true }, CATALOG] },
     })
 
-    await vi.waitFor(() => expect(button('Add connection').disabled).toBe(false))
+    await vi.waitFor(() => expect(button('添加连接').disabled).toBe(false))
     expect(testState.configurator?.acceptedResourceUrlPatterns).toEqual([CATALOG.urlPattern])
-    await act(async () => button('Add connection').click())
+    await act(async () => button('添加连接').click())
     expect(testState.toasts).toEqual([{
       title: 'This account does not support connecting Service.', variant: 'error',
     }])
@@ -449,8 +449,8 @@ describe('GatekeeperModal grouped resource types', () => {
       granted: [CATALOG.urlPattern],
     })
 
-    await vi.waitFor(() => expect(button('Add connection').disabled).toBe(false))
-    await act(async () => button('Add connection').click())
+    await vi.waitFor(() => expect(button('添加连接').disabled).toBe(false))
+    await act(async () => button('添加连接').click())
     expect(testState.toasts).toEqual([{ title: 'Grant access to Service to connect it.', variant: 'error' }])
   })
 
@@ -467,8 +467,8 @@ describe('GatekeeperModal grouped resource types', () => {
       granted: [SERVICE.urlPattern],
     })
 
-    await vi.waitFor(() => expect(button('Add connection').disabled).toBe(false))
-    await act(async () => button('Add connection').click())
+    await vi.waitFor(() => expect(button('添加连接').disabled).toBe(false))
+    await act(async () => button('添加连接').click())
     expect(testState.toasts).toEqual([{ title: 'Grant access to Whole catalog to connect it.', variant: 'error' }])
   })
 
@@ -530,7 +530,7 @@ describe('GatekeeperModal agent spawner request', () => {
       onCreated={() => Promise.resolve()}
       initialVendorId="agent-spawner"
     />))
-    const picker = () => document.body.querySelector('[aria-label="Agent model"]')
+    const picker = () => document.body.querySelector('[aria-label="智能体模型"]')
 
     await render()
     await vi.waitFor(() => expect(picker()?.textContent).toContain('Chat model'))

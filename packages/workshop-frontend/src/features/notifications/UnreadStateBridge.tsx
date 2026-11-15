@@ -209,7 +209,7 @@ export const UnreadStateBridge = ({
       return await operation;
     } catch (cause) {
       if (!logRpcFailure("Failed to update read state:", cause) && currentApi.current === authenticatedApi) {
-        toasts.add({ id: "unread-update-failed", title: "Couldn’t update read state", variant: "error" });
+        toasts.add({ id: "unread-update-failed", title: "无法更新已读状态", variant: "error" });
       }
       throw cause;
     }

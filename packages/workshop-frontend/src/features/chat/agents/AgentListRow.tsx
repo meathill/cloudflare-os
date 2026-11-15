@@ -9,7 +9,7 @@ import { UnreadBadge } from '../../notifications/UnreadBadge'
 import { RunApprovalPopover } from './RunApprovalPopover'
 import { RunUnreadMenu } from './RunUnreadMenu'
 
-const countRuns = (count: number) => `${count} ${count === 1 ? 'run' : 'runs'}`
+const countRuns = (count: number) => `${count} 次运行`
 
 const RunRow = ({
   run, now, activityLine, approvals, review, restricted, selected, workspaceId, overseer, onOpen,
@@ -47,11 +47,11 @@ const RunRow = ({
     <Button
       size="xs"
       variant="secondary"
-      aria-label={`Review ${run.title}`}
+      aria-label={`审阅 ${run.title}`}
       className="flex-shrink-0"
       onClick={hasApprovals ? undefined : onOpen}
     >
-      Review
+      审阅
     </Button>
   )
 
@@ -91,7 +91,7 @@ const RunRow = ({
           {review ? null : changes ? (
             // Unaccepted work is reviewed against its code, in the run, which is where the row goes.
             <span className="flex flex-shrink-0 items-center gap-1 text-[11.5px] leading-4 font-semibold text-kumo-warning">
-              Changes
+              更改
               <ArrowRight size={10} weight="bold" aria-hidden="true" />
             </span>
           ) : activityLine ? (
@@ -155,9 +155,9 @@ export const AgentListRow = ({
     run => !needsReview(run, pendingForRun) && hasPendingChanges(run),
   ).length
   const waitingLabel = [
-    reviews > 0 && `${countRuns(reviews)} needing your review`,
-    changes > 0 && `${countRuns(changes)} with pending changes`,
-  ].filter(Boolean).join(', ')
+    reviews > 0 && `${countRuns(reviews)}需要你审阅`,
+    changes > 0 && `${countRuns(changes)}有待处理更改`,
+  ].filter(Boolean).join('，')
 
   return (
     <div className={expanded ? 'rounded-lg bg-kumo-tint/40 pb-1' : ''}>
@@ -199,7 +199,7 @@ export const AgentListRow = ({
         {agent.running > 0 && (
           <span
             className="flex flex-shrink-0 items-center gap-1 text-[11.5px] leading-4 font-medium text-kumo-brand"
-            aria-label={`${agent.running} running`}
+            aria-label={`${agent.running} 个运行中`}
           >
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-kumo-brand" aria-hidden="true" />
             {agent.running}
@@ -207,7 +207,7 @@ export const AgentListRow = ({
         )}
         <span className="flex-shrink-0 text-[11.5px] leading-4 tabular-nums text-kumo-inactive">
           {/* A dormant agent would otherwise show "0 today" and say nothing about when it last ran. */}
-          {agent.today > 0 ? `${agent.today} today` : formatLastRun(agent.lastRun, now)}
+          {agent.today > 0 ? `今天 ${agent.today} 次` : formatLastRun(agent.lastRun, now)}
         </span>
       </button>
 
@@ -233,7 +233,7 @@ export const AgentListRow = ({
             onClick={onOpenAgent}
             className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-left text-[11.5px] leading-4 font-medium text-kumo-brand transition-colors hover:text-kumo-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring"
           >
-            Open agent
+            打开智能体
             <ArrowRight size={10} weight="bold" aria-hidden="true" />
           </button>
         </div>

@@ -34,7 +34,7 @@ export const RunUnreadMenu = ({ workspaceId, run, overseer }: {
         <DropdownMenu.Trigger
           render={
             <WorkshopIconButton
-              aria-label={`Actions for ${run.title}`}
+              aria-label={`${run.title} 的操作`}
               onClick={event => event.stopPropagation()}
               className="!h-7 !w-7 flex-shrink-0 text-kumo-inactive opacity-100 focus:opacity-100 group-hover:opacity-100 data-[popup-open]:opacity-100 sm:!h-6 sm:!w-6 sm:opacity-0"
             >
@@ -52,13 +52,13 @@ export const RunUnreadMenu = ({ workspaceId, run, overseer }: {
             disabled={!unread?.chats || count === 0}
             onClick={() => { void unread?.markRead(overseer, run.id).catch(() => {}) }}
           >
-            Mark thread read
+            标记为已读
           </DropdownMenu.Item>
           <DropdownMenu.Item
             disabled={!unread?.chats || count > 0}
             onClick={() => { void unread?.markUnread(overseer, run.id).catch(() => {}) }}
           >
-            Mark thread unread
+            标记为未读
           </DropdownMenu.Item>
           <ChatNotificationsMenu overseer={overseer} chatId={run.id}
             enabled={notificationsEnabled} override={readState?.notificationsEnabledOverride}

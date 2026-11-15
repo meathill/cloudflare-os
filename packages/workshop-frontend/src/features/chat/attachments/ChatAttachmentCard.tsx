@@ -66,7 +66,7 @@ export const ChatAttachmentCard = ({
           <AttachmentCardFace name={name} kind={kind} thumbnail={thumbnail} loading={loading} />
         )}
         <span aria-hidden="true" className={OUTLINE_CLASS} />
-        <button type="button" onClick={onOpen} aria-label={`Preview ${name}`} className={OPEN_BUTTON_CLASS} />
+        <button type="button" onClick={onOpen} aria-label={`预览 ${name}`} className={OPEN_BUTTON_CLASS} />
       </div>
     </Tooltip>
   );

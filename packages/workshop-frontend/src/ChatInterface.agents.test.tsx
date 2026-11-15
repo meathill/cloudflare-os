@@ -96,9 +96,9 @@ async function renderList(chats: AiChatMetadata[], extraOverseer: Record<string,
 const text = () => document.body.textContent ?? "";
 const button = (match: RegExp) =>
   [...document.body.querySelectorAll("button")].find(b => match.test(b.textContent ?? ""));
-const openAgentsTab = async () => { await act(async () => button(/^Agents/)!.click()); };
+const openAgentsTab = async () => { await act(async () => button(/^智能体/)!.click()); };
 const reviewButton = (title: string) =>
-  document.body.querySelector<HTMLButtonElement>(`button[aria-label="Review ${title}"]`);
+  document.body.querySelector<HTMLButtonElement>(`button[aria-label="审阅 ${title}"]`);
 
 const WORKSPACE = [
   chat({id: 1, title: "Build me a habit tracker"}),
@@ -157,7 +157,7 @@ it("hands off to the agent's own screen from Open agent", async () => {
   await renderList([chat({id: 1, title: "Mine"}), ...many]);
   await openAgentsTab();
   await act(async () => { button(/Invoice watcher/)!.click(); });
-  await act(async () => { button(/^Open agent/)!.click(); });
+  await act(async () => { button(/^打开智能体/)!.click(); });
 
   // A screen of its own, naming whose runs these are.
   expect(document.querySelector("h2")?.textContent).toBe("Invoice watcher");
@@ -172,20 +172,20 @@ it("badges the Agents tab only for agents that need the user", async () => {
   ]);
 
   // A working agent is the normal case and must not badge; unreviewed work must.
-  expect(button(/^Agents/)!.textContent).toContain("1");
+  expect(button(/^智能体/)!.textContent).toContain("1");
   await openAgentsTab();
   const labels = [...document.body.querySelectorAll("[aria-label]")]
     .map(e => e.getAttribute("aria-label"));
-  expect(labels).toContain("1 run with pending changes");
-  expect(labels).toContain("1 running");
+  expect(labels).toContain("1 次运行有待处理更改");
+  expect(labels).toContain("1 个运行中");
 });
 
 it("says so when no agent has ever run", async () => {
   await renderList([chat({id: 1, title: "Mine"})]);
   await openAgentsTab();
 
-  expect(text()).toContain("No agents have run yet");
-  expect(button(/^Agents/)!.textContent).not.toMatch(/\d/);
+  expect(text()).toContain("还没有智能体运行过");
+  expect(button(/^智能体/)!.textContent).not.toMatch(/\d/);
 });
 
 it("does not call it all clear when the request list failed to load", async () => {
@@ -209,7 +209,7 @@ it("stands the agent's screen down when the route moves to a chat", async () => 
   });
   await openAgentsTab();
   await act(async () => { button(/Email joker/)!.click(); });
-  await act(async () => { button(/^Open agent/)!.click(); });
+  await act(async () => { button(/^打开智能体/)!.click(); });
   expect(document.querySelector("h2")?.textContent).toBe("Email joker");
 
   // A link, a notification or the Back button selects a chat while the pane is up. The URL
@@ -230,7 +230,7 @@ it("places each request on the run that made it, reading no transcript", async (
   flushFrames();
   await act(async () => {});
 
-  expect(button(/^Agents/)!.textContent).toContain("1");
+  expect(button(/^智能体/)!.textContent).toContain("1");
   await openAgentsTab();
   await act(async () => { button(/Email joker/)!.click(); });
   await act(async () => { button(/Weekly digest/)!.click(); });
@@ -249,7 +249,7 @@ it("sends a run stopped on a connection or web fetch to the run, where its card 
   await server.resolvePendingQuery({entries: []});
 
   // Neither kind of request is in the action log, so there is no approval to answer in place.
-  expect(button(/^Agents/)!.textContent).toContain("1");
+  expect(button(/^智能体/)!.textContent).toContain("1");
   await openAgentsTab();
   await act(async () => { button(/Email joker/)!.click(); });
   await act(async () => { reviewButton("Triage weekend inbox")!.click(); });
@@ -271,7 +271,7 @@ it("marks a run that stops on a decision while the page is open", async () => {
     live!.metadata({...WORKSPACE.find(c => c.id === 20)!, awaitingDecision: true});
   });
 
-  expect(button(/^Agents/)!.textContent).toContain("1");
+  expect(button(/^智能体/)!.textContent).toContain("1");
   await openAgentsTab();
   await act(async () => { button(/Weekly digest/)!.click(); });
   expect(reviewButton("Monday digest")).not.toBeNull();
@@ -285,12 +285,12 @@ it("moves a run's age on while nothing else in the workspace changes", async () 
     await openAgentsTab();
     await act(async () => { button(/Email joker/)!.click(); });
     const row = () => button(/^Reply to Acme/)?.textContent;
-    expect(row()).toContain("now");
+    expect(row()).toContain("刚刚");
 
     await act(async () => { vi.advanceTimersByTime(60 * 60_000); });
 
     // A quiet workspace sends nothing that would redraw the list, and the run is an hour old.
-    expect(row()).toContain("1h");
+    expect(row()).toContain("1 小时");
   } finally {
     vi.useRealTimers();
   }
@@ -310,7 +310,7 @@ it("keeps a run's thread read controls, which left the chat list with it", async
   const server = await renderList(WORKSPACE);
 
   // Moving runs out of Chats must not bury the only signal that an unattended run has output.
-  expect(button(/^Agents/)!.textContent).toContain("1");
+  expect(button(/^智能体/)!.textContent).toContain("1");
   await openAgentsTab();
   expect([...document.body.querySelectorAll("[aria-label]")].map(e => e.getAttribute("aria-label")))
     .toContain("3 unread messages");
@@ -322,10 +322,10 @@ it("keeps a run's thread read controls, which left the chat list with it", async
     .toContain("3 unread messages");
 
   const trigger =
-    document.querySelector<HTMLButtonElement>('[aria-label="Actions for Reply to Acme"]')!;
+    document.querySelector<HTMLButtonElement>('[aria-label="Reply to Acme 的操作"]')!;
   await act(async () => trigger.click());
   const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-    .find(element => element.textContent === "Mark thread read")!;
+    .find(element => element.textContent === "标记为已读")!;
   await act(async () => item.click());
 
   expect(markRead.mock.calls).toEqual([[server.overseer, 10]]);

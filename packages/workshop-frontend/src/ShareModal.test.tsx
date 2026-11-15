@@ -227,7 +227,7 @@ function button(rendered: HTMLElement, label: string): HTMLButtonElement {
 
 function resourcesPill(rendered: HTMLElement): HTMLButtonElement {
   const found = [...rendered.querySelectorAll('button')].find(candidate =>
-    candidate.textContent?.startsWith('Protected resources'))
+    candidate.textContent?.startsWith('受保护的资源'))
   if (!found) throw new Error('No Protected resources pill')
   return found
 }
@@ -275,19 +275,19 @@ async function invite(rendered: HTMLElement, username: string) {
 
 // Share links live on the dialog's Advanced page; the sharing view stays in the DOM, hidden.
 async function openAdvanced(rendered: HTMLElement) {
-  if (rendered.querySelector('h2')?.textContent === 'Advanced') return
-  await click(button(rendered, 'Advanced settings'))
+  if (rendered.querySelector('h2')?.textContent === '高级') return
+  await click(button(rendered, '高级设置'))
 }
 
 async function createLink(rendered: HTMLElement) {
   await openAdvanced(rendered)
-  await click(button(rendered, 'Create a custom share link'))
-  await click(button(rendered, 'Create link'))
+  await click(button(rendered, '创建自定义分享链接'))
+  await click(button(rendered, '创建链接'))
 }
 
-// What "Anyone with your link" is set to, as its menu's trigger names it.
+// What "拥有你的链接的任何人" is set to, as its menu's trigger names it.
 function linkAccess(rendered: HTMLElement): string | undefined {
-  const prefix = 'Anyone with your link: '
+  const prefix = '拥有你的链接的任何人：'
   return rendered.querySelector(`button[aria-label^="${prefix}"]`)?.getAttribute('aria-label')?.slice(prefix.length)
 }
 
@@ -302,10 +302,10 @@ async function chooseLinkAccess(rendered: HTMLElement, label: string) {
   await click(item)
 }
 
-// The dialog's own Copy link, in its footer, after any other "Copy link" in the body.
+// The dialog's own Copy link, in its footer, after any other "复制链接" in the body.
 function footerCopyLink(rendered: HTMLElement): HTMLButtonElement {
   const found = [...rendered.querySelectorAll('button')].filter(candidate =>
-    candidate.textContent?.trim() === 'Copy link').at(-1)
+    candidate.textContent?.trim() === '复制链接').at(-1)
   if (!found) throw new Error('No footer Copy link')
   return found
 }
@@ -519,7 +519,7 @@ describe('ShareModal', () => {
     const rendered = await render(
       fakeOverseer(),
       fakeAuthenticatedApi({ searchUsers }),
-      { ...METADATA, owner: { type: 'user', id: 'owner@cloudflare.com', name: 'Owner' } } as WorkspaceMetadata,
+      { ...METADATA, owner: { type: 'user', id: 'owner@cloudflare.com', name: '所有者' } } as WorkspaceMetadata,
     )
 
     await typeDirectorySearch(rendered, 'own')
@@ -621,7 +621,7 @@ describe('ShareModal', () => {
     await click(button(rendered, '邀请'))
 
     expect(addCollaborator).toHaveBeenCalledWith('grace@example.com', 'workspace', undefined)
-    expect(toastAdd).toHaveBeenCalledWith({ title: 'Added Grace Hopper as a collaborator.', variant: 'success' })
+    expect(toastAdd).toHaveBeenCalledWith({ title: '已将 Grace Hopper 添加为协作者。', variant: 'success' })
   })
 
   it('says when the invitation email went out', async () => {
@@ -637,7 +637,9 @@ describe('ShareModal', () => {
     await typeInto(input, 'grace@example.com')
     await click(button(rendered, '邀请'))
 
-    expect(rendered.textContent).toContain('邀请邮件已发送至 Grace Hopper 的邮箱')
+    expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({
+      description: '邀请邮件已发送至 Grace Hopper 的邮箱。',
+    }))
     // The link stays available: email may not have reached them.
     expect(button(rendered, '复制链接')).toBeDefined()
   })
@@ -1201,16 +1203,16 @@ describe('ShareModal', () => {
       fakeAuthenticatedApi({ searchUsers }),
     )
     await typeDirectorySearch(rendered, 'offline')
-    expect(rendered.textContent).toContain('Searching…')
+    expect(rendered.textContent).toContain('正在搜索…')
     await openAdvanced(rendered)
-    expect(button(rendered, 'Create a custom share link').disabled).toBe(false)
+    expect(button(rendered, '创建自定义分享链接').disabled).toBe(false)
 
     await act(async () => {
       offline.reject(new Error('offline'))
       await Promise.resolve()
     })
-    expect(rendered.textContent).toContain('User search is temporarily unavailable.')
-    expect(button(rendered, 'Create a custom share link').disabled).toBe(false)
+    expect(rendered.textContent).toContain('暂时无法搜索用户。')
+    expect(button(rendered, '创建自定义分享链接').disabled).toBe(false)
 
     await typeDirectorySearch(rendered, 'nobody')
     expect(rendered.textContent).toContain('未找到用户。')
@@ -1229,20 +1231,20 @@ describe('ShareModal', () => {
     expect(rendered.textContent).not.toContain('Q3 planning')
 
     await click(pill)
-    expect(rendered.querySelector('h2')?.textContent).toBe('Protected resources')
-    expect(rendered.textContent).toContain('before they can open this gadget')
+    expect(rendered.querySelector('h2')?.textContent).toBe('受保护的资源')
+    expect(rendered.textContent).toContain('才能打开此应用')
     expect(rendered.textContent).toContain('Q3 planning')
     expect(rendered.textContent).toContain('https://docs.google.com/document/d/quarterly')
     expect(rendered.textContent).not.toContain('Pipeline dashboard')
 
-    await click(rendered.querySelector<HTMLElement>('button[aria-label="Back to sharing"]')!)
-    expect(rendered.querySelector('h2')?.textContent).toBe('Share “Itinerary”')
+    await click(rendered.querySelector<HTMLElement>('button[aria-label="返回分享"]')!)
+    expect(rendered.querySelector('h2')?.textContent).toBe('分享 “Itinerary”')
   })
 
   it('shows no protected resources pill when recipients have nothing to verify', async () => {
     const rendered = await render(fakeOverseer())
 
-    expect(rendered.textContent).not.toContain('Protected resources')
+    expect(rendered.textContent).not.toContain('受保护的资源')
   })
 
   it('degrades quietly when the requirements lookup fails', async () => {
@@ -1250,9 +1252,9 @@ describe('ShareModal', () => {
       listObserverRequirements: async () => { throw new Error('offline') },
     }))
 
-    expect(rendered.textContent).toContain('People with access')
+    expect(rendered.textContent).toContain('有访问权限的人')
     await click(resourcesPill(rendered))
-    expect(rendered.textContent).toContain('Couldn’t check')
+    expect(rendered.textContent).toContain('无法检查')
   })
 
   it('refreshes requirements when the modal regains focus', async () => {
@@ -1296,11 +1298,11 @@ describe('ShareModal', () => {
 
     // Every management affordance stays reachable: the people list with removal, the share
     // links with copying and revocation, and the invite composer.
-    expect(rendered.textContent).toContain('People with access')
-    expect(button(rendered, 'Remove Ada').disabled).toBe(false)
+    expect(rendered.textContent).toContain('有访问权限的人')
+    expect(button(rendered, '移除 Ada').disabled).toBe(false)
     await openAdvanced(rendered)
-    expect(button(rendered, 'Copy Team link').disabled).toBe(false)
-    expect(button(rendered, 'Revoke Team link').disabled).toBe(false)
+    expect(button(rendered, '复制 Team link').disabled).toBe(false)
+    expect(button(rendered, '撤销 Team link').disabled).toBe(false)
     const usernameInput =
       rendered.querySelector<HTMLInputElement>('input[aria-label="搜索用户"]')!
     expect(usernameInput.disabled).toBe(false)
@@ -1320,23 +1322,23 @@ describe('ShareModal', () => {
       shareLinks: [SHARE_LINK],
     }), fakeAuthenticatedApi(), ownerInvitesOnlyMetadata)
 
-    expect(rendered.textContent).toContain('doesn’t allow share links')
-    expect(rendered.textContent).toContain('People you add can create chats and edit gadgets.')
-    expect(rendered.textContent).not.toContain('invite other users')
+    expect(rendered.textContent).toContain('不允许分享链接')
+    expect(rendered.textContent).toContain('你添加的人可以创建对话并编辑应用。')
+    expect(rendered.textContent).not.toContain('邀请其他用户')
     expect(rendered.textContent).not.toContain('This workspace has read sensitive data')
     // The link restriction adds to the restricted-data caveats rather than replacing them.
     expect(rendered.textContent).toContain('验证自己的账号是否具有相应访问权限')
     expect(rendered.textContent).toContain('能够打开工作区的人都可以看到其中已保存的内容')
 
     // No way to mint or copy a link; the existing link stays listed so the owner can revoke it.
-    expect(rendered.textContent).not.toContain('Create a custom share link')
-    expect(rendered.querySelector('button[aria-label="Copy Team link"]')).toBeNull()
+    expect(rendered.textContent).not.toContain('创建自定义分享链接')
+    expect(rendered.querySelector('button[aria-label="复制 Team link"]')).toBeNull()
     await openAdvanced(rendered)
-    expect(button(rendered, 'Revoke Team link').disabled).toBe(false)
-    expect(rendered.textContent).not.toContain('Create a custom share link')
+    expect(button(rendered, '撤销 Team link').disabled).toBe(false)
+    expect(rendered.textContent).not.toContain('创建自定义分享链接')
 
     // The owner still invites people directly, and sees what they will be asked to verify.
-    expect(rendered.querySelector('input[aria-label="Search people"]')).not.toBeNull()
+    expect(rendered.querySelector('input[aria-label="搜索用户"]')).not.toBeNull()
     expect(resourcesPill(rendered).textContent).toContain('(1)')
     await invite(rendered, 'ada')
     expect(rendered.textContent).toContain('已添加 Ada')
@@ -1346,25 +1348,25 @@ describe('ShareModal', () => {
     const ownerInvitesOnlyMetadata = {
       ...METADATA,
       ownerInvitesOnly: true,
-      owner: { type: 'user', id: 'owner@cloudflare.com', name: 'Owner' },
+      owner: { type: 'user', id: 'owner@cloudflare.com', name: '所有者' },
     } as WorkspaceMetadata
     const rendered = await render(fakeOverseer({
       requirements: [CRM_REQUIREMENT],
     }), fakeAuthenticatedApi(), ownerInvitesOnlyMetadata)
 
-    expect(rendered.textContent).toContain('only the owner can add people')
-    expect(rendered.textContent).not.toContain('invite other users')
+    expect(rendered.textContent).toContain('只有所有者可以添加用户')
+    expect(rendered.textContent).not.toContain('邀请其他用户')
     expect(rendered.textContent).not.toContain('Invite people')
-    expect(rendered.querySelector('input[aria-label="Search people"]')).toBeNull()
-    expect(rendered.textContent).not.toContain('Create a custom share link')
-    expect(rendered.textContent).not.toContain('Protected resources')
-    expect(rendered.textContent).toContain('People with access')
+    expect(rendered.querySelector('input[aria-label="搜索用户"]')).toBeNull()
+    expect(rendered.textContent).not.toContain('创建自定义分享链接')
+    expect(rendered.textContent).not.toContain('受保护的资源')
+    expect(rendered.textContent).toContain('有访问权限的人')
   })
 
   it('releases the results scroll lock when a live ownerInvitesOnly update stops a collaborator inviting', async () => {
     const collaboratorMetadata = {
       ...METADATA,
-      owner: { type: 'user', id: 'owner@cloudflare.com', name: 'Owner' },
+      owner: { type: 'user', id: 'owner@cloudflare.com', name: '所有者' },
     } as WorkspaceMetadata
     const rendered = await render(fakeOverseer(), fakeAuthenticatedApi(), collaboratorMetadata)
     const body = () => rendered.querySelector<HTMLElement>('.chat-panel')!
@@ -1388,18 +1390,18 @@ describe('ShareModal', () => {
     }
     const previewRevokeShareLink = vi.fn<Overseer['previewRevokeShareLink']>(async () => [])
     const rendered = await render(fakeOverseer({ shareLinks: [myLink], previewRevokeShareLink }))
-    expect(linkAccess(rendered)).toBe('Can join')
+    expect(linkAccess(rendered)).toBe('可加入')
 
     // Another session reads data that disallows share links: the link now grants nothing.
     await updateMetadata({ ...METADATA, containsRestrictedData: true, ownerInvitesOnly: true } as WorkspaceMetadata)
     expect(linkAccess(rendered)).toBeUndefined()
-    expect(rendered.textContent).not.toContain('Anyone with your link')
-    expect(rendered.textContent).not.toContain('Can join')
-    expect(rendered.querySelector('[role="note"][aria-label="Share links are off"]')).not.toBeNull()
+    expect(rendered.textContent).not.toContain('拥有你的链接的任何人')
+    expect(rendered.textContent).not.toContain('可加入')
+    expect(rendered.querySelector('[role="note"][aria-label="分享链接已关闭"]')).not.toBeNull()
 
     await openAdvanced(rendered)
-    expect(rendered.querySelector('button[aria-label="Copy Your link"]')).toBeNull()
-    await click(button(rendered, 'Revoke Your link'))
+    expect(rendered.querySelector('button[aria-label="复制 你的链接"]')).toBeNull()
+    await click(button(rendered, '撤销 你的链接'))
     expect(previewRevokeShareLink).toHaveBeenCalledWith(myLink.linkId)
   })
 
@@ -1431,8 +1433,8 @@ describe('ShareModal', () => {
     const rendered = await render(fakeOverseer({ shareLinks: [SHARE_LINK], updateShareLink }))
 
     await openAdvanced(rendered)
-    await click(button(rendered, 'Rename Team link'))
-    expect(rendered.querySelector<HTMLInputElement>('input[aria-label="Share link name"]')?.value)
+    await click(button(rendered, '重命名 Team link'))
+    expect(rendered.querySelector<HTMLInputElement>('input[aria-label="分享链接名称"]')?.value)
       .toBe('Team link')
     await click(button(rendered, '保存'))
 
@@ -1474,7 +1476,7 @@ describe('ShareModal', () => {
 
       await createLink(rendered)
       expect(overrides.createShareLink).toHaveBeenCalledWith('workspace', undefined)
-      await click(button(rendered, 'Copy share link'))
+      await click(button(rendered, '复制 分享链接'))
       expect(copyToClipboard).toHaveBeenLastCalledWith(`${WORKSPACE_URL}#share=secret`)
       expect(overrides.newShareLinkKey).not.toHaveBeenCalled()
     })
@@ -1490,7 +1492,7 @@ describe('ShareModal', () => {
 
       await createLink(rendered)
       expect(overrides.createShareLink).toHaveBeenCalledWith({ gadgetId: 0 }, undefined)
-      await click(button(rendered, 'Copy share link'))
+      await click(button(rendered, '复制 分享链接'))
       expect(copyToClipboard).toHaveBeenLastCalledWith(`${GADGET_URL}#share=secret`)
     })
 
@@ -1499,10 +1501,10 @@ describe('ShareModal', () => {
 
       const people = sectionFor(rendered, 'people-heading')
       const bea = personRow(people, 'Bea')
-      expect(bea?.textContent).toContain('Member')
-      expect(bea?.textContent).toContain('Invited by you')
-      expect(bea?.querySelector('button[aria-label="Remove Bea"]')).not.toBeNull()
-      expect(people.textContent).not.toContain('Members of this workspace')
+      expect(bea?.textContent).toContain('成员')
+      expect(bea?.textContent).toContain('由 你 邀请')
+      expect(bea?.querySelector('button[aria-label="移除 Bea"]')).not.toBeNull()
+      expect(people.textContent).not.toContain('此工作区的成员')
       expect(personRow(people, 'Gus')).toBeNull()
       expect(personRow(people, 'Hal')).toBeNull()
       expect(rendered.textContent).not.toContain('Gus')
@@ -1513,14 +1515,14 @@ describe('ShareModal', () => {
 
       const people = sectionFor(rendered, 'people-heading')
       // Workspace members, the viewer and the owner among them, are summed up in one row.
-      expect(people.textContent).toContain('Members of this workspace (You)')
-      expect(people.textContent).toContain('Can edit')
-      expect(people.textContent).not.toContain('Created this workspace')
+      expect(people.textContent).toContain('此工作区的成员 （你）')
+      expect(people.textContent).toContain('可编辑')
+      expect(people.textContent).not.toContain('创建了此工作区')
       const gus = personRow(people, 'Gus')
-      expect(gus?.textContent).toContain('Can use')
+      expect(gus?.textContent).toContain('可使用')
       // Only the edge granting this gadget counts; the link to gadget 1 is another dialog's business.
-      expect(gus?.textContent).toContain('Invited by you')
-      expect(gus?.querySelector('button[aria-label="Remove Gus"]')).not.toBeNull()
+      expect(gus?.textContent).toContain('由 你 邀请')
+      expect(gus?.querySelector('button[aria-label="移除 Gus"]')).not.toBeNull()
       expect(personRow(people, 'Bea')).toBeNull()
       expect(personRow(people, 'Hal')).toBeNull()
     })
@@ -1590,7 +1592,7 @@ describe('ShareModal', () => {
       const links = sectionFor(rendered, 'links-heading')
       expect(links.textContent).toContain('Team link')
       expect(links.textContent).toContain('Old link')
-      expect(links.textContent).toContain('2 gadgets · Cannot edit')
+      expect(links.textContent).toContain('2 个应用 · 不可编辑')
       expect([...links.querySelectorAll('[role="tooltip"] li')].map(item => item.textContent))
         .toEqual(['Packing list', 'Budget tracker'])
       expect(links.textContent).not.toContain('Itinerary link')
@@ -1618,14 +1620,14 @@ describe('ShareModal', () => {
       const newShareLinkKey = vi.fn<Overseer['newShareLinkKey']>(async () => ({ key: 'fresh' }))
       const rendered = await renderGadget(fakeOverseer({ shareLinks, createShareLink, newShareLinkKey }))
 
-      expect(linkAccess(rendered)).toBe('Requires invite')
-      expect(linkAccessChoices(rendered)).toEqual(['Can use', 'Requires invite'])
+      expect(linkAccess(rendered)).toBe('需要邀请')
+      expect(linkAccessChoices(rendered)).toEqual(['可使用', '需要邀请'])
       // Nobody else can open the gadget and there is no link to hand out, so there's nothing to copy.
       expect(footerCopyLink(rendered).disabled).toBe(true)
 
-      await chooseLinkAccess(rendered, 'Can use')
+      await chooseLinkAccess(rendered, '可使用')
       expect(createShareLink).toHaveBeenCalledWith({ gadgetId: 0 }, undefined, { default: true })
-      expect(linkAccess(rendered)).toBe('Can use')
+      expect(linkAccess(rendered)).toBe('可使用')
       // The default link is presented only here, not among the named links.
       expect(rendered.querySelector('#links-heading')).toBeNull()
 
@@ -1667,16 +1669,16 @@ describe('ShareModal', () => {
         collaborators: [joined], shareLinks: [MY_DEFAULT], previewRevokeShareLink, revokeShareLink,
       }))
 
-      expect(linkAccess(rendered)).toBe('Can join')
+      expect(linkAccess(rendered)).toBe('可加入')
       const people = sectionFor(rendered, 'people-heading')
-      expect(personRow(people, 'Jo')?.textContent).toContain('Joined with your link')
+      expect(personRow(people, 'Jo')?.textContent).toContain('通过你的链接加入')
 
-      await chooseLinkAccess(rendered, 'Requires invite')
+      await chooseLinkAccess(rendered, '需要邀请')
       expect(previewRevokeShareLink).toHaveBeenCalledWith(MY_DEFAULT.linkId)
       expect(revokeShareLink).not.toHaveBeenCalled()
-      expect(people.textContent).toContain('1 person loses access through your link. Keep anyone?')
+      expect(people.textContent).toContain('1 人将失去通过你的链接获得的访问权限。要保留哪些人的权限？')
 
-      await click(button(people, 'Turn off'))
+      await click(button(people, '关闭'))
       expect(revokeShareLink).toHaveBeenCalledWith(MY_DEFAULT.linkId, [])
     })
 
@@ -1686,12 +1688,12 @@ describe('ShareModal', () => {
       await openAdvanced(rendered)
       const links = sectionFor(rendered, 'links-heading')
       expect(links.textContent).toContain('Team link')
-      expect(links.textContent).toContain('Bea’s link')
-      expect(links.textContent).not.toContain('Dan’s link')
-      expect(links.querySelector('button[aria-label="Revoke Bea’s link"]')).not.toBeNull()
+      expect(links.textContent).toContain('Bea 的链接')
+      expect(links.textContent).not.toContain('Dan 的链接')
+      expect(links.querySelector('button[aria-label="撤销 Bea 的链接"]')).not.toBeNull()
       // A default link has no name to edit.
-      expect(links.querySelector('button[aria-label="Rename Bea’s link"]')).toBeNull()
-      expect(linkAccess(rendered)).toBe('Can join')
+      expect(links.querySelector('button[aria-label="重命名 Bea 的链接"]')).toBeNull()
+      expect(linkAccess(rendered)).toBe('可加入')
     })
   })
 
@@ -1723,18 +1725,18 @@ describe('ShareModal', () => {
 
       const people = sectionFor(rendered, 'people-heading')
       expect(rowsInOrder(people)).toEqual([
-        'Dan (You)', 'Anyone with your link', '---', 'Bea', '---', 'Olive', 'Ivy', 'Lou',
+        'Dan （你）', '拥有你的链接的任何人', '---', 'Bea', '---', 'Olive', 'Ivy', 'Lou',
       ])
-      expect(personRow(people, 'Bea')?.textContent).toContain('Invited by you')
-      expect(personRow(people, 'Olive')?.textContent).toContain('Owner')
-      expect(personRow(people, 'Ivy')?.textContent).toContain('Invited by Olive')
-      expect(personRow(people, 'Dan (You)')?.textContent).toContain('Invited by Olive')
-      expect(personRow(people, 'Lou')?.textContent).toContain('Joined with Olive’s link')
+      expect(personRow(people, 'Bea')?.textContent).toContain('由 你 邀请')
+      expect(personRow(people, 'Olive')?.textContent).toContain('所有者')
+      expect(personRow(people, 'Ivy')?.textContent).toContain('由 Olive 邀请')
+      expect(personRow(people, 'Dan （你）')?.textContent).toContain('由 Olive 邀请')
+      expect(personRow(people, 'Lou')?.textContent).toContain('通过 Olive 的链接加入')
       expect(personRow(people, 'Lou')?.textContent).not.toContain('·')
 
-      expect(people.querySelector('button[aria-label="Remove Bea"]')).not.toBeNull()
-      expect(people.querySelector('button[aria-label="Remove Ivy"]')).toBeNull()
-      expect(people.querySelector('button[aria-label="Remove Lou"]')).toBeNull()
+      expect(people.querySelector('button[aria-label="移除 Bea"]')).not.toBeNull()
+      expect(people.querySelector('button[aria-label="移除 Ivy"]')).toBeNull()
+      expect(people.querySelector('button[aria-label="移除 Lou"]')).toBeNull()
     })
 
     it('lists to a collaborator only the links they made, which are all they can manage', async () => {
@@ -1745,13 +1747,13 @@ describe('ShareModal', () => {
 
       await openAdvanced(rendered)
       const links = sectionFor(rendered, 'links-heading')
-      expect(links.querySelector('button[aria-label="Copy Team link"]')).not.toBeNull()
-      expect(links.querySelectorAll('button[aria-label^="Copy "]')).toHaveLength(1)
-      expect(links.textContent).not.toContain('Olive’s link')
+      expect(links.querySelector('button[aria-label="复制 Team link"]')).not.toBeNull()
+      expect(links.querySelectorAll('button[aria-label^="复制 "]')).toHaveLength(1)
+      expect(links.textContent).not.toContain('Olive 的链接')
       expect(links.textContent).not.toContain('Partners')
       // A link the collaborator can't manage still says how its people joined.
       expect(personRow(sectionFor(rendered, 'people-heading'), 'Lou')?.textContent)
-        .toContain('Joined with Olive’s link')
+        .toContain('通过 Olive 的链接加入')
     })
 
     it('lists everyone in one removable section for the owner', async () => {
@@ -1763,10 +1765,10 @@ describe('ShareModal', () => {
       }))
 
       const people = sectionFor(rendered, 'people-heading')
-      expect(rowsInOrder(people)).toEqual(['Dan (You)', 'Anyone with your link', '---', 'Bea', 'Lou', 'Ivy'])
-      expect(personRow(people, 'Ivy')?.textContent).toContain('Invited by Bea')
+      expect(rowsInOrder(people)).toEqual(['Dan （你）', '拥有你的链接的任何人', '---', 'Bea', 'Lou', 'Ivy'])
+      expect(personRow(people, 'Ivy')?.textContent).toContain('由 Bea 邀请')
       for (const name of ['Bea', 'Lou', 'Ivy']) {
-        expect(people.querySelector(`button[aria-label="Remove ${name}"]`)).not.toBeNull()
+        expect(people.querySelector(`button[aria-label="移除 ${name}"]`)).not.toBeNull()
       }
     })
 
@@ -1784,7 +1786,7 @@ describe('ShareModal', () => {
       const rendered = await render(fakeOverseer({ collaborators: [judy], shareLinks: [ivansLink] }))
 
       const detail = personRow(sectionFor(rendered, 'people-heading'), 'Judy')?.textContent
-      expect(detail).toContain('Invited by you')
+      expect(detail).toContain('由 你 邀请')
       expect(detail).not.toContain('ivan')
       expect(detail).not.toContain('Ivan')
     })

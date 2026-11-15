@@ -250,7 +250,7 @@ describe("UnreadStateBridge", () => {
     await render(); await update(snapshot(1));
     await act(async () => container.querySelector("button")!.click());
     expect(addToast).toHaveBeenCalledExactlyOnceWith({
-      id: "unread-update-failed", title: "Couldn’t update read state", variant: "error",
+      id: "unread-update-failed", title: "无法更新已读状态", variant: "error",
     });
     await act(async () => container.querySelector("button")!.click());
     expect(addToast).toHaveBeenCalledOnce();

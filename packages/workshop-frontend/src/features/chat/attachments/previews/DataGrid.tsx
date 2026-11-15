@@ -19,12 +19,12 @@ export const DataGrid = ({ rows, moreRows }: {
   const width = shown.reduce((max, row) => Math.max(max, row.length), 0);
   const columns = Math.min(width, MAX_GRID_COLUMNS);
   const cut = [
-    moreRows || rows.length > shown.length ? `the first ${shown.length.toLocaleString()} rows` : "",
-    width > columns ? `the first ${columns} columns` : "",
+    moreRows || rows.length > shown.length ? `前 ${shown.length.toLocaleString()} 行` : "",
+    width > columns ? `前 ${columns} 列` : "",
   ].filter(Boolean);
 
   if (shown.length === 0) {
-    return <div className="grid h-full place-items-center text-[13px] text-kumo-subtle">This sheet is empty.</div>;
+    return <div className="grid h-full place-items-center text-[13px] text-kumo-subtle">此工作表为空。</div>;
   }
 
   return (
@@ -63,7 +63,7 @@ export const DataGrid = ({ rows, moreRows }: {
       </div>
       {cut.length > 0 && (
         <div className="shrink-0 border-t border-kumo-line bg-kumo-base px-4 py-2 text-[12px] text-kumo-subtle">
-          Showing {cut.join(" and ")}. Download the file to see all of it.
+          仅显示{cut.join("、")}。下载文件可查看全部内容。
         </div>
       )}
     </div>

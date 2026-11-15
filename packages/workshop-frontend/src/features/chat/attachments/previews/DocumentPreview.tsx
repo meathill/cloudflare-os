@@ -72,9 +72,9 @@ export const DocumentPreview = ({ bytes }: AttachmentPreviewProps) => {
     <div className="min-h-full">
       {(omitted.length > 0 || document.truncated) && (
         <div className="sticky top-0 z-10 border-b border-kumo-line bg-kumo-elevated px-4 py-2 text-center text-[12px] leading-4 text-kumo-subtle">
-          {omitted.length > 0 && `Not shown: ${omitted.join(", ")}. `}
-          {document.truncated && "This document is too long to show in full. "}
-          Download the file to see everything.
+          {omitted.length > 0 && `未显示：${omitted.join("、")}。`}
+          {document.truncated && "文档太长，无法完整显示。"}
+          下载文件可查看全部内容。
         </div>
       )}
       <div className="px-4 py-4">

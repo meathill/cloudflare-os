@@ -147,10 +147,10 @@ describe("formatRunAge", () => {
   const now = new Date("2026-11-12T17:00:00Z");
 
   it("counts back from now in the largest unit that still reads", () => {
-    expect(formatRunAge(new Date("2026-11-12T16:59:30Z"), now)).toBe("now");
-    expect(formatRunAge(new Date("2026-11-12T16:49:00Z"), now)).toBe("11m");
-    expect(formatRunAge(new Date("2026-11-12T14:00:00Z"), now)).toBe("3h");
-    expect(formatRunAge(new Date("2026-11-10T17:00:00Z"), now)).toBe("2d");
+    expect(formatRunAge(new Date("2026-11-12T16:59:30Z"), now)).toBe("刚刚");
+    expect(formatRunAge(new Date("2026-11-12T16:49:00Z"), now)).toBe("11 分钟");
+    expect(formatRunAge(new Date("2026-11-12T14:00:00Z"), now)).toBe("3 小时");
+    expect(formatRunAge(new Date("2026-11-10T17:00:00Z"), now)).toBe("2 天");
   });
 
   it("falls back to a date once an elapsed time stops meaning anything", () => {

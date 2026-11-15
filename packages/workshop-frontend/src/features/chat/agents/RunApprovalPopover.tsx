@@ -49,7 +49,7 @@ export const RunApprovalPopover = ({
         className="themed-floating-shadow !z-[1100] !w-[min(440px,calc(100vw-24px))] !min-w-0 overflow-hidden rounded-xl border border-kumo-line bg-kumo-base !p-0 !outline-none [&>:first-child]:hidden"
       >
         <Popover.Title className="block px-3.5 pb-1.5 pt-2.5 text-[11px] font-medium uppercase tracking-[0.06em] text-kumo-inactive">
-          {records.length === 1 ? 'Waiting on you' : `Waiting on you (${records.length})`}
+          {records.length === 1 ? '等待你处理' : `等待你处理（${records.length}）`}
         </Popover.Title>
 
         <div className="flex max-h-[min(70vh,520px)] flex-col gap-2 overflow-y-auto px-3 pb-2">
@@ -70,7 +70,7 @@ export const RunApprovalPopover = ({
             onClick={() => { changeOpen(false); onOpenRun() }}
             className="flex w-full cursor-pointer items-center justify-between rounded-md px-2.5 py-1.5 text-left text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-default transition-colors hover:bg-kumo-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-kumo-ring"
           >
-            Open run
+            打开运行记录
             <ArrowRight size={13} className="text-kumo-inactive" aria-hidden="true" />
           </button>
         </div>

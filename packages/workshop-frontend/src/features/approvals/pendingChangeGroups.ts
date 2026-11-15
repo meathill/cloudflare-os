@@ -51,7 +51,7 @@ export interface PendingChangeGroup {
 }
 
 /** A connection whose entries carry no usable title. */
-const UNTITLED_RESOURCE = 'Unavailable connection'
+const UNTITLED_RESOURCE = '不可用的连接'
 
 /**
  * The ids of the requests the open chat has a message for.
@@ -156,7 +156,7 @@ export function pendingChangeEntries(groups: readonly PendingChangeGroup[]): Pen
  */
 export function describeGroupSize(group: PendingChangeGroup): string {
   const count = group.entries.length
-  return count === 1 ? '1 request' : `${count} requests`
+  return `${count} 个请求`
 }
 
 /**

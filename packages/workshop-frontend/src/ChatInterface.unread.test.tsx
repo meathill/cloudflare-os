@@ -80,14 +80,14 @@ it.each([10, 0, undefined])("only offers the useful thread read action (unread c
   await act(async () => trigger.click());
   const item = (label: string) => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
     .find(element => element.textContent === label)!;
-  expect(item("Mark thread read").getAttribute("aria-disabled")).toBe(count ? null : "true");
-  expect(item("Mark thread unread").getAttribute("aria-disabled")).toBe(count === 0 ? null : "true");
+  expect(item("标记为已读").getAttribute("aria-disabled")).toBe(count ? null : "true");
+  expect(item("标记为未读").getAttribute("aria-disabled")).toBe(count === 0 ? null : "true");
   // Trying the disabled action cannot rewind an unread thread past unseen messages.
-  await act(async () => item(count ? "Mark thread unread" : "Mark thread read").click());
+  await act(async () => item(count ? "标记为未读" : "标记为已读").click());
   expect(markRead).not.toHaveBeenCalled();
   expect(markUnread).not.toHaveBeenCalled();
   if (count !== undefined) {
-    await act(async () => item(count ? "Mark thread read" : "Mark thread unread").click());
+    await act(async () => item(count ? "标记为已读" : "标记为未读").click());
   }
   expect(markRead.mock.calls).toEqual(count ? [[server.overseer, 1]] : []);
   expect(markUnread.mock.calls).toEqual(count === 0 ? [[server.overseer, 1]] : []);

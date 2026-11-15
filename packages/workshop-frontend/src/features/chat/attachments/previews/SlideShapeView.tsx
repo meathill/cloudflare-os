@@ -8,10 +8,10 @@ import { SlideText } from "./SlideText";
 import { boundsStyle, fillBackground, strokeProps } from "./slideStyles";
 
 const UNSUPPORTED_LABELS: Record<SlideUnsupportedKind, string> = {
-  chart: "Chart",
+  chart: "图表",
   diagram: "SmartArt",
-  object: "Embedded object",
-  picture: "Picture",
+  object: "嵌入对象",
+  picture: "图片",
 };
 
 const ANCHOR = { top: "flex-start", middle: "center", bottom: "flex-end" } as const;

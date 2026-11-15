@@ -223,7 +223,7 @@ describe('CreationAccountModal', () => {
         {} as VendorDescription, [], true, 'google')
     })
 
-    await act(async () => accountButton('Connect Google').click())
+    await act(async () => accountButton('连接 Google').click())
 
     expect(provisionAmbientAccount).toHaveBeenCalledExactlyOnceWith('google')
     expect(connectAccount).not.toHaveBeenCalled()
@@ -237,7 +237,7 @@ describe('CreationAccountModal', () => {
   it('reports provisioning errors and lets the user retry without starting OAuth', async () => {
     await renderModal(undefined, { autoProvisionsAccount: true })
     provisionAmbientAccount.mockRejectedValueOnce(new Error('Service is disabled.'))
-    const connect = accountButton('Connect Google')
+    const connect = accountButton('连接 Google')
 
     await act(async () => connect.click())
 
@@ -257,7 +257,7 @@ describe('CreationAccountModal', () => {
     connectAccount.mockResolvedValue(flow)
     await renderModal()
 
-    await act(async () => accountButton('Use another Google account').click())
+    await act(async () => accountButton('使用其他 Google 账号').click())
 
     expect(connectAccount).toHaveBeenCalledExactlyOnceWith('google', undefined)
     expect(openConnectWindow).toHaveBeenCalledExactlyOnceWith(flow, testState.authenticatedApi)

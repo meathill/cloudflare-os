@@ -3,6 +3,7 @@ import { CaretLeft } from '@phosphor-icons/react'
 import type { RpcStub } from 'capnweb'
 import type { ActionLogEntry, AiChatMetadata, Overseer } from '@gadgets/workshop-shared/api'
 import { useResolveAction } from '../../../useResolveAction'
+import { useCostMarkup } from '../../billing/BillingContext'
 import type { AgentSummary } from './agentList'
 import { formatLastRun, hasPendingChanges, needsReview } from './agentList'
 import { PendingApprovalCard } from './PendingApprovalCard'
@@ -45,7 +46,7 @@ const RunRow = ({ run, now, activityLine, review, selected, workspaceId, oversee
       )}
       {!activityLine && (review || hasPendingChanges(run)) && (
         <span className="flex-shrink-0 text-[11.5px] leading-4 font-medium text-kumo-warning">
-          {review ? 'Review' : 'Pending changes'}
+          {review ? '待审阅' : '待处理更改'}
         </span>
       )}
       <span className="w-[72px] flex-shrink-0 text-right text-[11.5px] leading-4 tabular-nums text-kumo-inactive">
@@ -81,6 +82,8 @@ export const AgentRunsPane = ({
   onBack?: () => void
   activityLineOf: (chatId: number) => string | undefined
 }) => {
+  // 有缘心之助：花费按用户实际被扣的金额显示。
+  const costMarkup = useCostMarkup()
   const [processing, setProcessing] = useState<Set<number>>(new Set())
   const { resolveAction, creationAccountModal } = useResolveAction(overseer, setProcessing)
   const waiting = agent.runs.flatMap(run => pendingForRun.get(run.id) ?? [])
@@ -92,7 +95,7 @@ export const AgentRunsPane = ({
           <button
             type="button"
             onClick={onBack}
-            aria-label="Back to agents"
+            aria-label="返回智能体列表"
             className="-ml-1.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-kumo-inactive transition-colors hover:bg-kumo-tint/60 hover:text-kumo-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring"
           >
             <CaretLeft size={13} weight="bold" />
@@ -102,11 +105,11 @@ export const AgentRunsPane = ({
           {agent.name}
         </h2>
         <span className="flex-shrink-0 text-[11.5px] leading-4 text-kumo-inactive">
-          {agent.runs.length} {agent.runs.length === 1 ? 'run' : 'runs'}
+          {agent.runs.length} 次运行
           {/* Four places, as the chat rows use: a small scheduled task's whole day comes to a
               fraction of a cent, and two places would round that to "$0.00" here while the same
               runs read "$0.0012" in the list. */}
-          {agent.cost != null && ` · $${agent.cost.toFixed(4)}`}
+          {agent.cost != null && ` · $${(agent.cost * costMarkup).toFixed(4)}`}
         </span>
       </div>
 
@@ -114,7 +117,7 @@ export const AgentRunsPane = ({
         {waiting.length > 0 && (
           <section className="mb-4 flex flex-col gap-2">
             <h3 className="m-0 px-1 text-[11px] font-medium uppercase tracking-[0.08em] text-kumo-inactive">
-              {waiting.length === 1 ? 'Waiting on you' : `Waiting on you (${waiting.length})`}
+              {waiting.length === 1 ? '等待你处理' : `等待你处理（${waiting.length}）`}
             </h3>
             {waiting.map(record => (
               <PendingApprovalCard

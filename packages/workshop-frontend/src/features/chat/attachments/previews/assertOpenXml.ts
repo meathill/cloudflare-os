@@ -7,6 +7,6 @@ import { AttachmentPreviewError } from "../attachmentPreviewers";
  */
 export const assertOpenXml = (bytes: Uint8Array) => {
   if (isCompoundFile(bytes)) {
-    throw new AttachmentPreviewError("This file is password-protected. Download it to open it.");
+    throw new AttachmentPreviewError("此文件受密码保护，请下载后打开。");
   }
 };

@@ -4,13 +4,13 @@ import { DocumentImage } from "./DocumentImage";
 import { PX_PER_PT, borderStyle, pt, runStyle } from "./documentStyles";
 
 const UNSUPPORTED_LABELS: Readonly<Record<DocxUnsupportedKind, string>> = {
-  textBox: "Text box",
-  chart: "Chart",
-  diagram: "Diagram",
-  equation: "Equation",
-  object: "Embedded object",
-  shape: "Shape",
-  picture: "Picture",
+  textBox: "文本框",
+  chart: "图表",
+  diagram: "图示",
+  equation: "公式",
+  object: "嵌入对象",
+  shape: "形状",
+  picture: "图片",
 };
 
 /** How far Word carries a paragraph's top and bottom borders past its text when it has no side borders. */
@@ -69,7 +69,7 @@ const renderInline = (inline: DocxInline, paragraph: DocxParagraph, key: number)
     case "unsupported":
       return (
         <span key={key} className="mx-0.5 inline-block rounded border border-kumo-line bg-kumo-elevated px-1.5 font-sans text-[11px] leading-5 text-kumo-subtle">
-          {UNSUPPORTED_LABELS[inline.what]} not shown
+          {UNSUPPORTED_LABELS[inline.what]}（未显示）
         </span>
       );
   }

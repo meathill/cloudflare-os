@@ -82,7 +82,7 @@ export const PendingChangesTray = ({
         onClick={bulk.dismissFailure}
         className="flex-shrink-0 cursor-pointer text-kumo-inactive underline-offset-2 hover:underline"
       >
-        Dismiss
+        关闭
       </button>
     </p>
   )
@@ -139,13 +139,13 @@ export const PendingChangesTray = ({
       <div className="flex flex-shrink-0 items-center gap-2 px-3.5 py-2">
         <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-kumo-brand" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate text-[12px] font-medium leading-4 tracking-[-0.2px] text-kumo-default">
-          {all.length === 1 ? '1 request waiting' : `${all.length} requests waiting`}
+          {`${all.length} 个请求等待处理`}
           <span className="font-normal text-kumo-inactive">
             {elsewhere > 0 && (elsewhere === all.length
-              ? ' · asked elsewhere in this workspace'
-              : ` · ${elsewhere} from elsewhere`)}
-            {' · nothing applied yet'}
-            {oldest && ` · oldest ${formatRelativeTime(oldest.createdAt)}`}
+              ? ' · 来自此工作区的其他对话'
+              : ` · ${elsewhere} 个来自其他对话`)}
+            {' · 尚未应用任何更改'}
+            {oldest && ` · 最早 ${formatRelativeTime(oldest.createdAt)}`}
           </span>
         </span>
         {busy && bulk.progress && (
@@ -173,7 +173,7 @@ export const PendingChangesTray = ({
       <div className="min-h-0 shrink overflow-y-auto">
       {rules.restricted && (
         <p className="m-0 border-t border-kumo-line/70 px-3.5 py-1.5 text-[11.5px] leading-4 text-kumo-inactive">
-          This workspace has read sensitive data, so every request is reviewed on its own.
+          此工作区读取过敏感数据，因此每个请求都需要单独审批。
         </p>
       )}
 
@@ -181,8 +181,8 @@ export const PendingChangesTray = ({
         <p className="m-0 flex items-center gap-1.5 border-t border-kumo-line/70 px-3.5 py-1.5 text-[11.5px] leading-4 text-kumo-warning">
           <Warning size={12} weight="duotone" aria-hidden="true" />
           {pressured.length === 1
-            ? `${pressured[0].title} is holding ${pressured[0].entries.length} unresolved requests — resolve some before its queue fills up.`
-            : `${pressured.length} resources are holding large unresolved queues — resolve some before they fill up.`}
+            ? `${pressured[0].title} 有 ${pressured[0].entries.length} 个待处理请求，请在队列满之前处理一些。`
+            : `${pressured.length} 个资源积压了大量待处理请求，请在队列满之前处理一些。`}
         </p>
       )}
 

@@ -70,7 +70,7 @@ it("lifts a run's action approval to the top rather than hiding it in the run", 
 it("decides a request without sending anyone to the run", async () => {
   const {approveAction, onOpenRun} = await renderPane([run(1)], new Map([[1, [request(10)]]]));
 
-  await act(async () => { button("Approve")!.click(); });
+  await act(async () => { button("批准")!.click(); });
 
   expect(approveAction).toHaveBeenCalledWith(10, undefined);
   expect(onOpenRun).not.toHaveBeenCalled();

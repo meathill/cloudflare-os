@@ -77,10 +77,10 @@ const mount = async (
 
 it("draws a PDF's pages with selectable text", async () => {
   await mount([ref("report.pdf", "application/pdf")], { "report.pdf": buildPdf("Quarterly report") });
-  await userEvent.click(page.getByRole("button", { name: "Preview report.pdf" }));
+  await userEvent.click(page.getByRole("button", { name: "预览 report.pdf" }));
 
   await expect.element(page.getByRole("dialog")).toBeVisible();
-  await expect.element(page.getByRole("group", { name: "Page 1" })).toBeVisible();
+  await expect.element(page.getByRole("group", { name: "第 1 页" })).toBeVisible();
   await expect.element(page.getByText("Quarterly report")).toBeInTheDocument();
   const canvas = document.querySelector<HTMLCanvasElement>("[role=group] canvas")!;
   const pixels = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -91,9 +91,9 @@ it("draws a PDF's pages with selectable text", async () => {
 it("draws a page of an absurd shape within what a browser's canvas can hold", async () => {
   // One unit wide and a hundred thousand tall: drawn to scale it would be ninety million pixels high.
   await mount([ref("tall.pdf", "application/pdf")], { "tall.pdf": buildPdf("x", "0 0 1 100000") });
-  await userEvent.click(page.getByRole("button", { name: "Preview tall.pdf" }));
+  await userEvent.click(page.getByRole("button", { name: "预览 tall.pdf" }));
 
-  const sheet = page.getByRole("group", { name: "Page 1" });
+  const sheet = page.getByRole("group", { name: "第 1 页" });
   await expect.poll(() => sheet.element().querySelector("canvas")?.height ?? 0).toBeGreaterThan(0);
   const canvas = sheet.element().querySelector("canvas")!;
   expect(canvas.height).toBeLessThanOrEqual(8192);
@@ -124,7 +124,7 @@ it("shows a glimpse of a file's content on its card", async () => {
     },
   );
   // Thumbnails are decoration to assistive tech, so they are read from the DOM, not by role.
-  const card = (name: string) => page.getByRole("button", { name: `Preview ${name}` }).element().parentElement!;
+  const card = (name: string) => page.getByRole("button", { name: `预览 ${name}` }).element().parentElement!;
   await expect.poll(() => card("people.csv").textContent).toContain("Jane,Platform");
   await expect.poll(() => card("plan.docx").textContent).toContain("Launch plan");
   await expect.poll(() => card("deck.pptx").textContent).toContain("Kickoff");
@@ -136,7 +136,7 @@ it("shows a glimpse of a file's content on its card", async () => {
 it("shimmers a card while its thumbnail is made, and shows the file's name if none can be", async () => {
   const { promise, reject } = Promise.withResolvers<Uint8Array>();
   const loadContent = await mount([ref("plan.docx", "application/octet-stream")], { "plan.docx": promise });
-  const card = () => page.getByRole("button", { name: "Preview plan.docx" }).element().parentElement!;
+  const card = () => page.getByRole("button", { name: "预览 plan.docx" }).element().parentElement!;
   await expect.poll(() => loadContent.mock.calls.length).toBe(1);
   expect(card().textContent).not.toContain("plan.docx");
   await act(async () => reject(new Error("offline")));
@@ -162,14 +162,14 @@ it("steps through a message's attachments with the arrow keys and closes on Esca
     ],
     { "people.csv": encoder.encode('name,team\n"Doe, Jane",Platform\n'), "plan.docx": docx, "budget.xlsx": xlsx },
   );
-  const card = page.getByRole("button", { name: "Preview people.csv" });
+  const card = page.getByRole("button", { name: "预览 people.csv" });
   await userEvent.click(card);
   await expect.element(page.getByRole("cell", { name: "Doe, Jane" })).toBeVisible();
-  await expect.element(page.getByText("1 of 3")).toBeVisible();
+  await expect.element(page.getByText("1 / 3")).toBeVisible();
 
   // Alt+Right is the browser's forward, not the next attachment.
   await userEvent.keyboard("{Alt>}{ArrowRight}{/Alt}");
-  await expect.element(page.getByText("1 of 3")).toBeVisible();
+  await expect.element(page.getByText("1 / 3")).toBeVisible();
 
   await userEvent.keyboard("{ArrowRight}");
   await expect.element(page.getByRole("heading", { name: "Launch plan" })).toBeVisible();
@@ -187,7 +187,7 @@ it("steps through a message's attachments with the arrow keys and closes on Esca
 it("shows an SVG from a data URL, which has no origin to run its script as if opened on its own", async () => {
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>';
   await mount([ref("logo.svg", "image/svg+xml")], { "logo.svg": encoder.encode(svg) });
-  await userEvent.click(page.getByRole("button", { name: "Preview logo.svg" }));
+  await userEvent.click(page.getByRole("button", { name: "预览 logo.svg" }));
   const image = page.getByRole("dialog").getByRole("img", { name: "logo.svg" });
   await expect.poll(() => image.element().getAttribute("src") ?? "").toMatch(/^data:image\/svg\+xml;base64,/);
 });
@@ -197,18 +197,18 @@ it("keeps focus in the viewer when its next button reaches the last attachment",
     [ref("a.txt", "text/plain"), ref("b.txt", "text/plain")],
     { "a.txt": encoder.encode("first"), "b.txt": encoder.encode("second") },
   );
-  await userEvent.click(page.getByRole("button", { name: "Preview a.txt" }));
-  await userEvent.click(page.getByRole("button", { name: "Next attachment" }));
+  await userEvent.click(page.getByRole("button", { name: "预览 a.txt" }));
+  await userEvent.click(page.getByRole("button", { name: "下一个附件" }));
   await expect.element(page.getByText("second")).toBeVisible();
-  await expect.element(page.getByRole("button", { name: "Previous attachment" })).toHaveFocus();
+  await expect.element(page.getByRole("button", { name: "上一个附件" })).toHaveFocus();
 });
 
 it("offers a download, without fetching the file, when its type has no preview", async () => {
   const loadContent = await mount([ref("bundle.zip", "application/zip")], {});
-  await userEvent.click(page.getByRole("button", { name: "Preview bundle.zip" }));
+  await userEvent.click(page.getByRole("button", { name: "预览 bundle.zip" }));
 
-  await expect.element(page.getByText("There’s no preview for this kind of file.")).toBeVisible();
-  await expect.element(page.getByRole("button", { name: "Download" }).first()).toBeVisible();
+  await expect.element(page.getByText("此类文件暂不支持预览。")).toBeVisible();
+  await expect.element(page.getByRole("button", { name: "下载" }).first()).toBeVisible();
   expect(loadContent).not.toHaveBeenCalled();
 });
 
@@ -217,7 +217,7 @@ it("shows an untyped file as text when that is what it holds", async () => {
     [ref("Dockerfile", "application/octet-stream")],
     { Dockerfile: encoder.encode("FROM node:22\nRUN npm ci\n") },
   );
-  await userEvent.click(page.getByRole("button", { name: "Preview Dockerfile" }));
+  await userEvent.click(page.getByRole("button", { name: "预览 Dockerfile" }));
   await expect.element(page.getByText("FROM node:22")).toBeVisible();
 });
 
@@ -227,16 +227,16 @@ it("says so when a file cannot be loaded or read, and retries on reopening", asy
     [ref("notes.md", "text/markdown"), ref("broken.docx", "application/octet-stream")],
     Object.assign(files, { "broken.docx": encoder.encode("not a package") }),
   );
-  await userEvent.click(page.getByRole("button", { name: "Preview notes.md" }));
-  await expect.element(page.getByText("This file couldn’t be previewed.")).toBeVisible();
+  await userEvent.click(page.getByRole("button", { name: "预览 notes.md" }));
+  await expect.element(page.getByText("无法预览此文件。")).toBeVisible();
 
   await userEvent.keyboard("{ArrowRight}");
-  await expect.element(page.getByText("This file couldn’t be previewed.")).toBeVisible();
-  await expect.element(page.getByText("2 of 2")).toBeVisible();
+  await expect.element(page.getByText("无法预览此文件。")).toBeVisible();
+  await expect.element(page.getByText("2 / 2")).toBeVisible();
 
   files["notes.md"] = encoder.encode("# Recovered\n");
   await userEvent.keyboard("{Escape}");
-  await userEvent.click(page.getByRole("button", { name: "Preview notes.md" }));
+  await userEvent.click(page.getByRole("button", { name: "预览 notes.md" }));
   await expect.element(page.getByRole("heading", { name: "Recovered" })).toBeVisible();
   // Each card's thumbnail, the first opening, and the retry; the second file's is shared.
   expect(loadContent).toHaveBeenCalledTimes(4);

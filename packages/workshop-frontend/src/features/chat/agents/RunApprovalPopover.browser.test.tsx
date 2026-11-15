@@ -79,7 +79,7 @@ async function renderList(
 }
 
 /** The run's Review button, the one control on its row that opens the approval. */
-const reviewButton = () => page.getByRole("button", {name: `Review ${RUN_TITLE}`});
+const reviewButton = () => page.getByRole("button", {name: `审阅 ${RUN_TITLE}`});
 
 /** The open popup, once base-ui has placed it. */
 const popup = () => vi.waitFor(() => {
@@ -120,7 +120,7 @@ it("hands over to the run for whoever wants the whole thread", async () => {
 
   await userEvent.click(reviewButton());
   await popup();
-  await userEvent.click(page.getByText("Open run"));
+  await userEvent.click(page.getByText("打开运行记录"));
 
   expect(opened).toEqual([1]);
   await vi.waitFor(() => {
@@ -149,7 +149,7 @@ it("scrolls multiple long requests without clipping their decision controls", as
   expect(requestList.scrollHeight).toBeGreaterThan(requestList.clientHeight);
   expect(panel.querySelectorAll("article")).toHaveLength(2);
   expect([...panel.querySelectorAll("button")]
-    .filter(button => button.textContent?.trim() === "Approve")).toHaveLength(2);
+    .filter(button => button.textContent?.trim() === "批准")).toHaveLength(2);
 });
 
 it("gives the run back its focus once its last request is decided", async () => {
@@ -158,7 +158,7 @@ it("gives the run back its focus once its last request is decided", async () => 
   await userEvent.click(reviewButton());
   const panel = await popup();
   const approve = [...panel.querySelectorAll("button")]
-    .find(button => button.textContent?.trim() === "Approve")!;
+    .find(button => button.textContent?.trim() === "批准")!;
   await userEvent.click(approve);
   expect(approveAction.mock.calls.map(([id]) => id)).toEqual([10]);
   // The decided request leaves the action log, and the popover holding focus goes with it.

@@ -117,17 +117,9 @@ export type BillingAccountInfo = {
   updatedAt: number;
 };
 
-/** One user's view of their own billing, scoped to that user when minted. */
-export interface BillingUserApi extends RpcTarget {
-  /** The user's balance, plan and top-up options. */
-  getSummary(): Promise<BillingSummary>;
-  /** The user's top-ups, grants and refunds, newest first. */
-  listLedger(limit?: number): Promise<BillingLedgerEntry[]>;
-  /** The user's metered usage for the last `days` UTC days, newest first. */
-  listUsage(days?: number): Promise<BillingUsageDay[]>;
-  /** Start a Stripe Checkout for one of the offered tiers; returns the page to send the user to. */
-  createCheckout(tierUsd: number): Promise<{ url: string }>;
-}
+/** One user's view of their own billing; declared in api.ts, beside the browser API that hands it out. */
+import type { BillingUserApi } from "./api.js";
+export type { BillingUserApi };
 
 /** How many users one getAccounts() call may ask for: a page of the admin's user list. */
 export const BILLING_ACCOUNTS_PER_REQUEST = 100;

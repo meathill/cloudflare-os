@@ -78,7 +78,7 @@ export const ComposerAttachmentCard = ({
         {!uploading && (
           <button
             type="button"
-            aria-label={`Preview ${name}`}
+            aria-label={`预览 ${name}`}
             onClick={onOpen}
             className={OPEN_BUTTON_CLASS}
           />

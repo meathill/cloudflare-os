@@ -2955,11 +2955,11 @@ function ChatInterface({
   const activityLineOf = (chatId: number): string | undefined => {
     const provisional = provisionalRef.current.get(chatId);
     if (!provisional) return undefined;
-    if (provisional.compacting) return "Summarizing earlier messages";
+    if (provisional.compacting) return "正在总结较早的消息";
     if (provisional.toolCalls.length > 0) {
       return buildProvisionalToolSummary(provisional.toolCalls).label;
     }
-    return provisional.reasoning ? "Thinking" : undefined;
+    return provisional.reasoning ? "思考中" : undefined;
   };
 
   // The list's relative times ("11m", "Yesterday") have to move on in a workspace where nothing
@@ -4691,7 +4691,7 @@ function ChatInterface({
       <div className={`themed-surface-inset relative flex items-center gap-2 overflow-hidden border-b border-kumo-line bg-kumo-elevated px-3.5 py-2 ${isTop ? "rounded-t-[calc(1rem-1px)]" : ""}`}>
         <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-kumo-brand/40 to-transparent" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate text-[12px] font-medium leading-4 tracking-[-0.2px] text-kumo-default">
-          Pending changes
+          待处理更改
         </span>
         <DiscardPendingChangesPopover
           open={discardChangesTarget?.chatId === chat.id}
@@ -4704,10 +4704,10 @@ function ChatInterface({
           onConfirm={handleDiscardPendingChanges}
         />
         <Tooltip content={isAgentActive
-          ? "Wait for the agent to finish before accepting changes."
+          ? "请等待智能体完成后再接受更改。"
           : isDiscardingChanges
-            ? "Wait for pending changes to finish discarding."
-            : "Keep this draft and make it the gadget's current version."} asChild>
+            ? "请等待待处理更改放弃完成。"
+            : "保留此草稿并将其设为应用的当前版本。"} asChild>
           <WorkshopButton
             disabled={changesActionsDisabled}
             onClick={() => { void handleAcceptChanges(); }}
@@ -4715,7 +4715,7 @@ function ChatInterface({
             className="!h-7 !cursor-pointer !rounded-md !border-transparent !shadow-none gap-1 text-[12px]"
           >
             <Check size={11} weight="bold" />
-            Accept changes
+            接受更改
           </WorkshopButton>
         </Tooltip>
       </div>
@@ -5566,7 +5566,7 @@ function ChatInterface({
           agents.length === 0 ? (
             <div className="py-8 text-center">
               <p className="text-[13px] leading-[18px] text-kumo-inactive">
-                No agents have run yet
+                还没有智能体运行过
               </p>
             </div>
           ) : (
@@ -5752,10 +5752,10 @@ function ChatInterface({
                         >
                           <DropdownMenu.Item disabled={!unread?.chats || unreadMessageCount === 0} onClick={() => {
                             void unread?.markRead(overseer, chat.id).catch(() => {});
-                          }}>Mark thread read</DropdownMenu.Item>
+                          }}>标记为已读</DropdownMenu.Item>
                           <DropdownMenu.Item disabled={!unread?.chats || unreadMessageCount > 0} onClick={() => {
                             void unread?.markUnread(overseer, chat.id).catch(() => {});
-                          }}>Mark thread unread</DropdownMenu.Item>
+                          }}>标记为未读</DropdownMenu.Item>
                           <ChatNotificationsMenu overseer={overseer} chatId={chat.id}
                             enabled={notificationsEnabled} override={readState?.notificationsEnabledOverride}
                             disabled={!unread?.chats} />

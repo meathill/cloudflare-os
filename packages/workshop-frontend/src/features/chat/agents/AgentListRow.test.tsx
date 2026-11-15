@@ -83,14 +83,14 @@ it("names both kinds of attention when one count covers both", async () => {
 
   // The badge is a bare "2", and only one of those runs is waiting on an approval: saying so of
   // both would send someone looking for a request that was never made.
-  expect(labels()).toContain("1 run needing your review, 1 run with pending changes");
+  expect(labels()).toContain("1 次运行需要你审阅，1 次运行有待处理更改");
 });
 
 it("answers a run's action approval without leaving the list", async () => {
   const {approveAction, onOpenRun} = await renderRow([run(1)], new Map([[1, [request(10)]]]), true);
 
   expect(document.body.textContent).toContain("Send an email to ap@acme.com");
-  await act(async () => { button("Approve")!.click(); });
+  await act(async () => { button("批准")!.click(); });
 
   expect(approveAction).toHaveBeenCalledWith(10, undefined);
   // Decided in place: the list never sent anyone to the run to do it.
@@ -100,7 +100,7 @@ it("answers a run's action approval without leaving the list", async () => {
 it("opens the run from its row, leaving the approval to its Review button", async () => {
   const {onOpenRun} = await renderRow([run(1)], new Map([[1, [request(10)]]]), true);
 
-  await act(async () => { button("Review")!.click(); });
+  await act(async () => { button("审阅")!.click(); });
   expect(onOpenRun).not.toHaveBeenCalled();
 
   await act(async () => { runButton("Run 1")!.click(); });
@@ -115,8 +115,8 @@ it("tells the two errands apart on the runs themselves", async () => {
   );
 
   // A request is answerable here; unaccepted work is only answerable in the run itself.
-  expect(rowText("Run 1")).toContain("Review");
-  expect(rowText("Run 2")).toContain("Changes");
+  expect(rowText("Run 1")).toContain("审阅");
+  expect(rowText("Run 2")).toContain("更改");
 });
 
 it("tells a restricted workspace's approver what they are answering for", async () => {

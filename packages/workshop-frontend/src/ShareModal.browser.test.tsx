@@ -39,11 +39,11 @@ let root: Root | undefined
 let container: HTMLElement | undefined
 let previousViewport: { width: number, height: number } | undefined
 
-const countButton = (count = 2) => page.getByRole('button', { name: new RegExp(`^${count} gadgets`) })
+const countButton = (count = 2) => page.getByRole('button', { name: new RegExp(`^${count} 个应用`) })
 // Every test works on the dialog's Advanced page, where links other than the viewer's default
 // link live, so the dialog is named for it.
-const dialog = () => page.getByRole('dialog', { name: 'Advanced' })
-const openAdvanced = () => userEvent.click(page.getByRole('button', { name: 'Advanced settings', exact: true }))
+const dialog = () => page.getByRole('dialog', { name: '高级' })
+const openAdvanced = () => userEvent.click(page.getByRole('button', { name: '高级设置', exact: true }))
 
 // Importing Playwright's CDP augmentation would add Node globals to the browser TS project.
 const sendCdp = async (method: string, params: object) => {
@@ -107,10 +107,10 @@ it('keeps the protected-resources pill readable in a narrow viewport', async () 
   previousViewport = { width: window.innerWidth, height: window.innerHeight }
   await page.viewport(320, 640)
   renderModal(FROZEN_LINK, true, {}, [CRM_REQUIREMENT])
-  const pill = page.getByRole('button', { name: /Protected resources/ })
+  const pill = page.getByRole('button', { name: /受保护的资源/ })
   await expect.element(pill).toBeVisible()
 
-  const label = page.getByText('Protected resources', { exact: true }).element() as HTMLElement
+  const label = page.getByText('受保护的资源', { exact: true }).element() as HTMLElement
   expect(label.clientWidth).toBeGreaterThan(0)
   expect(label.scrollWidth).toBeLessThanOrEqual(label.clientWidth)
   for (const icon of pill.element().querySelectorAll('svg')) {
@@ -118,7 +118,7 @@ it('keeps the protected-resources pill readable in a narrow viewport', async () 
   }
   // The footer reflows rather than pushing anything out of the dialog.
   const dialogBox = page.getByRole('dialog').element().getBoundingClientRect()
-  for (const control of [pill, page.getByRole('button', { name: 'Copy link' })]) {
+  for (const control of [pill, page.getByRole('button', { name: '复制链接' })]) {
     const box = control.element().getBoundingClientRect()
     expect(box.left).toBeGreaterThanOrEqual(dialogBox.left)
     expect(box.right).toBeLessThanOrEqual(dialogBox.right)
@@ -127,8 +127,8 @@ it('keeps the protected-resources pill readable in a narrow viewport', async () 
 
 it('moves focus into a dialog page and back to the button that opened it', async () => {
   renderModal(FROZEN_LINK, true, {}, [CRM_REQUIREMENT])
-  const back = page.getByRole('button', { name: 'Back to sharing' })
-  for (const name of ['Advanced settings', /Protected resources/]) {
+  const back = page.getByRole('button', { name: '返回分享' })
+  for (const name of ['高级设置', /受保护的资源/]) {
     const opener = page.getByRole('button', { name })
     await expect.element(opener).toBeVisible()
     ;(opener.element() as HTMLElement).focus()
@@ -164,18 +164,18 @@ const touch = async (element: Element) => {
 
 it('keeps the access menus in the dialog’s accessibility tree and above it', async () => {
   renderModal()
-  await userEvent.click(page.getByRole('button', { name: 'Anyone with your link: Requires invite' }))
-  await expectReachableMenuItem('menuitemradio', 'Can join')
+  await userEvent.click(page.getByRole('button', { name: '拥有你的链接的任何人：需要邀请' }))
+  await expectReachableMenuItem('menuitemradio', '可加入')
 
-  await userEvent.click(page.getByRole('button', { name: 'Bea: Member' }))
-  await expectReachableMenuItem('menuitem', 'Remove Bea')
+  await userEvent.click(page.getByRole('button', { name: 'Bea: 成员' }))
+  await expectReachableMenuItem('menuitem', '移除 Bea')
   // The dialog survives the menu's Escape.
   await expect.element(page.getByRole('dialog')).toBeVisible()
 })
 
 it('puts a warning card exactly the size of the link row in its place once links are off', async () => {
   renderModal()
-  const linkTitle = page.getByText('Anyone with your link')
+  const linkTitle = page.getByText('拥有你的链接的任何人')
   await expect.element(linkTitle).toBeVisible()
   const linkRow = linkTitle.element().closest('.group')!
   const rowHeight = linkRow.getBoundingClientRect().height
@@ -183,9 +183,9 @@ it('puts a warning card exactly the size of the link row in its place once links
   container!.remove()
 
   renderModal(FROZEN_LINK, true, { containsRestrictedData: true, ownerInvitesOnly: true })
-  const card = page.getByRole('note', { name: 'Share links are off' })
+  const card = page.getByRole('note', { name: '分享链接已关闭' })
   await expect.element(card).toBeVisible()
-  expect(page.getByText('Anyone with your link').query()).toBeNull()
+  expect(page.getByText('拥有你的链接的任何人').query()).toBeNull()
   // To the nearest pixel: fractional heights can round apart, but a second line added 4px.
   expect(card.element().getBoundingClientRect().height).toBeCloseTo(rowHeight, 0)
 })
@@ -194,7 +194,7 @@ it("shows a link's gadgets above the dialog when its label is hovered", async ()
   renderModal()
   await openAdvanced()
 
-  await userEvent.hover(page.getByText('2 gadgets · Cannot edit'))
+  await userEvent.hover(page.getByText('2 个应用 · 不可编辑'))
   const title = page.getByText('Packing list')
   await expect.element(title).toBeVisible()
 
@@ -236,7 +236,7 @@ it.each(['click', 'touch'] as const)('toggles the gadget list with %s and dismis
   renderModal()
   await openAdvanced()
   await expect.element(countButton()).toBeVisible()
-  const heading = page.getByRole('heading', { name: 'Advanced' })
+  const heading = page.getByRole('heading', { name: '高级' })
   await userEvent.hover(heading)
   await expect.element(page.getByRole('tooltip')).not.toBeInTheDocument()
   const activate = (element: Element) => method === 'touch' ? touch(element) : userEvent.click(element)

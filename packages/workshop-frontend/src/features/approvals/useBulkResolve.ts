@@ -44,7 +44,7 @@ export interface BulkFailure {
  * longer the workspace they authorised it over.
  */
 const RESTRICTED_STOP =
-  'This workspace has read sensitive data, so the rest are reviewed on their own.'
+  '此工作区读取过敏感数据，其余请求需要单独审批。'
 
 /**
  * How long a run waits for the drain to take a request a rule covers.
@@ -182,8 +182,8 @@ export function useBulkResolve(
     const stopForOpposed = (entry: PendingChange) => setFailure({
       decision, applied, total,
       reason: decision === 'approve'
-        ? `"${entry.description.title}" was denied elsewhere, so the rest were left alone.`
-        : `"${entry.description.title}" was applied before it could be discarded, so the rest were left alone.`,
+        ? `“${entry.description.title}”已在别处被拒绝，其余请求未处理。`
+        : `“${entry.description.title}”在放弃前已被应用，其余请求未处理。`,
     })
     // Whether the drain may take this request. With the rule list unreadable, anything a rule
     // could cover counts, since the rule that covers it may be one this client never got to read.
@@ -269,15 +269,15 @@ async function waitUntilGone(stillPending: () => boolean, ms: number): Promise<v
 
 /** How a finished or in-flight run describes itself. */
 export function describeBulkProgress({ decision, done, total }: BulkProgress): string {
-  return decision === 'approve' ? `Applying ${done + 1} of ${total}…` : `Discarding ${done + 1} of ${total}…`
+  return decision === 'approve' ? `正在应用 ${done + 1}/${total}…` : `正在放弃 ${done + 1}/${total}…`
 }
 
 /** How a stopped run describes what it managed before it stopped. */
 export function describeBulkFailure(
   { decision, applied, total, title, reason }: BulkFailure,
 ): string {
-  const verb = decision === 'approve' ? 'Applied' : 'Discarded'
-  const got = `${verb} ${applied} of ${total}.`
-  if (title === undefined) return `${got} ${reason ?? 'The run stopped.'}`
-  return `${got} "${title}" failed${reason ? `: ${reason}` : '.'}`
+  const verb = decision === 'approve' ? '已应用' : '已放弃'
+  const got = `${verb} ${applied}/${total}。`
+  if (title === undefined) return `${got}${reason ?? '批量处理已停止。'}`
+  return `${got}“${title}”失败${reason ? `：${reason}` : '。'}`
 }

@@ -41,10 +41,10 @@ it("shows the start of a dropped text file on its card and opens the whole file"
   ));
 
   // The thumbnail is decoration to assistive tech, so it is read from the DOM, not by role.
-  const card = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: "Preview notes.md" }) });
+  const card = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: "预览 notes.md" }) });
   await expect.poll(() => card.element().textContent).toContain("# Roadmap");
 
-  await userEvent.click(page.getByRole("button", { name: "Preview notes.md" }));
+  await userEvent.click(page.getByRole("button", { name: "预览 notes.md" }));
   await expect.element(page.getByRole("heading", { name: "Roadmap" })).toBeVisible();
 
   // A file whose upload failed is still on this device, so it still opens.

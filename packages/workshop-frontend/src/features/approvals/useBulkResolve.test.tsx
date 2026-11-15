@@ -195,7 +195,7 @@ describe('useBulkResolve', () => {
       decision: 'approve', applied: 1, total: 3, title: 'Write 2', reason: 'The provider failed.',
     })
     expect(describeBulkFailure(harness.current.failure!))
-      .toBe('Applied 1 of 3. "Write 2" failed: The provider failed.')
+      .toBe('已应用 1/3。“Write 2”失败：The provider failed.')
   })
 
   it('stops an apply when someone else denies a request it was going to skip', async () => {
@@ -212,10 +212,10 @@ describe('useBulkResolve', () => {
     expect(harness.calls).toEqual(['approve:1'])
     expect(harness.current.failure).toEqual({
       decision: 'approve', applied: 1, total: 3,
-      reason: '"Write 2" was denied elsewhere, so the rest were left alone.',
+      reason: '“Write 2”已在别处被拒绝，其余请求未处理。',
     })
     expect(describeBulkFailure(harness.current.failure!)).toBe(
-      'Applied 1 of 3. "Write 2" was denied elsewhere, so the rest were left alone.')
+      '已应用 1/3。“Write 2”已在别处被拒绝，其余请求未处理。')
   })
 
   it('discards past a request someone else denied, since that is what it wanted', async () => {
@@ -299,7 +299,7 @@ describe('useBulkResolve', () => {
     expect(harness.calls).toEqual(['reject:2', 'reject:1'])
     expect(harness.current.failure).toEqual({
       decision: 'deny', applied: 1, total: 2,
-      reason: '"Write 1" was applied before it could be discarded, so the rest were left alone.',
+      reason: '“Write 1”在放弃前已被应用，其余请求未处理。',
     })
   })
 
@@ -403,7 +403,7 @@ describe('useBulkResolve', () => {
 
     expect(harness.current.failure).toMatchObject({ applied: 1, total: 3, title: 'Write 3' })
     expect(describeBulkFailure(harness.current.failure!))
-      .toBe('Applied 1 of 3. "Write 3" failed: nope')
+      .toBe('已应用 1/3。“Write 3”失败：nope')
   })
 
   it('does not report a failure for a request resolved just before its decision', async () => {
@@ -535,10 +535,10 @@ describe('useBulkResolve', () => {
     expect(harness.calls).toEqual(['approve:1', 'approve:2'])
     expect(harness.current.failure).toEqual({
       decision: 'approve', applied: 2, total: 3,
-      reason: 'This workspace has read sensitive data, so the rest are reviewed on their own.',
+      reason: '此工作区读取过敏感数据，其余请求需要单独审批。',
     })
     expect(describeBulkFailure(harness.current.failure!)).toBe(
-      'Applied 2 of 3. This workspace has read sensitive data, so the rest are reviewed on their own.')
+      '已应用 2/3。此工作区读取过敏感数据，其余请求需要单独审批。')
   })
 
   it('reads the latch again after waiting on the drain, before approving anything', async () => {
@@ -558,7 +558,7 @@ describe('useBulkResolve', () => {
     expect(harness.calls).toEqual([])
     expect(harness.current.failure).toEqual({
       decision: 'approve', applied: 0, total: 2,
-      reason: 'This workspace has read sensitive data, so the rest are reviewed on their own.',
+      reason: '此工作区读取过敏感数据，其余请求需要单独审批。',
     })
   })
 

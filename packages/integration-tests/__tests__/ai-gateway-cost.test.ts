@@ -100,6 +100,8 @@ const languageIds = (models: readonly AdminModel[]) => ids(models.filter(candida
     candidate.mode === "enabled" && modelKind(candidate.provider, candidate.id) === "language"));
 // A provider the gateway serves, as the admin is shown it while it is off.
 const offProvider = (provider: string) => ({ provider, needsApiToken: false });
+// 有缘心之助：OpenCode Go 不经 AI Gateway 转发，开启前需要自己的 API token。
+const OPENCODE_GO_OFF = { provider: "opencode-go", needsApiToken: true };
 
 // The cases below share one deployment, whose admin signs up once and logs in after that.
 let adminSignedUp = false;
@@ -394,7 +396,7 @@ it("an admin turns on a provider beside the environment's, and tests what one an
   expect(before.providerSettings).toEqual([
     offProvider("cloudflare-auto-router"),
     { provider: "cloudflare", enabledBy: "environment", needsApiToken: false },
-    offProvider("anthropic"), offProvider("openai"), offProvider("google"),
+    offProvider("anthropic"), offProvider("openai"), offProvider("google"), OPENCODE_GO_OFF,
   ]);
   expect(await api.getAiConfig()).toMatchObject({ enabledProviders: ["cloudflare"] });
   await expect(api.addModel(mine, mineConfig))
@@ -411,7 +413,7 @@ it("an admin turns on a provider beside the environment's, and tests what one an
       providerSettings: [
         offProvider("cloudflare-auto-router"), before.providerSettings[1],
         { provider: "anthropic", enabledBy: "admin", needsApiToken: false },
-        offProvider("openai"), offProvider("google"),
+        offProvider("openai"), offProvider("google"), OPENCODE_GO_OFF,
       ],
       models: on.models,
     });

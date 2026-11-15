@@ -1614,7 +1614,7 @@ export default function GadgetEditor() {
       return true
     } catch (err) {
       console.error('Failed to delete gadget:', err)
-      toasts.add({ title: 'Failed to delete gadget', variant: 'error' })
+      toasts.add({ title: '删除应用失败', variant: 'error' })
       return false
     } finally {
       target[Symbol.dispose]()
@@ -2087,7 +2087,7 @@ export default function GadgetEditor() {
                   onClick={() => { if (selectedGadgetSummary) openShareModal(selectedGadgetSummary.id) }}
                   className={MENU_ITEM}
                 >
-                  Share gadget
+                  分享应用
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
                   disabled={!selectedGadgetStub}
@@ -2136,7 +2136,7 @@ export default function GadgetEditor() {
         {isViewActive && (
           <div
             role="progressbar"
-            aria-label="Agent working"
+            aria-label="智能体工作中"
             className="absolute left-0 z-10 h-0 max-md:!right-0 max-md:!top-0"
             style={{ top: simpleMode ? 0 : TABBAR_H, right: outputRailWidth }}
           >
@@ -2258,7 +2258,7 @@ export default function GadgetEditor() {
                       tabIndex={0}
                       workpiece={selectedGadgetSummary}
                       title={selectedGadgetSummary.title}
-                      badge={selectedGadgetSummary.chatId !== undefined ? 'Draft' : undefined}
+                      badge={selectedGadgetSummary.chatId !== undefined ? '草稿' : undefined}
                     />
                   )}
                   onDelete={() => requestGadgetDeletion(selectedGadgetSummary)}
@@ -2303,8 +2303,8 @@ export default function GadgetEditor() {
               {/* A draft belongs to its chat until accepted, and only accepted gadgets can be shared. */}
               {!paneShowsActivity && selectedGadgetSummary && (
                 <WorkshopIconButton
-                  aria-label="Share gadget"
-                  title={selectedGadgetSummary.chatId === undefined ? 'Share gadget' : 'Accept this draft to share it'}
+                  aria-label="分享应用"
+                  title={selectedGadgetSummary.chatId === undefined ? '分享应用' : '接受此草稿后才能分享'}
                   onClick={() => openShareModal(selectedGadgetSummary.id)}
                   disabled={selectedGadgetSummary.chatId !== undefined}
                 >

@@ -841,8 +841,8 @@ export default function GatekeeperModal({
   }
 
   const createLabel = selectedConnection?.resourceUrlPattern
-    ? 'Add connection'
-    : 'Create connection'
+    ? '添加连接'
+    : '创建连接'
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => { if (!o) onClose() }}>

@@ -36,7 +36,7 @@ export const SlideFrame = ({ slide, slideWidth, slideHeight, width }: {
     <div
       ref={hostRef}
       role="group"
-      aria-label={`Slide ${slide.number}`}
+      aria-label={`第 ${slide.number} 张幻灯片`}
       className="relative shrink-0 overflow-hidden bg-kumo-base shadow-sm ring-1 ring-kumo-line"
       style={{ width, height: Math.round(width * slideHeight / slideWidth) }}
     >
