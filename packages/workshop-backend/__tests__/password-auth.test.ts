@@ -34,10 +34,13 @@ describe("isPasswordSignupEnabled", () => {
     expect(isPasswordSignupEnabled(env({}))).toBe(true);
   });
 
-  it("closes while email codes can register, even with password login on", () => {
+  it("stays open beside email codes", () => {
     let otp = env({ EMAIL_OTP_ENABLED: "true", INVITE_EMAIL: EMAIL_BINDING });
-    expect(isPasswordAuthEnabled(otp)).toBe(true);
-    expect(isPasswordSignupEnabled(otp)).toBe(false);
+    expect(isPasswordSignupEnabled(otp)).toBe(true);
+    // Unless password login is off, which email codes make effective.
+    expect(isPasswordSignupEnabled(env({
+      EMAIL_OTP_ENABLED: "true", INVITE_EMAIL: EMAIL_BINDING, DISABLE_PASSWORD_AUTH: "true",
+    }))).toBe(false);
   });
 
   it("closes under a signup allowlist", () => {

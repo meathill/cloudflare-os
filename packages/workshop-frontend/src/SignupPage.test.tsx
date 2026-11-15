@@ -61,10 +61,10 @@ describe('SignupPage', () => {
     expect(page.textContent).toContain('邮箱注册')
   })
 
-  it('keeps password signup closed while email codes can register', async () => {
+  it('offers password signup beside email codes', async () => {
     const page = await render({ passwordAuthEnabled: true })
     expect(page.querySelector('input[type="email"]')).not.toBeNull()
-    expect(page.querySelector('input[type="password"]')).toBeNull()
+    expect(page.querySelector('input[type="password"]')).not.toBeNull()
   })
 
   it('offers no form while signups are closed', async () => {

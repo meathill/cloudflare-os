@@ -1020,7 +1020,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       throw new Error("New signups are currently disabled on this deployment.");
     }
     if (!isPasswordSignupEnabled(this.env)) {
-      throw new Error("密码注册已关闭：请使用邮箱验证码注册。");
+      throw new Error("此部署不开放密码注册。");
     }
 
     username = normalizeUsername(username);

@@ -169,8 +169,7 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
               </Button>
             </form>
 
-            {/* With email codes on, the code form above registers new users itself. */}
-            {!emailOtpEnabled && <p className="text-center text-sm text-kumo-subtle mt-6">
+            {serverConfig.signupsEnabled && !serverConfig.signupAllowlistEnabled && <p className="text-center text-sm text-kumo-subtle mt-6">
               还没有账号？{' '}
               <Link
                 to="/signup"

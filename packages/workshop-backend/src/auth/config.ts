@@ -108,10 +108,10 @@ export function isPasswordAuthEnabled(env: Cloudflare.Env): boolean {
 }
 
 /**
- * Whether new password accounts may be created. Password accounts carry no email, so wherever an
- * email can register instead -- email codes, or an allowlist deciding by address -- signup goes
- * through email alone. Existing password accounts keep signing in per isPasswordAuthEnabled().
+ * Whether new password accounts may be created: wherever password auth is on, beside email codes
+ * too, unless an allowlist decides signups by address, which a password account (no email) can't
+ * be checked against.
  */
 export function isPasswordSignupEnabled(env: Cloudflare.Env): boolean {
-  return isPasswordAuthEnabled(env) && !isEmailOtpEnabled(env) && !signupAllowlistEnabled(env);
+  return isPasswordAuthEnabled(env) && !signupAllowlistEnabled(env);
 }

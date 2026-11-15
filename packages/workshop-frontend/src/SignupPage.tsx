@@ -115,12 +115,10 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
   const signupAllowlistEnabled = serverConfig.signupAllowlistEnabled;
   // A code sign-in creates the account on first use, so the same form registers new users.
   const emailOtpEnabled = serverConfig.emailOtpEnabled && signupsEnabled;
-  // The password create-account form requires password auth, open signups, and no way to register
-  // by email instead (codes or an allowlist): password accounts carry no email (see
-  // isPasswordSignupEnabled on the server).
+  // The password create-account form requires password auth, open signups, and no allowlist, which
+  // decides by email address (see isPasswordSignupEnabled on the server).
   const passwordAuthEnabled =
-    serverConfig.passwordAuthEnabled && signupsEnabled && !signupAllowlistEnabled &&
-    !serverConfig.emailOtpEnabled;
+    serverConfig.passwordAuthEnabled && signupsEnabled && !signupAllowlistEnabled;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col items-center justify-start overflow-y-auto bg-kumo-base px-4 py-8">
