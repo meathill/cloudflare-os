@@ -822,6 +822,7 @@ describe("formatInstanceInstructions", () => {
     expect(result).toContain("format.script");
     expect(result).toContain("format.outline");
     expect(result).toContain("必须先问用户");
+    expect(result).toContain("env.CONTEXT.createSkill");
     expect(result).not.toContain("互动分支");
     expect(result).toContain("skills/short-drama-skill-codex/SKILL.md");
     expect(result).toContain("readDramaDocument");

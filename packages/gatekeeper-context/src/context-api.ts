@@ -9,8 +9,9 @@ import {
   ContextApi, ContextCollectionContent, ContextCollectionMetadata, ContextCollectionPermissions,
   ContextCollectionRole, ContextCollectionSharing, ContextCollectionVisibility,
   ContextDocument, ContextDocumentSummary, ContextGitTokenCreateResult, ContextGitTokenList,
-  DEFAULT_GIT_BRANCH, EnabledCollectionInfo,
+  EnabledCollectionInfo,
 } from "./context-types.js";
+import { initializeCollection, newCollectionMetadata } from "./collection-create.js";
 import type { ContextCollectionDurableObject } from "./context-collection.js";
 import type { UserLibraryDurableObject } from "./user-library.js";
 import type { LibraryRegistryDurableObject } from "./registry-do.js";
@@ -94,37 +95,15 @@ export class ContextApiImpl extends RpcTarget implements ContextApi {
       throw new Error("Git-backed Context collections are not enabled.");
     }
 
-    let id = crypto.randomUUID();
-    let metadata: ContextCollectionMetadata = {
-      id,
-      icon,
-      title,
-      description,
-      visibility,
-      created: new Date(),
-      lastUpdated: new Date(),
-      documentCount: 0,
-      content: source === "git"
-        ? { source, remote: "", branch: DEFAULT_GIT_BRANCH, lastRefreshedAt: new Date() }
-        : { source },
-    };
-
-    // Initialize before indexing; if this fails, nothing is reachable yet.
-    metadata = await this.#collection(id).initialize(metadata, this.domain, visibility === "private" ? this.accountId : "");
-
+    let metadata = newCollectionMetadata(title, description, visibility, icon, source);
     // Private collections live in the creator's library; public ones live in the domain registry.
-    try {
-      if (visibility === "public") {
-        await this.#registry().addPublic(this.domain, metadataToSummary(metadata));
-      } else {
-        await this.#userLib().createOwnedCollection(id);
-      }
-    } catch (err) {
-      // Indexing failed; delete the now-unreachable collection.
-      await this.#collection(id).deleteSelf(this.accountId, this.isAdmin).catch(() => {});
-      throw err;
-    }
-    return metadata;
+    return initializeCollection(
+      this.#collection(metadata.id), metadata, this.domain,
+      visibility === "private" ? this.accountId : "",
+      created => visibility === "public"
+        ? this.#registry().addPublic(this.domain, metadataToSummary(created))
+        : this.#userLib().createOwnedCollection(created.id),
+      { accountId: this.accountId, isAdmin: this.isAdmin });
   }
 
   async updateContextCollection(collectionId: string, options: {

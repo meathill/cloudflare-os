@@ -1,6 +1,6 @@
 // Context Library gatekeeper. It auto-provisions one account per user; each account provides an
 // unnamed agent capsule (ContextGatekeeper) and a management UI (ContextApi). Data is sharing-domain
-// scoped by binding props.
+// scoped by binding props. Agents only read, except for saving skills through the approval queue.
 
 import { WorkerEntrypoint, DurableObject, RpcStub as NativeRpcStub, RpcTarget as NativeRpcTarget } from "cloudflare:workers";
 import { RpcStub } from "capnweb";
@@ -14,7 +14,10 @@ import type {
 } from "@gadgets/workshop-shared/gatekeeper";
 import { workerVersionTag } from "@gadgets/workshop-shared/gatekeeper";
 import { ObservationGate } from "@gadgets/gatekeeper-kit/observers";
+import { ActionJournal } from "@gadgets/gatekeeper-kit/actions";
 import { LibraryReadSession } from "./library-read.js";
+import { LibrarySession } from "./library-write.js";
+import { SKILL_ACTIONS, type SkillHost } from "./skill-actions.js";
 import { ContextApiImpl } from "./context-api.js";
 import {
   contextObserverAccessVerifier, contextObserverStrategy, type ContextVerifierApi,
@@ -73,7 +76,7 @@ class ContextSlashCommandProvider extends NativeRpcTarget
 const CONTEXT_LIBRARY_TYPES = `
 /**
  * Shared context documents and skills. Catalog entries provide document IDs accepted by read().
- * Each call records an observation.
+ * Each read records an observation.
  */
 interface ContextLibrary {
   /** Full-text search across the collections available to you. Returns documents (with docIds). */
@@ -83,6 +86,26 @@ interface ContextLibrary {
   list(opts?: { collectionId?: string; path?: string }): Promise<ContextListing>;
   /** Read a document by an ID from the catalog, search(), or list(). */
   read(docId: string): Promise<ContextDocument | null>;
+  /**
+   * Save a new Agent Skill to the user's own skill library, where they can see and edit it on the
+   * Skills (技能) page and run it as a slash command. Show the user the complete skill and get their
+   * go-ahead before calling. Resolves once the user has been asked to approve the save; tell them the
+   * skill appears on the Skills page after they approve it.
+   * - name: lowercase letters, digits and single hyphens, at most 64 characters (for a Chinese title,
+   *   use pinyin or a short English phrase, e.g. "baokuan-chaiju-shengji"). Becomes the directory
+   *   and slash command name; it must not already exist in the collection.
+   * - description: at most 1024 characters, saying what the skill does and when to use it.
+   * - body: the SKILL.md instructions in Markdown, without YAML frontmatter, at most 64 KiB.
+   * - collectionId: a collection list() marks writable; omit it to save to the "我的技能" collection,
+   *   created on first use.
+   */
+  createSkill(skill: { name: string; description: string; body: string; collectionId?: string }): Promise<void>;
+  /**
+   * Replace an existing skill's description and instructions, keeping its name. docId is the skill's
+   * SKILL.md from the catalog, search() or list(), in a writable collection. Read it first, show the
+   * user the new version, and get their go-ahead; the user approves the change before it is saved.
+   */
+  updateSkill(docId: string, skill: { description: string; body: string }): Promise<void>;
 }
 
 interface ContextSearchResult {
@@ -97,7 +120,8 @@ interface ContextSearchResult {
 
 type ContextListingEntry =
   // A collection: its id is a collectionId — pass it to list()/search() to see inside, not read().
-  | { type: "collection"; id: string; title: string; description?: string; documentCount: number }
+  // writable: createSkill() may save into it.
+  | { type: "collection"; id: string; title: string; description?: string; documentCount: number; writable?: boolean }
   | { type: "directory"; path: string; name: string }
   // A document: its docId is what read() takes.
   | { type: "document"; docId: string; path: string; name: string; description?: string; contentType?: string };
@@ -225,17 +249,27 @@ export class ContextVerifier
   }
 }
 
-// Gadget-side read path. Read-only: no actions are ever submitted.
+// Gadget-side path: reads, plus skill saves submitted as actions.
 @validateRpc()
 export class ContextGatekeeper
     extends DurableObject<Cloudflare.Env, ContextAccountProps>
-    implements Gatekeeper<LibraryReadSession> {
+    implements Gatekeeper<LibrarySession> {
   #collections() { return this.ctx.exports.ContextCollectionDurableObject; }
   #userLibraries() { return this.ctx.exports.UserLibraryDurableObject; }
   // One strategy over the same storage object for the DO's lifetime: the kit coordinates in-flight
   // reads in memory keyed on it.
   readonly #observers = contextObserverStrategy(this.ctx.storage.kv, this.ctx.props.sharingDomain);
   readonly #verifyObserverAccess = contextObserverAccessVerifier(this.ctx.props.sharingDomain);
+  readonly #skillHost: SkillHost = {
+    domain: this.ctx.props.sharingDomain,
+    accountId: this.ctx.props.accountId,
+    collection: id => this.#collections().get(
+      this.#collections().idFromName(domainName(this.ctx.props.sharingDomain, id))),
+    userLibrary: () => this.#userLibraries().get(this.#userLibraries().idFromName(
+      domainName(this.ctx.props.sharingDomain, this.ctx.props.accountId))),
+  };
+  readonly #skillActions = SKILL_ACTIONS.bind(
+    new ActionJournal(this.ctx.storage.kv, { namespace: "skills" }), this.#skillHost);
 
   async #loadSkills(
       collections: EnabledCollectionInfo[]):
@@ -293,8 +327,10 @@ export class ContextGatekeeper
     }
   }
 
-  async startSession(approvalQueue: NativeRpcStub<ApprovalQueue>): Promise<LibraryReadSession> {
-    return this.#newReadSession(approvalQueue);
+  async startSession(approvalQueue: NativeRpcStub<ApprovalQueue>): Promise<LibrarySession> {
+    let reader = this.#newReadSession(approvalQueue);
+    // The read session's gate owns its own duplicate; the session releases this one.
+    return new LibrarySession(reader, approvalQueue.dup(), this.#skillActions, this.#skillHost);
   }
 
   async getSlashCommandProvider():
@@ -339,9 +375,8 @@ export class ContextGatekeeper
     return buildContextCatalog(collections, await this.#loadSkills(collections));
   }
 
-  /** Read-only gatekeeper: no side-effecting actions, so nothing is ever auto-approvable. */
   async getAutoApprovableActions(): Promise<ActionKind[]> {
-    return [];
+    return this.#skillActions.autoApprovableKinds();
   }
 
   /**
@@ -364,16 +399,15 @@ export class ContextGatekeeper
     await this.#observers.removeObserver(id);
   }
 
-  /** Read-only gatekeeper: no actions are submitted, so these callbacks should never run. */
-  applyAction(_action: number): Promise<void> {
-    throw new Error("The Context Library is read-only and implements no actions.");
+  applyAction(action: number): Promise<void> {
+    return this.#skillActions.apply(action);
   }
-  rejectAction(_action: number): Promise<void | { restart?: boolean }> {
-    throw new Error("The Context Library is read-only and implements no actions.");
+  rejectAction(action: number): Promise<void | { restart?: boolean }> {
+    return this.#skillActions.reject(action);
   }
   revertAction(_action: number):
       Promise<void | { message?: string; canRetry?: boolean; restart?: boolean }> {
-    throw new Error("The Context Library is read-only and implements no actions.");
+    throw new Error("Saved skills cannot be reverted automatically; edit them on the Skills page.");
   }
 }
 

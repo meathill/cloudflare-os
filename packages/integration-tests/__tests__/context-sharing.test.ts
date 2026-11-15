@@ -87,7 +87,7 @@ it.concurrent("top-level private collection metadata does not prevent a collabor
   expect(await observer.context.getContextCollectionMetadata(collection.id)).toBeNull();
   expect(await session.list()).toEqual({ entries: [{
     type: "collection", id: collection.id, title: collection.title,
-    description: collection.description, documentCount: 1,
+    description: collection.description, documentCount: 1, writable: true,
   }] });
 
   await workspace.addCollaborator(observer.username, "workspace");
@@ -132,3 +132,24 @@ it.concurrent.each(["list", "read"] as const)(
     expect(await opened.getMetadata()).toMatchObject({ id: workspaceId, role: "build" });
   },
 );
+
+it.concurrent("an agent-saved skill reaches the owner's library once they approve it", async () => {
+  using owner = await newAccount("contextskillowner");
+  using state = await privateWorkspace(owner);
+  const { workspace, session } = state;
+
+  await session.createSkill({
+    name: "saved-skill", description: "Use when testing saved skills.", body: "# Saved\n",
+  });
+  const pending = await waitFor("the save to await approval", async () =>
+    (await workspace.listActions({ filter: "pending" })).entries
+      .find(entry => entry.description.title === "保存技能：saved-skill") ?? null);
+  expect(pending.description).toMatchObject({ autoApprovable: true, descriptionIsComplete: true });
+  await workspace.approveAction(pending.id);
+
+  const saved = await waitFor("the default skill collection", async () =>
+    (await owner.context.listEnabledContextCollections()).find(entry => entry.title === "我的技能") ?? null);
+  expect(await owner.context.listContextDocuments(saved.id)).toEqual([
+    expect.objectContaining({ path: "saved-skill/SKILL.md", skillName: "saved-skill" }),
+  ]);
+});

@@ -8,7 +8,7 @@ import type { ObservationGate, ObservationInput } from "@gadgets/gatekeeper-kit/
 import {
   ContextSearchResult, ContextListing, ContextListingEntry, ContextReadResult,
   decodeDocId, encodeDocId, isTextContentType, VENDOR_ID,
-  type ContextLibrary,
+  type ContextLibraryReader,
 } from "./context-types.js";
 import type { ContextCollectionDurableObject } from "./context-collection.js";
 import type { UserLibraryDurableObject } from "./user-library.js";
@@ -16,13 +16,14 @@ import { listPublicCollectionsFromKv } from "./collection-kv.js";
 import { MAX_COLLECTION_FANOUT, mapWithConcurrency } from "./concurrency.js";
 import { domainName } from "./domain.js";
 import { obsContext } from "./observability.js";
+import { canSaveSkills } from "./skill-actions.js";
 
 const logger = obsContext.createLogger({
   component: "gatekeeper.context", vendorId: VENDOR_ID,
 });
 
 @validateRpc()
-export class LibraryReadSession extends RpcTarget implements ContextLibrary {
+export class LibraryReadSession extends RpcTarget implements ContextLibraryReader {
   // Cache public discovery, not existence: every use checks that each collection is still public
   // and live. Private membership is never cached, so existing sessions honor revocations and new
   // shares made after they started.
@@ -205,13 +206,17 @@ export class LibraryReadSession extends RpcTarget implements ContextLibrary {
       let collectionEntries = await mapWithConcurrency(libraryIds, MAX_COLLECTION_FANOUT,
         async (collectionId): Promise<ContextListingEntry | null> => {
           try {
-            let meta = await this.#collection(collectionId).getMetadata();
+            let collection = this.#collection(collectionId);
+            let [meta, access] = await Promise.all([
+              collection.getMetadata(), collection.getAccess(this.accountId),
+            ]);
             return {
               type: "collection",
               id: collectionId,
               title: meta.title,
               description: meta.description,
               documentCount: meta.documentCount,
+              writable: canSaveSkills(access, meta),
             };
           } catch (err) {
             logger.warn("failed to list collection", {

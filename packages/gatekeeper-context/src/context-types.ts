@@ -1,4 +1,4 @@
-// Context Library value/API types. Core treats these opaquely; agents get the read API via
+// Context Library value/API types. Core treats these opaquely; agents get the session API via
 // getTypeScriptTypes().
 
 import type { RpcTarget } from "capnweb";
@@ -12,8 +12,8 @@ export const VENDOR_ID = "context";
 // Keep these in sync with CONTEXT_LIBRARY_TYPES in library-gatekeeper.ts.
 // ---------------------------------------------------------------------------
 
-/** Agent-facing read capability over the account's enabled Context collections. */
-export interface ContextLibrary extends RpcTarget {
+/** Read capability over the account's enabled Context collections. */
+export interface ContextLibraryReader extends RpcTarget {
   /** Search enabled collections, optionally narrowed to one collection. */
   search(query: string, opts?: {
     collectionId?: string; limit?: number;
@@ -23,6 +23,32 @@ export interface ContextLibrary extends RpcTarget {
   /** Read a document by its catalog/list/search ID, or return null when it is unavailable. */
   read(docId: string): Promise<ContextReadResult | null>;
 }
+
+/** The agent's capability: reads, plus saving skills to the account's own private collections. */
+export interface ContextLibrary extends ContextLibraryReader {
+  /** Save a new skill to a writable collection, or the default "我的技能" collection. */
+  createSkill(skill: ContextSkillInput): Promise<void>;
+  /** Replace the description and instructions of the skill whose SKILL.md `docId` names. */
+  updateSkill(docId: string, skill: ContextSkillUpdate): Promise<void>;
+}
+
+/** A new skill an agent saves. */
+export type ContextSkillInput = {
+  /** Lowercase letters, digits and single hyphens, at most 64 characters. */
+  name: string;
+  /** What the skill does and when to use it, at most 1024 characters. */
+  description: string;
+  /** SKILL.md instructions in Markdown, without frontmatter. */
+  body: string;
+  /** A collection listed as writable; omitted for the default collection. */
+  collectionId?: string;
+};
+
+/** New content for an existing skill. */
+export type ContextSkillUpdate = {
+  description: string;
+  body: string;
+};
 
 /** Search result. */
 export type ContextSearchResult = {
@@ -49,6 +75,8 @@ export type ContextListingEntry = {
   title: string;
   description?: string;
   documentCount: number;
+  /** Whether createSkill() may save into it. */
+  writable?: boolean;
 } | {
   type: "directory";
   path: string;

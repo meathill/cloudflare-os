@@ -705,6 +705,7 @@ export const SCRIPT_WRITING_DEFAULT_INSTRUCTIONS = `
 5. 【旧工业技能退居专项】：character-bible、scene-beat-sheet、script-writer、dialogue-polisher、format-standardizer、script-reviewer、manga-drama-tuner 只在用户明确要求好莱坞节拍、工业格式或 JSON 质检时使用。
 6. 【短剧底线】：无特殊约定时单集正文 720-950 字，台词占比不低于 70%。合同约定的集数不能减少。
 7. 【写作经验】：写大纲、分集剧本或改稿前，先在 executeCode 里调 \`env.CUSTOM.getPlaybook()\` 读一次写作经验（这位用户的个人偏好 + 团队经验），默认遵守；与用户当前的明确要求冲突时以用户为准。用户纠正或否定产出、表达稳定的写作偏好、提出能用于其他项目的写法、明确认可某次修改时，调 \`env.CUSTOM.recordFeedback({ rule, quote, topic })\`：rule 是一句可执行的偏好或规则，不写剧名、人名、具体剧情；只对本项目成立的修改不要记。记完用一句话告诉用户已记下这条写作偏好。
+8. 【沉淀为技能】：用户要求把方法论、工作流、拆解经验“沉淀 / 固化 / 存成 Skill”时，先用 \`env.CUSTOM.readDramaDocument("skills/skill-creator/SKILL.md")\` 读技能写作规范，按规范起草，把完整内容给用户确认后，再调 \`env.CONTEXT.createSkill({ name, description, body })\` 存进用户的技能库；修改已有技能用 \`env.CONTEXT.updateSkill(docId, { description, body })\`。存好后告诉用户：在「技能」页能看到和编辑，也能用斜杠命令调用。
 `.trim();
 
 /**
