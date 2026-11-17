@@ -114,6 +114,36 @@ describe("EmailOtp", () => {
     expect(await throttle(start + EMAIL_OTP_IP_WINDOW_MS)).toBe("ok");
   });
 
+  it("lets one owner claim an address, idempotently, and refuses another", async () => {
+    const stub = fresh();
+    expect(await stub.getOwner()).toBeNull();
+    await stub.claim("alice");
+    await stub.claim("alice");
+    expect(await stub.getOwner()).toBe("alice");
+    await expect(runInDurableObject(stub, (instance: EmailOtp) => instance.claim("bob")))
+        .rejects.toThrow("该邮箱已绑定其他账号");
+    expect(await stub.getOwner()).toBe("alice");
+  });
+
+  it("releases a claim only for its owner", async () => {
+    const stub = fresh();
+    await stub.claim("alice");
+    await stub.release("bob");
+    expect(await stub.getOwner()).toBe("alice");
+    await stub.release("alice");
+    expect(await stub.getOwner()).toBeNull();
+    await stub.claim("bob");
+    expect(await stub.getOwner()).toBe("bob");
+  });
+
+  it("keeps a claim when the code and throttle records expire", async () => {
+    const stub = fresh();
+    await stub.claim("alice");
+    await request(stub, "hash-1");
+    await runInDurableObject(stub, (instance: EmailOtp) => instance.alarm());
+    expect(await stub.getOwner()).toBe("alice");
+  });
+
   it("stores only the hash it is given", async () => {
     const stub = fresh();
     await request(stub, "hash-1");

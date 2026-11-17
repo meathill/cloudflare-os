@@ -1,7 +1,7 @@
 import { RpcStub, RpcTarget, newHttpBatchRpcResponse, newWebSocketRpcSession, RpcSessionOptions } from "capnweb";
 import { validateRpc } from "capnweb-validate";
 import type { JWTPayload } from "jose";
-import { PublicApi, ROUTER_TAG_PROBE_PATH, VERSION_PATH, AuthenticatedApi, Overseer, WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, RedactedAiModelConfig, AiGatewayInfo, ModelKind, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, ObserverConfigCallback, BlueprintLibrarySummary, BlueprintPublicInfo, BlueprintUserSummary, BlueprintBindingAssignment, AgentSpawnerConfig, WorkpieceId, BLUEPRINT_SCREENSHOT_PATH_PREFIX, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ServerConfig, CloudflareUsageInfo, CloudflareAccountOption, LoginAttempt, GatekeeperAppInfo, AdminApi, GatekeeperVendorInfo, OutputFormatOffer, ListOutputsResult, UserDirectoryRecord, createOpenWorkspaceError, getOpenWorkspaceErrorCode, OPEN_WORKSPACE_ERROR_CODES, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, NotificationSubscriber, NotificationMute, WebPushSubscription, type UnreadStateSubscriber, AdminVia } from '@gadgets/workshop-shared/api';
+import { PublicApi, ROUTER_TAG_PROBE_PATH, VERSION_PATH, AuthenticatedApi, Overseer, WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, RedactedAiModelConfig, AiGatewayInfo, ModelKind, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, ObserverConfigCallback, BlueprintLibrarySummary, BlueprintPublicInfo, BlueprintUserSummary, BlueprintBindingAssignment, AgentSpawnerConfig, WorkpieceId, BLUEPRINT_SCREENSHOT_PATH_PREFIX, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ServerConfig, CloudflareUsageInfo, CloudflareAccountOption, LoginAttempt, GatekeeperAppInfo, AdminApi, GatekeeperVendorInfo, OutputFormatOffer, ListOutputsResult, UserDirectoryRecord, createOpenWorkspaceError, getOpenWorkspaceErrorCode, OPEN_WORKSPACE_ERROR_CODES, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, NotificationSubscriber, NotificationMute, WebPushSubscription, type UnreadStateSubscriber, AdminVia, type OwnEmails } from '@gadgets/workshop-shared/api';
 import type { UiFeatureFlags } from "@gadgets/workshop-shared/feature-flags";
 import { BILLING_STRIPE_WEBHOOK_PATH, type BillingUserApi } from "@gadgets/workshop-shared/billing";
 import type { UnreadStateScope } from "@gadgets/workshop-shared/api";
@@ -17,7 +17,7 @@ import { deploymentOutputForBlueprint, listFormatOffers, readAdminConfig } from 
 // Re-export the optional-feature Durable Objects + entrypoints so they can be bound in wrangler.
 export { PendingLogin, LoginConnectCallbackImpl };
 export { EmailOtp } from "./email-otp.js";
-import { emailOtpIpThrottleName } from "./email-otp.js";
+import { EMAIL_CLAIMED_MESSAGE, emailOtpIpThrottleName, emailOtpUserThrottleName } from "./email-otp.js";
 import { sendEmail } from "./email.js";
 import { GatekeeperUiFrame, GatekeeperUserSelection, type GatekeeperAppSurface } from "@gadgets/workshop-shared/gatekeeper";
 import { DecisionModelGatekeeper, LanguageModelGatekeeper } from "./ai-models";
@@ -150,9 +150,15 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     return wrapDoStubForTelemetry(this.users.get(this.#userId, this.#doOptions));
   }
 
-  #isAdmin(): boolean {
+  async #isAdmin(): Promise<boolean> {
     let name = this.#userId.name;
-    return !!name && isDeploymentAdmin(this.env, name);
+    return !!name && await isDeploymentAdmin(this.env, name, await this.#verifiedEmails(name));
+  }
+
+  // A password account is admin through the addresses it has verified; an email account is named
+  // by its address, so reading them is skipped.
+  async #verifiedEmails(name: string): Promise<string[]> {
+    return name.includes("@") ? [] : (await this.#user.getOwnEmails()).emails;
   }
 
   whoami(): Promise<AiChatAuthorInfo> {
@@ -173,6 +179,27 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
   }
   setOwnCommitEmail(email: string | null): Promise<void> {
     return this.#user.setOwnCommitEmail(email);
+  }
+  getOwnEmails(): Promise<OwnEmails> {
+    return retryOnDoReset(() => this.#user.getOwnEmails());
+  }
+  async requestEmailVerification(email: string): Promise<void> {
+    let address = await this.#user.checkEmailAvailable(email);
+    let throttle = this.ctx.exports.EmailOtp.getByName(
+        emailOtpUserThrottleName(this.#userId.name!), this.#doOptions);
+    await throttle.throttle();
+    await sendEmailCode(this.ctx, this.env, address, "绑定邮箱验证码");
+  }
+  async confirmEmailVerification(email: string, code: string): Promise<void> {
+    let address = normalizeEmailAddress(email);
+    let otp = this.ctx.exports.EmailOtp.getByName(address, this.#doOptions);
+    if (!await otp.verify(await hashEmailOtp(address, code.trim()))) {
+      throw new Error("验证码不正确或已过期。");
+    }
+    await this.#user.addVerifiedEmail(address);
+  }
+  removeOwnEmail(email: string): Promise<void> {
+    return this.#user.removeOwnEmail(email);
   }
   async searchUsers(query: string, excludeIds: string[]): Promise<UserDirectoryRecord[]> {
     if (!(await this.#userSearchEnabled())) return [];
@@ -698,7 +725,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
 
   async getGatekeeperApp(vendorId: string, surface: GatekeeperAppSurface = "app")
       : Promise<GatekeeperUiFrame | null> {
-    let isAdmin = this.#isAdmin();
+    let isAdmin = await this.#isAdmin();
     if (surface === "admin" && !isAdmin) return null;
     // Self-sufficient: listProvidedAccounts provisions auto-provisioned accounts first (idempotent),
     // so a direct URL load of /gatekeepers/$id works without racing the Header's listGatekeeperApps.
@@ -723,11 +750,11 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
   // --- Deployment admin ---
 
   async amIAdmin(): Promise<boolean> {
-    return this.#isAdmin();
+    return await this.#isAdmin();
   }
 
   async getAdminApi(): Promise<RpcStub<AdminApi> | null> {
-    if (!this.#isAdmin()) return null;
+    if (!await this.#isAdmin()) return null;
     // #isAdmin() guarantees a non-empty user id name. Forwarded to gatekeepers when listing the
     // resource catalog so RBAC-gated ones still surface for this admin.
     let adminUserId = this.#userId.name!;
@@ -798,6 +825,32 @@ function normalizeEmailAddress(email: string): string {
   return address;
 }
 
+/**
+ * Mint a code for `address`, stage its hash and mail it, titled `title`. Throws while the previous
+ * send is still in its cooldown, and when the email cannot be delivered.
+ */
+async function sendEmailCode(
+    ctx: ExecutionContext, env: Env, address: string, title: string): Promise<void> {
+  let code = newEmailOtpCode();
+  let otp = ctx.exports.EmailOtp.get(ctx.exports.EmailOtp.idFromName(address), getDoOptions(env));
+  // Stage first: a resend inside the cooldown is refused before any email leaves.
+  await otp.request(await hashEmailOtp(address, code));
+  let sent = await sendEmail(env, {
+    to: address,
+    subject: title,
+    text: `你的验证码是 ${code}，10 分钟内有效。\n如果不是你本人操作，请忽略这封邮件。`,
+    html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;` +
+        `max-width:480px;margin:0 auto;padding:32px 24px;color:#14110f">` +
+        `<h1 style="font-size:18px;line-height:26px;margin:0 0 16px">${title}</h1>` +
+        `<p style="font-size:14px;line-height:22px;margin:0 0 8px;color:#525256">你的验证码是</p>` +
+        `<p style="font-size:32px;line-height:40px;margin:0 0 16px;font-weight:700;` +
+        `letter-spacing:6px">${code}</p>` +
+        `<p style="font-size:12px;line-height:18px;margin:0;color:#8a8a8e">` +
+        `10 分钟内有效。如果不是你本人操作，请忽略这封邮件。</p></div>`,
+  });
+  if (!sent) throw new Error("验证码邮件发送失败，请稍后再试。");
+}
+
 @validateRpc()
 class PublicApiImpl extends RpcTarget implements PublicApi {
   users: DurableObjectNamespace<UserDurableObject>;
@@ -812,14 +865,22 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     this.users = this.ctx.exports.UserDurableObject;
   }
 
-  // With `cliAdminsOnly` (`cf-os api` on a deployment, see the /api route), refuses the call unless
-  // it signs in as a deployment admin, `user`. Every method calls it, the sign-ins once they know who
-  // signs in, except the steps that only lead to a session token, which `authenticate` redeems.
-  #limitCli(user?: DurableObjectId): void {
-    let name = user?.name;
-    if (this.cliAdminsOnly && !(name && isDeploymentAdmin(this.env, name))) {
-      throw new Error(CLI_ADMINS_ONLY);
-    }
+  // With `cliAdminsOnly` (`cf-os api` on a deployment, see the /api route), refuses the call: it
+  // signs in no one, so it cannot be an admin's. Every method calls it, or #limitCliTo() once it
+  // knows who signs in, except the steps that only lead to a session token, which `authenticate`
+  // redeems.
+  #limitCli(): void {
+    if (this.cliAdminsOnly) throw new Error(CLI_ADMINS_ONLY);
+  }
+
+  // With `cliAdminsOnly`, refuses the call unless it signs in as the deployment admin `user`. A
+  // password account is an admin through the addresses it has verified, which its own DO knows.
+  async #limitCliTo(user: DurableObjectId): Promise<void> {
+    if (!this.cliAdminsOnly) return;
+    let name = user.name;
+    let emails = name && !name.includes("@")
+        ? (await this.users.get(user, this.#doOptions).getOwnEmails()).emails : [];
+    if (!(name && isDeploymentAdmin(this.env, name, emails))) throw new Error(CLI_ADMINS_ONLY);
   }
 
   async ping(): Promise<void> {
@@ -887,7 +948,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
 
     let userId = this.users.idFromName(split[0]);
     await this.users.get(userId, this.#doOptions).authenticate(split[1]);
-    this.#limitCli(userId);
+    await this.#limitCliTo(userId);
     recordAnalytics(this.ctx, this.env, {
       event_name: "user_authenticated",
       user_id: userId.toString(),
@@ -905,7 +966,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
 
     let email = this.accessSession.payload.email as string;
     let userId = this.users.idFromName(email);
-    this.#limitCli(userId);
+    await this.#limitCliTo(userId);
     let signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
     let accountCreated =
         await this.users.get(userId, this.#doOptions).authenticateFromCfAccess(
@@ -968,25 +1029,12 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     if (!exists && (!signupsEnabled || !isSignupAllowed(this.env, address))) {
       throw new Error("该邮箱不在允许注册的名单内。");
     }
-    let code = newEmailOtpCode();
-    let otp = this.ctx.exports.EmailOtp.get(
-        this.ctx.exports.EmailOtp.idFromName(address), this.#doOptions);
-    // Stage first: a resend inside the cooldown is refused before any email leaves.
-    await otp.request(await hashEmailOtp(address, code));
-    let sent = await sendEmail(this.env, {
-      to: address,
-      subject: "登录验证码",
-      text: `你的验证码是 ${code}，10 分钟内有效。\n如果不是你本人操作，请忽略这封邮件。`,
-      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;` +
-          `max-width:480px;margin:0 auto;padding:32px 24px;color:#14110f">` +
-          `<h1 style="font-size:18px;line-height:26px;margin:0 0 16px">登录验证码</h1>` +
-          `<p style="font-size:14px;line-height:22px;margin:0 0 8px;color:#525256">你的验证码是</p>` +
-          `<p style="font-size:32px;line-height:40px;margin:0 0 16px;font-weight:700;` +
-          `letter-spacing:6px">${code}</p>` +
-          `<p style="font-size:12px;line-height:18px;margin:0;color:#8a8a8e">` +
-          `10 分钟内有效。如果不是你本人操作，请忽略这封邮件。</p></div>`,
-    });
-    if (!sent) throw new Error("验证码邮件发送失败，请稍后再试。");
+    // An address another account has bound cannot also become an account of its own.
+    if (!exists && await this.ctx.exports.EmailOtp.get(
+        this.ctx.exports.EmailOtp.idFromName(address), this.#doOptions).getOwner() !== null) {
+      throw new Error(EMAIL_CLAIMED_MESSAGE);
+    }
+    await sendEmailCode(this.ctx, this.env, address, "登录验证码");
   }
 
   async verifyEmailOtp(email: string, code: string): Promise<string | null> {

@@ -1,6 +1,10 @@
 // One email address's pending login code. An instance per normalized email; the code itself is
 // never stored, only its hash. A code lives for ten minutes, a resend waits a minute after the
 // previous send, and five wrong guesses retire it -- after which a new code must be requested.
+//
+// The same instance is the deployment-wide registry of who owns the address: at most one account
+// may hold a verified email (`claim()`), which is what makes an address usable for deployment
+// admin and commit emails. The claim outlives the code and is never swept by `alarm()`.
 
 import { DurableObject } from "cloudflare:workers";
 
@@ -12,6 +16,7 @@ export const EMAIL_OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 /** Wrong guesses allowed before the code is retired. */
 export const EMAIL_OTP_MAX_ATTEMPTS = 5;
 
+const OWNER_KEY = "owner";
 const THROTTLE_KEY = "throttle";
 /** Codes one client IP may request per window, across every address it asks for. */
 export const EMAIL_OTP_IP_LIMIT = 10;
@@ -34,7 +39,32 @@ export function emailOtpIpThrottleName(ip: string): string {
   return `ip:${ip}`;
 }
 
+/** The refusal for an address another account already holds. */
+export const EMAIL_CLAIMED_MESSAGE = "该邮箱已绑定其他账号，请用原账号登录。";
+
+/** The instance name that throttles one signed-in user's verification codes. */
+export function emailOtpUserThrottleName(userName: string): string {
+  return `user:${userName}`;
+}
+
 export class EmailOtp extends DurableObject<Cloudflare.Env> {
+  /** The user DO name that owns this address, or null when no account does. */
+  async getOwner(): Promise<string | null> {
+    return this.ctx.storage.kv.get<string>(OWNER_KEY) ?? null;
+  }
+
+  /** Record `owner` as holding this address. Idempotent; throws while another account holds it. */
+  async claim(owner: string): Promise<void> {
+    let current = this.ctx.storage.kv.get<string>(OWNER_KEY);
+    if (current !== undefined && current !== owner) throw new Error(EMAIL_CLAIMED_MESSAGE);
+    this.ctx.storage.kv.put(OWNER_KEY, owner);
+  }
+
+  /** Give up `owner`'s hold on this address; does nothing for anyone else. */
+  async release(owner: string): Promise<void> {
+    if (this.ctx.storage.kv.get<string>(OWNER_KEY) === owner) this.ctx.storage.kv.delete(OWNER_KEY);
+  }
+
   /**
    * Count one request against a fixed window on an instance named by emailOtpIpThrottleName().
    * Throws once the window's limit is spent, so a single client cannot spray codes at many inboxes.

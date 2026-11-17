@@ -1,6 +1,7 @@
 # Admin access: operating and investigating a deployment
 
-A deployment's admins (the canonical user ids its backend Worker's `ADMINS` variable lists) need to
+A deployment's admins (the accounts that hold a verified email its backend Worker's `ADMINS`
+variable lists) need to
 operate, debug and investigate the instance: find a user or a workspace, look inside a workspace
 that misbehaves or at what a user's account holds, and know afterwards who looked at what and who
 changed which setting. This document is the design record for that surface. The API itself is
@@ -21,6 +22,18 @@ documented on `AdminApi`, `AdminWorkspaceView` and `AdminUserView` in
 | User inspection: `openAdminUserView` and the view it mints (`AdminUserViewImpl`) | `packages/workshop-backend/src/admin-user-view.ts` |
 | Reads that never pull (`readLocalCommitTree`, `readLocalFileAtCommitIfExists`, `localPathEntryAtCommit`, `changedLocalFilePathsBetween`, `readCommitLog` with `stopAtMissing`) | `packages/workshop-backend/src/git-cache.ts` |
 | The admin panel's Audit tab | `packages/workshop-frontend/src/features/admin-audit/` |
+
+## Who is an admin
+
+`ADMINS` lists emails. An email account (sign-in by code, Access or OAuth) is named by its verified
+address, so it is an admin when that address is listed. A password account has no address of its own;
+it is an admin once it holds a listed one, bound in the settings page with a code mailed to it
+(`AuthenticatedApi.requestEmailVerification()` / `confirmEmailVerification()`). One account holds an
+address deployment-wide: the claim lives in the `EmailOtp` instance named by the address, and
+creating an email account for, or binding, an address another account holds is refused. A bare
+username in `ADMINS` names no one, since anyone could register it, except on a local instance
+(`WORKSHOP_ENVIRONMENT` `development` or `test`), whose accounts have no inbox. `isDeploymentAdmin()`
+in `auth/config.ts` is the check.
 
 ## Entry points
 

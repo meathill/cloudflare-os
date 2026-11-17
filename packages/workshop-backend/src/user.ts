@@ -1,7 +1,7 @@
 import { RpcStub } from "capnweb";
 import type { ChatReadState, ChatTimelineHead, UnreadStateScope, UnreadStateSubscriber, UserUnreadState, UnreadThread, UserUnreadSummary, WorkspaceUnreadSummary } from "@gadgets/workshop-shared/api";
 import { ADMIN_ACCESS_ERROR_CODES, createAdminAccessError, type AdminUserView } from "@gadgets/workshop-shared/api";
-import { WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type WebPushSubscription } from '@gadgets/workshop-shared/api';
+import { WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, WorkspaceMetadata, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, type OwnEmails, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type WebPushSubscription } from '@gadgets/workshop-shared/api';
 import { ActionDescription, Gatekeeper, GatekeeperUser, GatekeeperUserVerifier, GatekeeperVendor, AccountDescription, VendorDescription, GatekeeperConnectCallback, ConnectHandoff, SupportedResource, ResourceConfiguratorFrame, AppUiContext, GatekeeperUiFrame, GatekeeperUserSelection, GatekeeperUserSelectionExchange, RedeemedGatekeeperUserSelection, getResourceTypeId, findResourceType } from "@gadgets/workshop-shared/gatekeeper";
 import { shouldAutoProvisionAccount, ambientGatekeeperMode } from "./provisioning-policy.js";
 import { CloudflareGatekeeperUser } from "@gadgets/workshop-shared/cloudflare-gatekeeper";
@@ -25,6 +25,8 @@ import { deleteBlueprintContent } from "./blueprint-archive.js";
 import { isReservedBlueprintKey, readBlueprintKvRecord } from "./storage-schema/blueprints-kv.js";
 import { filterEnabledResources, isResourceDisabled, readAdminConfig } from "./admin-config.js";
 import { buildGatekeeperVendorMap } from "./auth/auth-vendors.js";
+import { EMAIL_CLAIMED_MESSAGE } from "./email-otp.js";
+import { getDoOptions } from "./do-location.js";
 import { CONNECT_FLOW_LIFETIME_MS, handoffTargetOrigin, hashPresentedSecret, hashSecret, newSecretToken, PENDING_HANDOFF_LIFETIME_MS } from "./connect-handoff.js";
 import {
   authorizeDevice, deliver, deliverBadge, registerAuthorizedDevice, registerDevice,
@@ -340,6 +342,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     super(ctx, env);
 
     this.storage = makeUserStorage(ctx.storage);
+    this.#adoptLegacyCommitEmail();
     for (let cursor of this.storage.chatReadCursors.list()) {
       this.#readCursors.set(`${cursor.workspaceId}:${cursor.chatId}`, cursor);
     }
@@ -465,6 +468,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       if (!allowCreate) {
         throw new Error("New sign-ups are currently disabled on this deployment.");
       }
+      await this.#claimLoginEmail(email);
       // Create on first use.
       this.storage.created.put(true);
       this.storage.createdAt.put(new Date());
@@ -473,6 +477,8 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
         name: email.split("@")[0],
         id: email,
       });
+    } else {
+      await this.#claimLoginEmail(email);
     }
     this.#syncDirectory(true);
     return isNew;
@@ -651,6 +657,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       source: "gatekeeper" | "email_otp"): Promise<string | null> {
     if (!this.storage.created.get()) {
       if (!allowCreate) return null;
+      await this.#claimLoginEmail(email);
       this.storage.created.put(true);
       this.storage.createdAt.put(new Date());
       this.storage.profile.put({
@@ -663,6 +670,8 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
         user_id: this.ctx.id.toString(),
         source,
       });
+    } else {
+      await this.#claimLoginEmail(email);
     }
     recordAnalytics(this.ctx, this.env, {
       event_name: "user_authenticated",
@@ -1478,13 +1487,118 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     this.#syncDirectory(false);
   }
 
+  /** The address an email account is named after, lowercase; null for a password account. */
+  #loginEmail(): string | null {
+    if (!this.storage.created.get()) return null;
+    let id = this.storage.profile.get().id;
+    return id.includes("@") ? id.toLowerCase() : null;
+  }
+
+  #heldEmails(): string[] {
+    let login = this.#loginEmail();
+    return [...(login ? [login] : []), ...this.storage.verifiedEmails.get()];
+  }
+
+  /** The registry entry for an address: the EmailOtp instance that also holds its login code. */
+  #emailRegistry(address: string) {
+    let namespace = this.ctx.exports.EmailOtp;
+    return namespace.get(namespace.idFromName(address), getDoOptions(this.env));
+  }
+
+  /** Record an email account's login address as its own, once; refuses one another account holds. */
+  async #claimLoginEmail(email: string): Promise<void> {
+    if (this.storage.loginEmailClaimed.get()) return;
+    await this.#emailRegistry(email.toLowerCase()).claim(email);
+    this.storage.loginEmailClaimed.put(true);
+  }
+
+  // A commit email written before addresses had to be verified counts as verified: the account binds
+  // it as it would a confirmed address, which gives it to whichever account wakes first. One that
+  // another account holds, or that names another account, is dropped. A failure of another kind
+  // leaves it for the next wake.
+  #adoptLegacyCommitEmail(): void {
+    if (!this.storage.created.get()) return;
+    let commitEmail = this.storage.profile.get().commitEmail;
+    if (commitEmail === undefined || this.#heldEmails().includes(commitEmail.toLowerCase())) return;
+    this.ctx.blockConcurrencyWhile(async () => {
+      try {
+        await this.addVerifiedEmail(commitEmail);
+      } catch (error) {
+        logger.warn("legacy commit email not adopted", {
+          event: "user.commit-email.adopt.failed", error,
+        });
+        if (error instanceof Error && error.message === EMAIL_CLAIMED_MESSAGE) {
+          this.#clearCommitEmailUnlessHeld();
+        }
+      }
+    });
+  }
+
+  #clearCommitEmailUnlessHeld(): void {
+    let profile = this.storage.profile.get();
+    if (profile.commitEmail === undefined ||
+        this.#heldEmails().includes(profile.commitEmail.toLowerCase())) return;
+    delete profile.commitEmail;
+    this.storage.profile.put(profile);
+  }
+
+  async getOwnEmails(): Promise<OwnEmails> {
+    return { loginEmail: this.#loginEmail(), emails: this.#heldEmails() };
+  }
+
+  /**
+   * Throws unless this account could bind `email` now, and returns it normalized. An address is
+   * unavailable while another account holds it, and while an email account is named by it, even one
+   * that signed up before addresses were recorded.
+   */
+  async checkEmailAvailable(email: string): Promise<string> {
+    let address = email.trim().toLowerCase();
+    validateCommitEmail(address);
+    if (this.#heldEmails().includes(address)) throw new Error("该邮箱已经绑定在你的账号上。");
+    let owner = await this.#emailRegistry(address).getOwner();
+    if (owner !== null && owner !== this.storage.profile.get().id) {
+      throw new Error(EMAIL_CLAIMED_MESSAGE);
+    }
+    if (owner === null &&
+        await this.ctx.exports.UserDurableObject.getByName(address).whoamiIfExists() !== null) {
+      throw new Error(EMAIL_CLAIMED_MESSAGE);
+    }
+    return address;
+  }
+
+  /**
+   * Bind `email` to this account. The caller has verified that the owner of the address's inbox
+   * asked for it (a code from EmailOtp); this records the claim, which wins against any other
+   * account that verified the same address at the same time.
+   */
+  async addVerifiedEmail(email: string): Promise<void> {
+    let address = await this.checkEmailAvailable(email);
+    await this.#emailRegistry(address).claim(this.storage.profile.get().id);
+    let emails = this.storage.verifiedEmails.get();
+    if (!emails.includes(address)) this.storage.verifiedEmails.put([...emails, address]);
+  }
+
+  async removeOwnEmail(email: string): Promise<void> {
+    let address = email.trim().toLowerCase();
+    if (address === this.#loginEmail()) throw new Error("登录邮箱不能移除。");
+    let emails = this.storage.verifiedEmails.get();
+    if (!emails.includes(address)) return;
+    await this.#emailRegistry(address).release(this.storage.profile.get().id);
+    this.storage.verifiedEmails.put(emails.filter(held => held !== address));
+    this.#clearCommitEmailUnlessHeld();
+  }
+
   async setOwnCommitEmail(email: string | null): Promise<void> {
     let profile = this.storage.profile.get();
     if (email === null) {
       delete profile.commitEmail;
     } else {
       validateCommitEmail(email);
-      profile.commitEmail = email;
+      let address = email.trim().toLowerCase();
+      if (!this.#heldEmails().includes(address)) {
+        throw new Error("先验证这个邮箱，才能用作提交邮箱。");
+      }
+      profile.commitEmail = address;
     }
     this.storage.profile.put(profile);
   }

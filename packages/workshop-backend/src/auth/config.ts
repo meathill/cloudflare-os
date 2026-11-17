@@ -63,13 +63,16 @@ export function isSignupAllowed(env: Cloudflare.Env, name: string): boolean {
 }
 
 /**
- * Whether the user `name` is one of the deployment admins the ADMINS binding lists. Names match
- * regardless of the case of ASCII letters, as Cloudflare Access matches its email rules: the
- * list is typed by hand, while a sign-in names its user by the email as the identity provider
- * spells it, or by a password username, which is stored lowercased. False for an empty or absent
- * name.
+ * Whether the account `name` is one of the deployment admins the ADMINS binding lists. An admin is
+ * an email: an email account is named by its verified address, and a password account counts
+ * through `verifiedEmails`, the addresses it has bound with a code. A bare username in the list
+ * names no one, as anyone could register it, except on a local instance (WORKSHOP_ENVIRONMENT
+ * "development" or "test"), whose accounts have no inbox to verify. Matching ignores the case of
+ * ASCII letters, as Cloudflare Access does for its email rules: the list is typed by hand, while a
+ * sign-in names its user by the email as the identity provider spells it.
  */
-export function isDeploymentAdmin(env: Cloudflare.Env, name: string | undefined): boolean {
+export function isDeploymentAdmin(
+    env: Cloudflare.Env, name: string, verifiedEmails: readonly string[] = []): boolean {
   let admins: unknown = env.ADMINS;
   if (!name || !admins) return false;
 
@@ -83,8 +86,10 @@ export function isDeploymentAdmin(env: Cloudflare.Env, name: string | undefined)
     throw new TypeError("ADMINS must be configured as an array of usernames.");
   }
 
-  let lowered = asciiLowerCase(name);
-  return admins.some(admin => typeof admin === "string" && asciiLowerCase(admin) === lowered);
+  let local = env.WORKSHOP_ENVIRONMENT === "development" || env.WORKSHOP_ENVIRONMENT === "test";
+  let candidates = name.includes("@") || local ? [name, ...verifiedEmails] : [...verifiedEmails];
+  let listed = new Set(admins.filter(admin => typeof admin === "string").map(asciiLowerCase));
+  return candidates.some(candidate => listed.has(asciiLowerCase(candidate)));
 }
 
 // Only ASCII letters are folded: toLowerCase() also folds some other characters onto ASCII ones,
