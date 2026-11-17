@@ -1,13 +1,14 @@
 import { useKumoToastManager } from '@cloudflare/kumo'
 import { useAuthenticatedApi } from './AuthContext'
 import { useState, useEffect, useRef } from 'react'
-import { AiChatAuthorInfo, validateCommitEmail } from '@gadgets/workshop-shared/api'
+import { AiChatAuthorInfo } from '@gadgets/workshop-shared/api'
 import { hashPassword } from './passwordHash'
 import { CF_ACCESS_MODE } from './useAuth'
 import { User, Pencil, Check, X, Lock, Camera, Copy, Eye, EyeSlash } from '@phosphor-icons/react'
 import { useAvatar, invalidateAvatarCache } from './useAvatar'
 import { compressAvatar, avatarBlobUrl } from './avatarUtils'
 import UsageSettings from './components/billing/UsageSettings'
+import { AccountEmails } from './features/account-email/AccountEmails'
 import { NotificationSettings } from './features/notifications/NotificationSettings'
 import { useDocumentTitle } from './useDocumentTitle'
 import { isImeComposing } from './keyboardEvent'
@@ -82,114 +83,6 @@ function PasswordField({
       ) : description ? (
         <p className="mt-1 text-[12px] tracking-[-0.1px] text-kumo-subtle">{description}</p>
       ) : null}
-    </div>
-  )
-}
-
-const CommitEmailRow = ({ initialCommitEmail }: { initialCommitEmail?: string }) => {
-  const { authenticatedApi } = useAuthenticatedApi()
-  const toasts = useKumoToastManager()
-  const [commitEmail, setCommitEmail] = useState(initialCommitEmail)
-  const [isEditing, setIsEditing] = useState(false)
-  const [input, setInput] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  const startEditing = () => {
-    setInput(commitEmail ?? '')
-    setError(null)
-    setIsEditing(true)
-  }
-
-  const handleSave = async () => {
-    const email = input.trim() || null
-    if (email !== null) {
-      try {
-        validateCommitEmail(email)
-      } catch {
-        setError('输入类似 name@example.com 的邮箱地址')
-        return
-      }
-    }
-
-    setSaving(true)
-    try {
-      await authenticatedApi.setOwnCommitEmail(email)
-      setCommitEmail(email ?? undefined)
-      setIsEditing(false)
-      toasts.add({ title: email ? '提交邮箱已更新' : '提交邮箱已清除', variant: 'success' })
-    } catch (err) {
-      console.error('Failed to update commit email:', err)
-      toasts.add({ title: '更新提交邮箱失败', variant: 'error' })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="flex items-end gap-2 px-5 py-4">
-      <div className="min-w-0 flex-1">
-        <FieldLabel>提交邮箱</FieldLabel>
-        {isEditing ? (
-          <>
-            <input
-              type="email"
-              value={input}
-              onChange={(e) => { setInput(e.target.value); setError(null) }}
-              onKeyDown={(e) => {
-                if (isImeComposing(e)) return
-                if (e.key === 'Enter') handleSave()
-                if (e.key === 'Escape') setIsEditing(false)
-              }}
-              placeholder="name@example.com"
-              aria-label="提交邮箱"
-              autoComplete="email"
-              autoFocus
-              className={`mt-1.5 ${INPUT} ${error ? 'border-kumo-danger focus:border-kumo-danger' : ''}`}
-            />
-            <p className={`mt-1 text-[12px] tracking-[-0.1px] ${error ? 'text-kumo-danger' : 'text-kumo-subtle'}`}>
-              {error ?? 'Leave blank to use an address based on your user ID.'}
-            </p>
-          </>
-        ) : commitEmail ? (
-          <p className="mt-1 truncate text-[14px] tracking-[-0.25px] text-kumo-default">{commitEmail}</p>
-        ) : (
-          <p className="mt-1 text-[14px] tracking-[-0.25px] text-kumo-inactive">
-            未设置，提交将使用基于用户 ID 的地址
-          </p>
-        )}
-      </div>
-      {isEditing ? (
-        <>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            aria-label="保存提交邮箱"
-            className={PRIMARY_BTN}
-          >
-            <Check size={15} weight="bold" />
-            保存
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsEditing(false)}
-            aria-label="取消"
-            className={ICON_BTN}
-          >
-            <X size={15} />
-          </button>
-        </>
-      ) : (
-        <button
-          type="button"
-          onClick={startEditing}
-          aria-label="编辑提交邮箱"
-          className={ICON_BTN}
-        >
-          <Pencil size={14} />
-        </button>
-      )}
     </div>
   )
 }
@@ -468,7 +361,7 @@ export default function SettingsPage() {
               )}
             </div>
 
-            <CommitEmailRow initialCommitEmail={userInfo?.commitEmail} />
+            <AccountEmails commitEmail={userInfo?.commitEmail} />
 
             {/* User ID */}
             <div className="flex items-center gap-2 px-5 py-4">
