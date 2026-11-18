@@ -1,7 +1,7 @@
 import { RpcStub, RpcTarget, newHttpBatchRpcResponse, newWebSocketRpcSession, RpcSessionOptions } from "capnweb";
 import { validateRpc } from "capnweb-validate";
 import type { JWTPayload } from "jose";
-import { PublicApi, ROUTER_TAG_PROBE_PATH, VERSION_PATH, AuthenticatedApi, Overseer, WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, RedactedAiModelConfig, AiGatewayInfo, ModelKind, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, ObserverConfigCallback, BlueprintLibrarySummary, BlueprintPublicInfo, BlueprintUserSummary, BlueprintBindingAssignment, AgentSpawnerConfig, WorkpieceId, BLUEPRINT_SCREENSHOT_PATH_PREFIX, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ServerConfig, CloudflareUsageInfo, CloudflareAccountOption, LoginAttempt, GatekeeperAppInfo, AdminApi, GatekeeperVendorInfo, OutputFormatOffer, ListOutputsResult, UserDirectoryRecord, createOpenWorkspaceError, getOpenWorkspaceErrorCode, OPEN_WORKSPACE_ERROR_CODES, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, NotificationSubscriber, NotificationMute, WebPushSubscription, type UnreadStateSubscriber, AdminVia, type OwnEmails } from '@gadgets/workshop-shared/api';
+import { PublicApi, ROUTER_TAG_PROBE_PATH, VERSION_PATH, AuthenticatedApi, Overseer, WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, RedactedAiModelConfig, AiGatewayInfo, ModelKind, ModelPricing, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, ObserverConfigCallback, BlueprintLibrarySummary, BlueprintPublicInfo, BlueprintUserSummary, BlueprintBindingAssignment, AgentSpawnerConfig, WorkpieceId, BLUEPRINT_SCREENSHOT_PATH_PREFIX, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ServerConfig, CloudflareUsageInfo, CloudflareAccountOption, LoginAttempt, GatekeeperAppInfo, AdminApi, GatekeeperVendorInfo, OutputFormatOffer, ListOutputsResult, UserDirectoryRecord, createOpenWorkspaceError, getOpenWorkspaceErrorCode, OPEN_WORKSPACE_ERROR_CODES, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, NotificationSubscriber, NotificationMute, WebPushSubscription, type UnreadStateSubscriber, AdminVia, type OwnEmails } from '@gadgets/workshop-shared/api';
 import type { UiFeatureFlags } from "@gadgets/workshop-shared/feature-flags";
 import { BILLING_STRIPE_WEBHOOK_PATH, type BillingUserApi } from "@gadgets/workshop-shared/billing";
 import type { UnreadStateScope } from "@gadgets/workshop-shared/api";
@@ -20,7 +20,7 @@ export { EmailOtp } from "./email-otp.js";
 import { EMAIL_CLAIMED_MESSAGE, emailOtpIpThrottleName, emailOtpUserThrottleName } from "./email-otp.js";
 import { sendEmail } from "./email.js";
 import { GatekeeperUiFrame, GatekeeperUserSelection, type GatekeeperAppSurface } from "@gadgets/workshop-shared/gatekeeper";
-import { DecisionModelGatekeeper, LanguageModelGatekeeper } from "./ai-models";
+import { DecisionModelGatekeeper, LanguageModelGatekeeper, modelPricing } from "./ai-models";
 import { getGatewayModels } from "./ai-gateway.js";
 import { AdminSettings, AdminApiImpl } from "./admin-settings.js";
 import { blueprintContentKey, buildBlueprintArchiveStream, sanitizeBlueprintOutput, parseBlueprintArchive, randomBlueprintId } from "./blueprint-archive.js";
@@ -214,6 +214,24 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
   }
   listModels(kind?: ModelKind): Promise<AiChatAuthorInfo[]> {
     return retryOnDoReset(() => this.#user.listModels(kind));
+  }
+  async getModelPricing(): Promise<ModelPricing[]> {
+    let models = await getGatewayModels(this.env);
+    if (!models) return [];
+    // 与 listModels("language") 同一个可见列表和顺序：models.list 只含部署提供的已启用模型，
+    // decision 模型与用户自己的 BYOK 模型本就不在其中；再去掉 Auto Router——它按实际挑中的
+    // 模型计费，本身没有官方单价。
+    let now = new Date();
+    let result: ModelPricing[] = [];
+    for (let info of models.list("language")) {
+      let model = models.get(info.id);
+      if (!model || model.provider === "cloudflare-auto-router") continue;
+      let config = models.runConfig(info.id);
+      let pricing = config && modelPricing(config, now);
+      if (!pricing) continue;
+      result.push({ provider: model.provider, id: info.id, name: info.name, ...pricing });
+    }
+    return result;
   }
   addModel(profile: AiChatAuthorInfo, config: RedactedAiModelConfig,
            copySecretsFrom?: string): Promise<void> {

@@ -736,7 +736,10 @@ describe("a view's answers", () => {
   it("says a user is an admin only while ADMINS names them", () => withAccount(async user => {
     await createAccount(user);
     expect((await (await open(user)).describe()).isAdmin).toBe(false);
-    setEnv(user, { ADMINS: [ADMIN, user.id] });
+    // Admin recognition goes through verified emails: a bare username in ADMINS only counts in
+    // local deployments, so give the account a verified address and name that.
+    user.storage.verifiedEmails.put(["verified-admin@example.com"]);
+    setEnv(user, { ADMINS: [ADMIN, "verified-admin@example.com"] });
     expect((await (await open(user)).describe()).isAdmin).toBe(true);
   }));
 

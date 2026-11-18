@@ -153,7 +153,8 @@ class AdminUserViewImpl extends RpcTarget implements AdminUserView {
         profile,
         created: storage.createdAt.get() ?? undefined,
         lastLogin: lastLogin > 0 ? new Date(lastLogin) : undefined,
-        isAdmin: isDeploymentAdmin(this.#host.env(), profile.id),
+        isAdmin: isDeploymentAdmin(this.#host.env(), profile.id,
+          this.#host.storage.verifiedEmails.get()),
         hasPassword: storage.passwordHashHash.get() !== null,
         onboardingCompleted: storage.onboardingCompleted.get(),
         counts: {

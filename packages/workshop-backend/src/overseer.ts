@@ -914,9 +914,9 @@ class OverseerImpl implements AgentHooks {
 
   // Per-chat in-memory state for running agents.
   #liveChats = new Map<number, LiveChatContext>();
-  // 有缘心之助：每个 chat 最近一轮的计费人，供之后的缓存保温 ping 计费。只在内存里：DO 重启后
-  // 下一轮会重新记下，期间的 ping 不计费。
-  #chatPayers = new Map<number, string>();
+  // 有缘心之助：每个 chat 最近一轮的计费人与模型，供之后的缓存保温 ping 与联网搜索计费。
+  // 只在内存里：DO 重启后下一轮会重新记下，期间的 ping 不计费。
+  #chatPayers = new Map<number, { payer: string; model: string }>();
   #chatSubscribers: Set<RpcStub<AiChatSubscriber>> = new Set();
   readonly cacheWarmer: ChatCacheWarmer;
 
@@ -1886,9 +1886,14 @@ class OverseerImpl implements AgentHooks {
     this.cacheWarmer = new ChatCacheWarmer(ctx.id.toString(), (chatId, resent) => {
       this.#addRequestCost(
           chatId, resent.usage, resent.aiGatewayLogId, resent.aiGatewayLogRoute, false);
-      // 有缘心之助：缓存保温的 ping 记到该 chat 最近一轮的发起人。
-      let payer = this.#chatPayers.get(chatId);
-      if (payer) this.ctx.waitUntil(chargeBilling(this.env, payer, resent.usage.cost.total, "cache-warm"));
+      // 有缘心之助：缓存保温的 ping 记到该 chat 最近一轮的发起人，按那一轮的模型计费。
+      let record = this.#chatPayers.get(chatId);
+      if (record) this.ctx.waitUntil(chargeBilling(this.env, record.payer, {
+        rawCostUsd: resent.usage.cost.total, source: "cache-warm", model: record.model,
+        inputTokens: resent.usage.input, outputTokens: resent.usage.output,
+        cacheReadTokens: resent.usage.cacheRead, cacheWriteTokens: resent.usage.cacheWrite,
+        workspaceId: this.ctx.id.toString(), chatId,
+      }));
     });
 
     // Mirror every gadget-registry change into the owner's outputs index. Subscribing here makes
@@ -6735,8 +6740,12 @@ class OverseerImpl implements AgentHooks {
   }
 
   chargeWebSearch(chatId: number): void {
-    let payer = this.#chatPayers.get(chatId);
-    if (payer) this.ctx.waitUntil(chargeBilling(this.env, payer, WEB_SEARCH_RAW_COST_USD, "web-search"));
+    let record = this.#chatPayers.get(chatId);
+    if (record) this.ctx.waitUntil(chargeBilling(this.env, record.payer, {
+      rawCostUsd: WEB_SEARCH_RAW_COST_USD, source: "web-search", model: "web-search",
+      inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0,
+      workspaceId: this.ctx.id.toString(), chatId,
+    }));
   }
 
   // Record an observation that originated from a built-in agent tool (not a gatekeeper).
@@ -8018,6 +8027,17 @@ class OverseerImpl implements AgentHooks {
       throw error;
     }
 
+    // 有缘心之助：把编剧本人在对话里发的原话转给声明了 observesUserMessages 的账号（剧作引擎
+    // 拿来提取写作经验）。斜杠命令、AI/gadget 作者、外部渠道转入的消息不转；原始 message
+    // 是用户输入本身，prepared.message 在 slash 分支里已被改写，不能用它。失败不影响发消息。
+    if (typeof message === "string" && userMeta.profile.type === "user" &&
+        !responseTargetRegistration && message.trim()) {
+      this.ctx.waitUntil(clientUser.forwardOwnChatMessage(message, meta.lastActive.getTime())
+        .catch(err => logger.warn("failed to forward an own chat message", {
+          event: "user.message.forward.failed", chatId, error: err,
+        })));
+    }
+
     if (runsAgentTurn && userMeta.aiModel) {
       let needsAgentTurnKeepAlive = responseTargetRegistration !== undefined;
       this.startAgent(chatId, userMeta.aiModel, userMeta.profile,
@@ -8540,7 +8560,9 @@ class OverseerImpl implements AgentHooks {
         // 有缘心之助：预付费计费按发起人拦截；部署没有 BILLING binding 时不生效（见 billing.ts）。
         let payer = billingPayer(initiator);
         if (payer) {
-          this.#chatPayers.set(chatId, payer);
+          this.#chatPayers.set(chatId, {
+            payer, model: `${aiModel.config.provider}/${aiModel.config.model}`,
+          });
           let billing = await authorizeBilling(this.env, payer);
           if (billing && !billing.allowed) {
             turn.setErrorType("usage_limit");
@@ -10262,11 +10284,12 @@ class OverseerImpl implements AgentHooks {
           try {
             let username = await this.getOwnerProfileId();
             let admin = this.ctx.exports.AdminSettings.getByName("");
+            // 有缘心之助：成本与 Token 自 2026-11-18 起由计费 Worker 统计，这里只记轮次与活跃。
             await admin.recordUserActivity(
               username,
               username,
-              usage.totalTokens,
-              usage.cost.total ?? 0,
+              0,
+              0,
               false,
               true
             );

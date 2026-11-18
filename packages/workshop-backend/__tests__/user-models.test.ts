@@ -255,7 +255,7 @@ describe("UserDurableObject gateway model modes", () => {
   }, DISABLED));
 
   it("offers GPT-6 models and resolves the model chosen for each turn", () => inGatewayUser(async user => {
-    const gptIds = ["gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"];
+    const gptIds = ["gpt-6.2-sol", "gpt-6.1-terra", "gpt-6-luna"];
     expect(await listedIds(user)).toEqual(expect.arrayContaining(gptIds));
     await user.setPreferredModel("gemini-3.8-flash");
     expect((await user.getChatContext("gpt-6.1-terra")).aiModel?.config)

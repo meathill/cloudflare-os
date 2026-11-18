@@ -1179,6 +1179,8 @@ describe("gateway model reasoning levels", () => {
     ["anthropic", "claude-opus-5", "adaptive"],
     ["anthropic", "claude-sonnet-5", "adaptive"],
     ["anthropic", "claude-haiku-4-5", null],
+    ["openai", "gpt-6.2-sol", "medium"],
+    ["openai", "gpt-6.2-astra", "medium"],
     ["openai", "gpt-6.1-sol", "medium"],
     ["openai", "gpt-6.1-terra", "medium"],
     ["openai", "gpt-6-sol", "medium"],
@@ -1189,6 +1191,9 @@ describe("gateway model reasoning levels", () => {
     ["openai", "gpt-5.6-terra", "medium"],
     ["google", "gemini-3.6-flash", null],
     ["google", "gemini-3.8-flash", "low"],
+    ["google", "gemini-4-hydrogen", null],
+    ["google", "gemini-4-argon", null],
+    ["google", "gemini-4-carbon", null],
     ["cloudflare", "@cf/moonshotai/kimi-k2.7-code", null],
     ["cloudflare", "@cf/zai-org/glm-5.2", null],
     ["cloudflare", "@cf/zai-org/glm-5.3-flash", null],
@@ -2343,5 +2348,124 @@ describe("getDecisionModel routing", () => {
         errorMessage: expect.stringContaining("Capacity temporarily exceeded"),
       });
     });
+  });
+});
+
+// 有缘心之助：pi 目录尚未收录的 GPT-6.2 与 Gemini 4 由本地目录（LOCAL_MODELS）兜底，
+// 描述以相邻型号为模板，价格按官方价目表。
+describe("models the pi catalog has not listed yet", () => {
+  it.each([
+    ["gpt-6.2-sol", "GPT-6.2 Sol", 2, 4],
+    ["gpt-6.2-astra", "GPT-6.2 Astra", 8, 16],
+  ] as const)("describes %s from the local catalog", (model, name, input, tierInput) => {
+    expect(SUGGESTED_MODELS["openai"][model])
+        .toMatchObject({ name, contextWindow: 1050000, outputLimit: 128000 });
+    expect(isRuntimeModel("openai", model)).toBe(true);
+
+    const handle = getModel(env({ CF_AI_GATEWAY: undefined }), {
+      provider: "openai", model, apiToken: "direct-api-token",
+    }, INITIATOR);
+    expect(handle.model).toMatchObject({
+      api: "openai-responses", id: model, name,
+      contextWindow: 1_050_000, maxTokens: 128_000,
+      compat: { supportsExplicitPromptCacheMode: true },
+    });
+    // GPT-6.2 的 API 拒绝 none：off 档没有接线值。
+    expect(handle.model.thinkingLevelMap?.off).toBeNull();
+    expect(handle.model.cost.input).toBe(input);
+    expect(handle.model.cost.input).toBeGreaterThan(0);
+    expect(handle.model.cost.tiers).toHaveLength(1);
+    expect(handle.model.cost.tiers![0])
+        .toMatchObject({ inputTokensAbove: 272_000, input: tierInput });
+  });
+
+  it.each([
+    ["gemini-4-hydrogen", "Gemini 4 Hydrogen"],
+    ["gemini-4-argon", "Gemini 4 Argon"],
+    ["gemini-4-carbon", "Gemini 4 Carbon"],
+  ] as const)("describes %s with the Google level map and an official price",
+      (model, name) => {
+    expect(SUGGESTED_MODELS["google"][model])
+        .toMatchObject({ name, contextWindow: 1048576 });
+    expect(isRuntimeModel("google", model)).toBe(true);
+
+    const handle = getModel(env(), {
+      provider: "google", model, apiToken: "ignored-in-gateway-mode",
+    }, INITIATOR);
+    // pi 的 Gemini 适配器最高只到 high：xhigh / max 留 null。
+    expect(handle.model).toMatchObject({
+      api: "google-generative-ai", id: model, name,
+      contextWindow: 1_048_576, maxTokens: 32_768,
+      thinkingLevelMap: {
+        low: "low", medium: "medium", high: "high", xhigh: null, max: null,
+      },
+    });
+    expect(handle.model.cost.input).toBeGreaterThan(0);
+  });
+
+  it("keeps the retired GPT-6.1 Sol resolvable, only hidden", () => {
+    expect(SUGGESTED_MODELS["openai"]["gpt-6.1-sol"]?.hidden).toBe(true);
+    expect(isRuntimeModel("openai", "gpt-6.1-sol")).toBe(true);
+    const handle = getModel(env({ CF_AI_GATEWAY: undefined }), {
+      provider: "openai", model: "gpt-6.1-sol", apiToken: "direct-api-token",
+    }, INITIATOR);
+    expect(handle.model.cost.input).toBeGreaterThan(0);
+  });
+});
+
+// 有缘心之助：getModel 包出的计费。fake 的 /responses 回包里带用量，断言发往 BILLING 的
+// charge 带模型名、实际 Token 与 chat/gadget 上下文。
+describe("withBilling", () => {
+  it("charges the initiator with the model, its usage and the request context", async () => {
+    const charge = vi.fn(async () => ({ plan: "standard" as const, balanceUsd: 1, chargedUsd: 0.1 }));
+    let charged: Promise<unknown> | undefined;
+    const handle = getModel(
+        env({ BILLING: { charge } } as unknown as Cloudflare.Env),
+        { provider: "openai", model: "gpt-6-luna", apiToken: "" }, INITIATOR, {
+          metadata: { source: "chat", gadgetId: "gadget-123", chatId: 7 },
+          onCharge: promise => { charged = promise; },
+        });
+    const stream = await handle.stream(handle.model, {
+      messages: [{ role: "user", content: "hello", timestamp: 0 }],
+    }, {
+      fetch: (async () => new Response(
+        `event: response.completed\ndata: ${JSON.stringify({
+          type: "response.completed",
+          response: {
+            id: "response", status: "completed", output: [],
+            usage: {
+              input_tokens: 1_000, output_tokens: 10, total_tokens: 1_010,
+              input_tokens_details: { cached_tokens: 500 },
+            },
+          },
+        })}\n\n`,
+        { headers: { "content-type": "text/event-stream" } })) as typeof fetch,
+      maxRetries: 0,
+    });
+    expect((await stream.result()).stopReason).toBe("stop");
+    await charged;
+
+    expect(charge).toHaveBeenCalledWith("user-123", {
+      rawCostUsd: expect.any(Number), source: "chat", model: "openai/gpt-6-luna",
+      // usage.input 不含缓存读：1000 input 里 500 走了缓存。
+      inputTokens: 500, outputTokens: 10, cacheReadTokens: 500, cacheWriteTokens: 0,
+      workspaceId: "gadget-123", chatId: 7,
+    });
+    expect((charge.mock.calls[0][1] as { rawCostUsd: number }).rawCostUsd).toBeGreaterThan(0);
+  });
+
+  it("does not charge through a user gateway (BYOK)", async () => {
+    const charge = vi.fn(async () => ({ plan: "standard" as const, balanceUsd: 1, chargedUsd: 0 }));
+    const handle = getModel(
+        env({ BILLING: { charge } } as unknown as Cloudflare.Env),
+        { provider: "openai", model: "gpt-6-luna", apiToken: "" }, INITIATOR, {
+          metadata: { source: "chat", chatId: 7 },
+          userGateway: { accountId: "a", apiKey: "k" },
+        });
+    const stream = await handle.stream(handle.model, {
+      messages: [{ role: "user", content: "hello", timestamp: 0 }],
+    }, { fetch: fetchStub, maxRetries: 0 });
+    await stream.result();
+    expect(charge).not.toHaveBeenCalled();
   });
 });

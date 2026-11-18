@@ -1,7 +1,7 @@
 import { RpcStub } from "capnweb";
 import type { ChatReadState, ChatTimelineHead, UnreadStateScope, UnreadStateSubscriber, UserUnreadState, UnreadThread, UserUnreadSummary, WorkspaceUnreadSummary } from "@gadgets/workshop-shared/api";
 import { ADMIN_ACCESS_ERROR_CODES, createAdminAccessError, type AdminUserView } from "@gadgets/workshop-shared/api";
-import { WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, WorkspaceMetadata, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, type OwnEmails, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type WebPushSubscription } from '@gadgets/workshop-shared/api';
+import { WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, type OwnEmails, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type WebPushSubscription } from '@gadgets/workshop-shared/api';
 import { ActionDescription, Gatekeeper, GatekeeperUser, GatekeeperUserVerifier, GatekeeperVendor, AccountDescription, VendorDescription, GatekeeperConnectCallback, ConnectHandoff, SupportedResource, ResourceConfiguratorFrame, AppUiContext, GatekeeperUiFrame, GatekeeperUserSelection, GatekeeperUserSelectionExchange, RedeemedGatekeeperUserSelection, getResourceTypeId, findResourceType } from "@gadgets/workshop-shared/gatekeeper";
 import { shouldAutoProvisionAccount, ambientGatekeeperMode } from "./provisioning-policy.js";
 import { CloudflareGatekeeperUser } from "@gadgets/workshop-shared/cloudflare-gatekeeper";
@@ -191,6 +191,7 @@ type ResourceCreatorStub = Required<Pick<GatekeeperVendor, "createResource">>;
 type SingletonAccountStub = Required<Pick<GatekeeperUser, "getSingletonGatekeeperClass" | "startAppUi">>;
 type CreationConfiguratorStub = Required<Pick<GatekeeperUser, "startCreationConfigurator">>;
 type FileSaverStub = Required<Pick<GatekeeperUser, "saveFile">>;
+type ObserverAccountStub = Required<Pick<GatekeeperUser, "observeUserMessage">>;
 
 function areCredentialsValid(record: ConnectedAccountRecord): boolean {
   if (record.credentialsExpired) return false;
@@ -2539,6 +2540,26 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     // SingletonAccountStub view (see its definition for why the cast is needed).
     if (!record?.description.singleton) return null;
     return (record.account as unknown as SingletonAccountStub).getSingletonGatekeeperClass();
+  }
+
+  /**
+   * 有缘心之助：forward one chat message the user just sent to every connected account that
+   * declared AccountDescription.observesUserMessages. The overseer calls this fire-and-forget
+   * (ctx.waitUntil); each account's failure is logged and swallowed so a broken gatekeeper can
+   * never make the send path look failed. Message text and user identity are never logged.
+   */
+  async forwardOwnChatMessage(text: string, sentAt: number): Promise<void> {
+    for (let record of this.#connectedAccountRecords()) {
+      if (!record.description.observesUserMessages) continue;
+      try {
+        await (record.account as unknown as ObserverAccountStub).observeUserMessage({ text, sentAt });
+      } catch (err) {
+        logger.warn("failed to forward a user message to an observing account", {
+          event: "user.message.observe.failed",
+          vendorId: record.vendorId, accountId: record.id, error: err,
+        });
+      }
+    }
   }
 
   /**

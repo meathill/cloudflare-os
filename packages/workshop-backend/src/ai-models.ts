@@ -30,7 +30,8 @@ import { DecisionAnswer, DecisionModelBinding, DecisionRequest } from "./decisio
 import DECISION_MODEL_BINDING_TYPES from "./decision-model-binding.txt";
 import {
   AiChatAuthorInfo, AiModelConfig, AiModelProvider, BuiltInReasoning, GatewayModelCapabilities,
-  REASONING_LEVELS, ReasoningLevel, SUGGESTED_MODELS, WORKERS_AI_OUTPUT_LIMIT,
+  ModelPrice, ModelPricing, REASONING_LEVELS, ReasoningLevel, SUGGESTED_MODELS,
+  WORKERS_AI_OUTPUT_LIMIT,
 } from "@gadgets/workshop-shared/api";
 import { traceChat } from "./agent-tracing.js";
 import {
@@ -42,9 +43,13 @@ import { bridgePdfAttachments } from "./chat-attachment-pdf.js";
 import {
   estimateSharedHeadTokens, hasGpt56PromptCaching, splitSystemPrompt,
 } from "./system-prompt-blocks.js";
-import { getGoogleModelCost, GEMINI_3_8_FLASH_FALLBACK } from "./gemini-pricing.js";
+import {
+  getGoogleModelCost, googlePriceSchedule, GEMINI_3_8_FLASH_FALLBACK,
+} from "./gemini-pricing.js";
 import type { BillingChargeResult, BillingUsageSource } from "@gadgets/workshop-shared/billing";
-import { assertBillingAllowed, billingEnabled, billingPayer, chargeBilling } from "./billing.js";
+import {
+  assertBillingAllowed, billingCharge, billingEnabled, billingPayer, chargeBilling,
+} from "./billing.js";
 
  /**
   * Routing to bill a user's own Cloudflare account for inference (BYOK path once the free tier is
@@ -94,9 +99,9 @@ const BILLING_SOURCES: Record<GatewayMetadataContext["source"], BillingUsageSour
   "cache-warm": "cache-warm",
 };
 
-// 有缘心之助：模型请求完成后按目录价向发起人计费（见 billing.ts）。BYOK 的请求由用户自己的
-// Cloudflare 账户付费，不再计一次。
-function withBilling(env: Cloudflare.Env, initiator: AiChatAuthorInfo,
+// 有缘心之助：模型请求完成后按目录价向发起人计费（见 billing.ts），计费带上模型与实际
+// Token 数。BYOK 的请求由用户自己的 Cloudflare 账户付费，不再计一次。
+function withBilling(env: Cloudflare.Env, config: AiModelConfig, initiator: AiChatAuthorInfo,
                      options: ModelRoutingOptions, handle: ModelHandle): ModelHandle {
   let payer = billingEnabled(env) && !options.userGateway ? billingPayer(initiator) : undefined;
   if (!payer) return handle;
@@ -105,7 +110,9 @@ function withBilling(env: Cloudflare.Env, initiator: AiChatAuthorInfo,
   handle.stream = (model, context, streamOptions) => {
     let events = stream(model, context, streamOptions);
     let charge = events.result()
-        .then(message => chargeBilling(env, payer, message.usage.cost.total, source));
+        .then(message => chargeBilling(env, payer, billingCharge(source, config, message.usage, {
+          workspaceId: options.metadata?.gadgetId, chatId: options.metadata?.chatId,
+        })));
     options.onCharge?.(charge);
     return events;
   };
@@ -242,51 +249,166 @@ const CATALOGS: Partial<Record<AiModelProvider, Record<string, Model<Api>>>> = {
   cloudflare: CLOUDFLARE_WORKERS_AI_MODELS,
 };
 
-// pi 1.0.2 的目录尚未收录 Terra，费用使用 OpenAI Standard 的 30 分钟缓存费率。
-const GPT_6_1_TERRA_FALLBACK: Model<"openai-responses"> = {
-  id: "gpt-6.1-terra",
-  name: "GPT-6.1 Terra",
-  api: "openai-responses",
-  provider: "openai",
-  baseUrl: "https://api.openai.com/v1",
-  reasoning: true,
-  input: ["text", "image"],
-  contextWindow: 1_050_000,
-  maxTokens: 128_000,
-  thinkingLevelMap: {
-    off: "none", minimal: null, low: "low", medium: "medium", high: "high",
-    xhigh: "xhigh", max: "max",
+// 有缘心之助：pi 目录尚未收录的模型在本地兜底；pi 目录优先（见 catalogModel）。Google 条目的
+// cost 只是写作时的官方价，catalogModel() 每次解析都会按 gemini-pricing.ts 的价目表重写。
+const LOCAL_MODELS: Partial<Record<AiModelProvider, Record<string, Model<Api>>>> = {
+  openai: {
+    // pi 1.0.2 的目录尚未收录 Terra，费用使用 OpenAI Standard 的 30 分钟缓存费率。
+    "gpt-6.1-terra": {
+      id: "gpt-6.1-terra",
+      name: "GPT-6.1 Terra",
+      api: "openai-responses",
+      provider: "openai",
+      baseUrl: "https://api.openai.com/v1",
+      reasoning: true,
+      input: ["text", "image"],
+      contextWindow: 1_050_000,
+      maxTokens: 128_000,
+      thinkingLevelMap: {
+        off: "none", minimal: null, low: "low", medium: "medium", high: "high",
+        xhigh: "xhigh", max: "max",
+      },
+      compat: { supportsStrictMode: true, supportsExplicitPromptCacheMode: true },
+      cost: {
+        input: 1, output: 5, cacheRead: 0.05, cacheWrite: 1.25,
+        tiers: [{ inputTokensAbove: 272_000, input: 2, output: 7.5, cacheRead: 0.1, cacheWrite: 2.5 }],
+      },
+    },
+    // pi 1.5.0 的目录尚未收录 GPT-6.2，描述以 pi 的 gpt-6.1-sol 条目为模板（推理档位
+    // low–max、拒绝 off/none），成本按 OpenAI 官方价（2026-11-18，含 272K 长上下文阶梯价）。
+    "gpt-6.2-sol": {
+      id: "gpt-6.2-sol",
+      name: "GPT-6.2 Sol",
+      api: "openai-responses",
+      provider: "openai",
+      baseUrl: "https://api.openai.com/v1",
+      reasoning: true,
+      input: ["text", "image"],
+      contextWindow: 1_050_000,
+      maxTokens: 128_000,
+      thinkingLevelMap: {
+        off: null, minimal: null, low: "low", medium: "medium", high: "high",
+        xhigh: "xhigh", max: "max",
+      },
+      compat: {
+        supportsStrictMode: true,
+        supportsOpenAIGrammarTools: true,
+        supportsAdditionalTools: true,
+        supportsToolSearch: true,
+        supportsMidConvoSystemMessages: true,
+        supportsExplicitPromptCacheMode: true,
+        supportsMidConvoEffort: true,
+      },
+      cost: {
+        input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5,
+        tiers: [{ inputTokensAbove: 272_000, input: 4, output: 15, cacheRead: 0.2, cacheWrite: 5 }],
+      },
+    },
+    "gpt-6.2-astra": {
+      id: "gpt-6.2-astra",
+      name: "GPT-6.2 Astra",
+      api: "openai-responses",
+      provider: "openai",
+      baseUrl: "https://api.openai.com/v1",
+      reasoning: true,
+      input: ["text", "image"],
+      contextWindow: 1_050_000,
+      maxTokens: 128_000,
+      thinkingLevelMap: {
+        off: null, minimal: null, low: "low", medium: "medium", high: "high",
+        xhigh: "xhigh", max: "max",
+      },
+      compat: {
+        supportsStrictMode: true,
+        supportsOpenAIGrammarTools: true,
+        supportsAdditionalTools: true,
+        supportsToolSearch: true,
+        supportsMidConvoSystemMessages: true,
+        supportsExplicitPromptCacheMode: true,
+        supportsMidConvoEffort: true,
+      },
+      cost: {
+        input: 8, output: 40, cacheRead: 0.4, cacheWrite: 10,
+        tiers: [{ inputTokensAbove: 272_000, input: 16, output: 60, cacheRead: 0.8, cacheWrite: 20 }],
+      },
+    },
   },
-  compat: { supportsStrictMode: true, supportsExplicitPromptCacheMode: true },
-  cost: {
-    input: 1, output: 5, cacheRead: 0.05, cacheWrite: 1.25,
-    tiers: [{ inputTokensAbove: 272_000, input: 2, output: 7.5, cacheRead: 0.1, cacheWrite: 2.5 }],
+  cloudflare: {
+    // pi 1.0.2 的目录尚未收录 DeepSeek V4.1 Flash，元数据按 Cloudflare 官方模型目录，费用按
+    // Workers AI 价目表（输入 $0.3 / 输出 $1.2 / 缓存读 $0.006 每百万 Tokens），与同家族
+    // V4 Flash、V4 Pro 的 pi 条目一致。
+    "@cf/deepseek-ai/deepseek-v4.1-flash-1017": {
+      id: "@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+      name: "DeepSeek V4.1 Flash (Workers AI)",
+      api: "openai-completions",
+      provider: "cloudflare-workers-ai",
+      baseUrl: "",
+      reasoning: true,
+      input: ["text", "image"],
+      contextWindow: 1_048_576,
+      maxTokens: 1_048_576,
+      thinkingLevelMap: { minimal: null, low: null, medium: null, high: "high", max: "max" },
+      compat: {
+        supportsStore: false,
+        supportsDeveloperRole: false,
+        supportsStrictMode: true,
+        supportsLongCacheRetention: false,
+        sendSessionAffinityHeaders: true,
+        requiresReasoningContentOnAssistantMessages: true,
+        thinkingFormat: "deepseek",
+      },
+      cost: { input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0 },
+    },
   },
-};
-
-// pi 1.0.2 的目录尚未收录 DeepSeek V4.1 Flash，元数据按 Cloudflare 官方模型目录，费用按 Workers AI
-// 价目表（输入 $0.3 / 输出 $1.2 / 缓存读 $0.006 每百万 Tokens），与同家族 V4 Flash、V4 Pro 的 pi 条目一致。
-const DEEPSEEK_V4_1_FLASH_FALLBACK: Model<"openai-completions"> = {
-  id: "@cf/deepseek-ai/deepseek-v4.1-flash-1017",
-  name: "DeepSeek V4.1 Flash (Workers AI)",
-  api: "openai-completions",
-  provider: "cloudflare-workers-ai",
-  baseUrl: "",
-  reasoning: true,
-  input: ["text", "image"],
-  contextWindow: 1_048_576,
-  maxTokens: 1_048_576,
-  thinkingLevelMap: { minimal: null, low: null, medium: null, high: "high", max: "max" },
-  compat: {
-    supportsStore: false,
-    supportsDeveloperRole: false,
-    supportsStrictMode: true,
-    supportsLongCacheRetention: false,
-    sendSessionAffinityHeaders: true,
-    requiresReasoningContentOnAssistantMessages: true,
-    thinkingFormat: "deepseek",
+  google: {
+    "gemini-3.8-flash": {
+      id: GEMINI_3_8_FLASH_FALLBACK.id,
+      name: GEMINI_3_8_FLASH_FALLBACK.name,
+      api: "google-generative-ai",
+      provider: "google",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      reasoning: true,
+      thinkingLevelMap: GEMINI_3_8_FLASH_FALLBACK.thinkingLevelMap,
+      input: ["text", "image"],
+      cost: getGoogleModelCost(GEMINI_3_8_FLASH_FALLBACK.id),
+      contextWindow: GEMINI_3_8_FLASH_FALLBACK.contextWindow,
+      maxTokens: GEMINI_3_8_FLASH_FALLBACK.maxTokens,
+    },
+    // pi 1.5.2 的目录只收录了 Argon；这两条以它的条目为模板，xhigh 档 pi 的 Gemini 适配器
+    // 最高只到 high，留 null。
+    "gemini-4-hydrogen": {
+      id: "gemini-4-hydrogen",
+      name: "Gemini 4 Hydrogen",
+      api: "google-generative-ai",
+      provider: "google",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      reasoning: true,
+      input: ["text", "image"],
+      contextWindow: 1_048_576,
+      maxTokens: 32_768,
+      thinkingLevelMap: {
+        off: null, minimal: null, low: "low", medium: "medium", high: "high",
+        xhigh: null, max: null,
+      },
+      cost: { input: 1.5, output: 7.5, cacheRead: 0.075, cacheWrite: 0 },
+    },
+    "gemini-4-carbon": {
+      id: "gemini-4-carbon",
+      name: "Gemini 4 Carbon",
+      api: "google-generative-ai",
+      provider: "google",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      reasoning: true,
+      input: ["text", "image"],
+      contextWindow: 1_048_576,
+      maxTokens: 32_768,
+      thinkingLevelMap: {
+        off: null, minimal: null, low: "low", medium: "medium", high: "high",
+        xhigh: null, max: null,
+      },
+      cost: { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 0 },
+    },
   },
-  cost: { input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0 },
 };
 
 /**
@@ -362,35 +484,19 @@ function getModelViaOpenCodeGo(env: Cloudflare.Env, config: AiModelConfig,
   });
 }
 
-// Consult pi's builtin catalog for cost/compat metadata of a known model id. Unknown models are
-// fine (synthesized with zero cost).
+// Consult pi's builtin catalog for cost/compat metadata of a known model id, falling back to the
+// local one (LOCAL_MODELS) for models pi has not listed yet. Unknown models are fine (synthesized
+// with zero cost).
 function catalogModel(provider: AiModelProvider, modelId: string): Model<Api> | undefined {
   let catalog = CATALOGS[provider];
+  let local = LOCAL_MODELS[provider];
   // Object.hasOwn, so that an ID like "constructor" does not find an inherited entry.
-  let model = catalog && Object.hasOwn(catalog, modelId) ? catalog[modelId] : undefined;
-  if (!model && provider === "openai" && modelId === GPT_6_1_TERRA_FALLBACK.id) {
-    return GPT_6_1_TERRA_FALLBACK;
-  }
+  let model = (catalog && Object.hasOwn(catalog, modelId) ? catalog[modelId] : undefined) ??
+      (local && Object.hasOwn(local, modelId) ? local[modelId] : undefined);
   if (!model && provider === "opencode-go") return openCodeGoModel(modelId);
-  if (!model && provider === "cloudflare" && modelId === DEEPSEEK_V4_1_FLASH_FALLBACK.id) {
-    return DEEPSEEK_V4_1_FLASH_FALLBACK;
-  }
-  if (!model && provider === "google" && modelId === GEMINI_3_8_FLASH_FALLBACK.id) {
-    // 有缘心之助：pi 目录里没有 gemini-3.8-flash 时用本地兜底描述，成本走官方阶梯价。
-    return {
-      id: GEMINI_3_8_FLASH_FALLBACK.id,
-      name: GEMINI_3_8_FLASH_FALLBACK.name,
-      api: "google-generative-ai",
-      provider: "google",
-      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
-      reasoning: true,
-      thinkingLevelMap: GEMINI_3_8_FLASH_FALLBACK.thinkingLevelMap,
-      input: ["text", "image"],
-      cost: getGoogleModelCost(modelId),
-      contextWindow: GEMINI_3_8_FLASH_FALLBACK.contextWindow,
-      maxTokens: GEMINI_3_8_FLASH_FALLBACK.maxTokens,
-    } satisfies Model<Api>;
-  }
+  // Google 官方价随时段切换（gemini-pricing.ts），pi 与本地目录里的 cost 是写作时的价格，
+  // 每次解析都换成当时的官方价。
+  if (model && provider === "google") model = { ...model, cost: getGoogleModelCost(modelId) };
   return model;
 }
 
@@ -457,14 +563,41 @@ function gatewayCatalogModel(config: AiModelConfig): CatalogEntry | undefined {
 function modelTokenWindow(config: AiModelConfig, catalog: CatalogEntry | undefined)
     : { contextWindow: number, maxTokens: number } {
   const suggested = SUGGESTED_MODELS[config.provider]?.[config.model];
-  const fallbackMaxTokens = config.model === "gemini-3.8-flash" ? GEMINI_3_8_FLASH_FALLBACK.maxTokens : 4096;
   return {
     contextWindow: config.contextWindow ?? suggested?.contextWindow ?? catalog?.contextWindow ??
         128_000,
     maxTokens: config.outputLimit ?? suggested?.outputLimit ??
         (config.provider === "cloudflare" ? WORKERS_AI_OUTPUT_LIMIT : undefined) ??
-        catalog?.maxTokens ?? fallbackMaxTokens,
+        catalog?.maxTokens ?? 4096,
   };
+}
+
+/**
+ * 有缘心之助：一个部署模型现在的官方参考单价（USD/百万 Tokens），供价格页展示。Google 走时段
+ * 价目表（带已公布的下一次调价），OpenCode Go 走厂商价目表，其余取模型自己的目录条目——
+ * behavesLike 借来的条目没有 cost，不会误报借来模型的价格。没有官方价的返回 undefined。
+ */
+export function modelPricing(config: AiModelConfig, now: Date)
+    : Pick<ModelPricing, "price" | "nextPrice"> | undefined {
+  if (config.provider === "google") {
+    let { current, next } = googlePriceSchedule(config.model, now);
+    return {
+      price: toModelPrice(current),
+      ...(next === undefined ? {} : {
+        nextPrice: { from: next.from.toISOString().slice(0, 10), price: toModelPrice(next.cost) },
+      }),
+    };
+  }
+  let cost = config.provider === "opencode-go"
+      ? (Object.hasOwn(OPENCODE_GO_MODELS, config.model) ? OPENCODE_GO_MODELS[config.model].cost : undefined)
+      : gatewayCatalogModel(config)?.cost;
+  return cost && { price: toModelPrice(cost) };
+}
+
+// pi 的 ModelCost 转成价格页的 ModelPrice：长上下文阶梯价取第一档（各厂商目前至多一档）。
+function toModelPrice(cost: ModelCost): ModelPrice {
+  let { tiers, ...price } = cost;
+  return tiers?.[0] ? { ...price, longContext: tiers[0] } : price;
 }
 
 // Compat flags for a Workers AI model reached over its OpenAI-compatible endpoint (direct REST
@@ -544,7 +677,7 @@ function gatewayNativeModel(config: AiModelConfig, gatewayUrl: string): Model<Ap
         input: catalog?.input ?? ["text", "image"],
         cost: getGoogleModelCost(config.model),
         ...window,
-        thinkingLevelMap: catalog?.thinkingLevelMap ?? (config.model === "gemini-3.8-flash" ? GEMINI_3_8_FLASH_FALLBACK.thinkingLevelMap : undefined),
+        thinkingLevelMap: catalog?.thinkingLevelMap,
       };
     case "cloudflare":
       // Workers AI's own OpenAI-compatible endpoint, exposed through the gateway's workers-ai
@@ -970,7 +1103,7 @@ function toWellFormedJson(value: unknown): unknown {
 export function getModel(env: Cloudflare.Env, config: AiModelConfig,
                          initiator: AiChatAuthorInfo,
                          options: ModelRoutingOptions = {}): ModelHandle {
-  return withBilling(env, initiator, options, resolveModel(env, config, initiator, options));
+  return withBilling(env, config, initiator, options, resolveModel(env, config, initiator, options));
 }
 
 function resolveModel(env: Cloudflare.Env, config: AiModelConfig,
@@ -1232,7 +1365,7 @@ function getModelDirect(config: AiModelConfig, sessionAffinity?: string): ModelH
           input: catalog?.input ?? ["text", "image"],
           cost: getGoogleModelCost(config.model),
           ...window,
-          thinkingLevelMap: catalog?.thinkingLevelMap ?? (config.model === "gemini-3.8-flash" ? GEMINI_3_8_FLASH_FALLBACK.thinkingLevelMap : undefined),
+          thinkingLevelMap: catalog?.thinkingLevelMap,
         },
         // Not directAuth: pi's Google API requires a key, and @google/genai adds `x-goog-api-key`
         // with no way to suppress it (an extra header of that name replaces it, though).
@@ -1342,7 +1475,9 @@ export function getDecisionModel(env: Cloudflare.Env, config: AiModelConfig,
   if (!payer) return model;
   return async context => {
     let result = await model(context);
-    await chargeBilling(env, payer, result.usage?.cost.total ?? 0, "gadget-decision");
+    await chargeBilling(env, payer, billingCharge("gadget-decision", config, result.usage, {
+      workspaceId: metadataContext?.gadgetId, chatId: metadataContext?.chatId,
+    }));
     return result;
   };
 }

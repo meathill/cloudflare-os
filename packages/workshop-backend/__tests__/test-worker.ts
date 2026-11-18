@@ -171,6 +171,10 @@ export class FakeGatekeeperAccount extends WorkerEntrypoint<Cloudflare.Env, {
     return { iframeHtml: "<!doctype html>", ui: new RpcStub(new RpcTarget()) };
   }
 
+  async observeUserMessage(message: { text: string; sentAt: number }): Promise<void> {
+    this.#record(`observe(${message.text}:${message.sentAt})`);
+  }
+
   async calls(): Promise<string[]> {
     return accountCalls.get(this.ctx.props.name) ?? [];
   }

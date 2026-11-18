@@ -302,6 +302,13 @@ export type AccountDescription = {
    * themselves, since it names an account that is gone.
    */
   superseded?: true;
+
+  /**
+   * 有缘心之助：when set, the Workshop forwards each text message this account's owner sends in a
+   * chat to `GatekeeperUser.observeUserMessage`. Only the user's own prompt text is forwarded —
+   * never AI replies, attachments or slash commands.
+   */
+  observesUserMessages?: true;
 }
 
 /** Describes metadata about a specific instance of a resource. Returned by Gatekeeper.describe(). */
@@ -1086,6 +1093,14 @@ export interface GatekeeperUser extends WorkerEntrypoint {
    * the tickets its UI receives from the Workshop user picker (GatekeeperUserSelection).
    */
   startAppUi?(context: AppUiContext): Promise<GatekeeperUiFrame>;
+
+  /**
+   * 有缘心之助：receive one text message the account's owner sent in a Workshop chat. Called by
+   * the Workshop for accounts whose describe() sets AccountDescription.observesUserMessages.
+   * `sentAt` is the message's timestamp in milliseconds; `text` is the user's own prompt text.
+   * Implementations must not reply through this — it is a one-way observation.
+   */
+  observeUserMessage?(message: { text: string; sentAt: number }): Promise<void>;
 
   // TODO:
   // - Query whether account has scope to access a particular URL.

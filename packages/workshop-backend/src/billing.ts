@@ -4,9 +4,10 @@
 // 谁付费：发起这次模型调用的人（AiChatAuthorInfo.id）——用户自己，或 Gadget 的 owner。
 // 何时拦：agent turn 开始前、Gadget 模型 binding 开 session 前；何时扣：每次模型请求完成后。
 
-import type { AiChatAuthorInfo } from "@gadgets/workshop-shared/api";
+import type { Usage } from "@earendil-works/pi-ai";
+import type { AiChatAuthorInfo, AiModelConfig } from "@gadgets/workshop-shared/api";
 import type {
-  BillingAuthorization, BillingChargeResult, BillingUsageSource,
+  BillingAuthorization, BillingCharge, BillingChargeResult, BillingUsageSource,
 } from "@gadgets/workshop-shared/billing";
 import { createWorkshopLogger } from "./observability";
 
@@ -49,17 +50,40 @@ export async function assertBillingAllowed(env: Cloudflare.Env, payer: string | 
 }
 
 /**
- * Meter one request's raw cost against `payer`. The request already happened, so a failure is
- * logged rather than thrown; null when nothing was charged.
+ * The charge a completed model request sends to the billing Worker: raw cost, what incurred it,
+ * the `${provider}/${modelId}` name SUGGESTED_MODELS and getModelPricing use, and the actual
+ * token counts the provider reported. Callers pass a zero-cost usage through unchanged — the
+ * request's token footprint still belongs in the ledger.
  */
-export async function chargeBilling(env: Cloudflare.Env, payer: string, rawCostUsd: number,
-                                    source: BillingUsageSource): Promise<BillingChargeResult | null> {
-  if (!env.BILLING || !(rawCostUsd > 0)) return null;
+export function billingCharge(source: BillingUsageSource,
+                              config: Pick<AiModelConfig, "provider" | "model">,
+                              usage: Usage | undefined,
+                              context?: { workspaceId?: string; chatId?: number }): BillingCharge {
+  return {
+    rawCostUsd: usage?.cost.total ?? 0,
+    source,
+    model: `${config.provider}/${config.model}`,
+    inputTokens: usage?.input ?? 0,
+    outputTokens: usage?.output ?? 0,
+    cacheReadTokens: usage?.cacheRead ?? 0,
+    cacheWriteTokens: usage?.cacheWrite ?? 0,
+    ...(context?.workspaceId !== undefined ? { workspaceId: context.workspaceId } : {}),
+    ...(context?.chatId !== undefined ? { chatId: context.chatId } : {}),
+  };
+}
+
+/**
+ * Meter one request against `payer`. The request already happened, so a failure is logged rather
+ * than thrown; null when nothing was charged.
+ */
+export async function chargeBilling(env: Cloudflare.Env, payer: string,
+                                    charge: BillingCharge): Promise<BillingChargeResult | null> {
+  if (!env.BILLING || !(charge.rawCostUsd > 0)) return null;
   try {
-    return await env.BILLING.charge(payer, { rawCostUsd, source });
+    return await env.BILLING.charge(payer, charge);
   } catch (error) {
     // Never log the payer: it is the user's email.
-    logger.error(`failed to charge a model request (${source}, $${rawCostUsd})`, {
+    logger.error(`failed to charge a model request (${charge.source}, $${charge.rawCostUsd})`, {
       event: "billing.charge.failed", error,
     });
     return null;

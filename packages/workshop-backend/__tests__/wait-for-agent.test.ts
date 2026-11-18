@@ -47,6 +47,7 @@ async function withWorkspace(fn: (workspace: Workspace) => Promise<void>): Promi
         return { profile: OWNER, ...(modelId ? { aiModel: AI_MODEL } : {}) };
       },
       setWorkspaceLastActive: async () => {},
+      forwardOwnChatMessage: async () => {},
     };
     impl.users = { idFromString: (id: string) => id, idFromName: () => OWNER_USER_ID, get: () => owner };
     using notifyClosed = new NativeRpcStub<() => void>(() => {});

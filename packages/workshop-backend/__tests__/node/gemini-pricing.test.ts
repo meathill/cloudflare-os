@@ -4,6 +4,7 @@ import { calculateCost } from "@earendil-works/pi-ai";
 import {
   isGeminiPromoPeriod,
   getGoogleModelCost,
+  googlePriceSchedule,
   estimateTokenCost,
   GEMINI_3_8_FLASH_FALLBACK,
 } from "../../src/gemini-pricing.ts";
@@ -56,6 +57,46 @@ describe("gemini-pricing", () => {
       output: 2.5,
       cacheRead: 0.03,
       cacheWrite: 0,
+    });
+  });
+
+  it("prices Gemini 4 Argon and Carbon before and after the 2026-12-01 change", () => {
+    const before = new Date("2026-11-30T23:00:00Z");
+    const after = new Date("2026-12-01T00:00:00Z");
+    for (const model of ["gemini-4-argon", "gemini-4-carbon"]) {
+      assert.deepEqual(getGoogleModelCost(model, before), {
+        input: 2, output: 10, cacheRead: 0.1, cacheWrite: 0,
+      });
+      assert.deepEqual(getGoogleModelCost(model, after), {
+        input: 4, output: 20, cacheRead: 0.2, cacheWrite: 0,
+      });
+    }
+  });
+
+  it("exposes the announced price change through googlePriceSchedule", () => {
+    const at = new Date("2026-11-18T00:00:00Z");
+    const argon = googlePriceSchedule("gemini-4-argon", at);
+    assert.deepEqual(argon.current, { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 0 });
+    assert.deepEqual(argon.next, {
+      from: new Date("2026-12-01T00:00:00Z"),
+      cost: { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 0 },
+    });
+    // 调价生效后不再预告下一次。
+    assert.equal(
+      googlePriceSchedule("gemini-4-argon", new Date("2026-12-01T00:00:00Z")).next, undefined);
+
+    // Hydrogen 全窗口统一价，没有已公布的调价。
+    const hydrogen = googlePriceSchedule("gemini-4-hydrogen", at);
+    assert.deepEqual(hydrogen.current, {
+      input: 1.5, output: 7.5, cacheRead: 0.075, cacheWrite: 0,
+    });
+    assert.equal(hydrogen.next, undefined);
+
+    // 3.8 Flash 的半价到 2026-12-31 23:59:59.999 为止，调价日从 2027-01-01 起算。
+    const flash = googlePriceSchedule("gemini-3.8-flash", at);
+    assert.deepEqual(flash.next, {
+      from: new Date("2027-01-01T00:00:00Z"),
+      cost: { input: 1.5, output: 7.5, cacheRead: 0.15, cacheWrite: 0 },
     });
   });
 
