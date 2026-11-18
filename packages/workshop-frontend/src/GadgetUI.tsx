@@ -546,7 +546,6 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
       } else if (event.data?.type === 'activity') {
         markConnectionActivity()
       }
-      }
     }
 
     window.addEventListener('message', handleMessage)

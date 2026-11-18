@@ -57,7 +57,7 @@ export const CreationAccountModal = ({ overseer, gatekeeperId, onChoose, onCance
         : 'Choose an account to create it in'}
       target={target}
       purpose="create"
-      submitLabel="Approve"
+      submitLabel="批准"
       onSubmit={onChoose}
       onCancel={onCancel}
     />

@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { Button, Loader, useKumoToastManager } from '@cloudflare/kumo'
-import type { BillingPlan } from '@gadgets/workshop-shared/billing'
-import BillingAccountDialog from './BillingAccountDialog'
+import type { BillingPlan, BillingUsageRange } from '@gadgets/workshop-shared/billing'
+import { UserBillingDialog } from './admin/UserBillingDialog'
 import { formatUsd } from './formatUsd'
 import { emptyAccount, type BillingAdmin } from './useBillingAdmin'
 
 const PLAN_LABELS: Record<BillingPlan, string> = { standard: '普通', internal: '内部' }
 
-/** A user's plan and balance in the admin user list, with the plan switch and balance adjustment. */
-const UserBillingCell = ({ billing, userKey }: { billing: BillingAdmin; userKey: string }) => {
+/** A user's plan, balance and markup in the admin user list, plus the billing detail dialog. */
+const UserBillingCell = ({ billing, userKey, range }: {
+  billing: BillingAdmin
+  userKey: string
+  range: BillingUsageRange
+}) => {
   const toasts = useKumoToastManager()
   const [switching, setSwitching] = useState(false)
   const [open, setOpen] = useState(false)
@@ -27,6 +31,13 @@ const UserBillingCell = ({ billing, userKey }: { billing: BillingAdmin; userKey:
     }
   }
 
+  // effectiveMarkup 为 0 说明账户还没建出来（或拿不到默认倍率），这时只显示「默认」。
+  const markupText = account.plan === 'internal'
+    ? '—'
+    : account.markup === null
+      ? (account.effectiveMarkup > 0 ? `默认 ${account.effectiveMarkup}x` : '默认')
+      : `${account.markup}x`
+
   return (
     <div className="flex items-center justify-end gap-2 whitespace-nowrap">
       <span className="font-mono text-xs text-kumo-default">{formatUsd(account.balanceUsd)}</span>
@@ -34,14 +45,16 @@ const UserBillingCell = ({ billing, userKey }: { billing: BillingAdmin; userKey:
         aria-label={`${userKey} 当前为${PLAN_LABELS[account.plan]}用户，点击切换`}>
         {PLAN_LABELS[account.plan]}
       </Button>
-      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>余额</Button>
+      <span className="text-xs text-kumo-subtle">{markupText}</span>
+      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>详情</Button>
       {open && (
-        <BillingAccountDialog account={account} billing={billing.api} onClose={() => setOpen(false)}
-          onGranted={(next) => {
-            billing.replace(next)
-            setOpen(false)
-            toasts.add({ title: '余额已调整', variant: 'success' })
-          }} />
+        <UserBillingDialog
+          account={account}
+          billing={billing.api}
+          range={range}
+          onClose={() => setOpen(false)}
+          onUpdated={billing.replace}
+        />
       )}
     </div>
   )

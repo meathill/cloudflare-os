@@ -21,10 +21,10 @@ const testRoot = makeTestRoot();
 afterEach(() => { testRoot.cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 it.each([
-  {enabled: true, override: undefined, label: "Mute notifications", value: false},
-  {enabled: false, override: false, label: "Unmute notifications", value: true},
-  {enabled: false, override: undefined, label: "Mute notifications", value: false},
-  {enabled: false, override: undefined, label: "Enable notifications", value: true},
+  {enabled: true, override: undefined, label: "静音通知", value: false},
+  {enabled: false, override: false, label: "取消通知静音", value: true},
+  {enabled: false, override: undefined, label: "静音通知", value: false},
+  {enabled: false, override: undefined, label: "开启通知", value: true},
 ])("blocks duplicate saves and allows retry after failure ($label, override: $override)", async ({enabled, override, label, value}) => {
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   const pending = Promise.withResolvers<void>();
@@ -50,7 +50,7 @@ it.each([
 
   const error = new Error("Preference update failed");
   await act(async () => pending.reject(error));
-  expect(mock.addToast).toHaveBeenCalledExactlyOnceWith({title: "Failed to update notifications", variant: "error"});
+  expect(mock.addToast).toHaveBeenCalledExactlyOnceWith({title: "更新通知失败", variant: "error"});
   expect(mock.logRpcFailure).toHaveBeenCalledExactlyOnceWith("Failed to update chat notifications:", error);
   expect(item().getAttribute("aria-disabled")).toBeNull();
   await act(async () => item().click());

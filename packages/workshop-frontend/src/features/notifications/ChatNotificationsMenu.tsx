@@ -21,7 +21,7 @@ export const ChatNotificationsMenu = ({ overseer, chatId, enabled, override, dis
       await overseer.setChatNotificationsEnabled(chatId, value);
     } catch (error) {
       logRpcFailure("Failed to update chat notifications:", error);
-      toasts.add({ title: "Failed to update notifications", variant: "error" });
+      toasts.add({ title: "更新通知失败", variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -31,12 +31,12 @@ export const ChatNotificationsMenu = ({ overseer, chatId, enabled, override, dis
       {!enabled && <DropdownMenu.Item disabled={disabled || saving}
         onClick={() => { void update(true); }} className={MENU_ITEM}>
         <Bell size={13} />
-        {override === false ? "Unmute notifications" : "Enable notifications"}
+        {override === false ? "取消通知静音" : "开启通知"}
       </DropdownMenu.Item>}
       {(enabled || override !== false) && <DropdownMenu.Item disabled={disabled || saving}
         onClick={() => { void update(false); }} className={MENU_ITEM}>
         <BellSlash size={13} />
-        Mute notifications
+        静音通知
       </DropdownMenu.Item>}
     </>
   );

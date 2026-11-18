@@ -72,7 +72,11 @@ export const BillingProvider = ({ children }: { children: ReactNode }) => {
 export const useBilling = (): BillingState | null => useContext(BillingContext)
 
 /**
- * What the user pays per dollar of raw model cost: the markup for a standard user, 1 for an
- * internal one or while billing is off. Cost labels multiply raw costs by it.
+ * Whether cost labels may show the raw model cost: true while the deployment does not bill at
+ * all and for internal accounts, which pay raw cost. A standard user is billed at a markup the
+ * UI must not reveal, so nothing is shown for them — nor before the summary lands.
  */
-export const useCostMarkup = (): number => useBilling()?.summary?.markup ?? 1
+export const useShowsModelCost = (): boolean => {
+  const billing = useBilling()
+  return billing === null || billing.summary?.plan === 'internal'
+}

@@ -313,16 +313,16 @@ it("keeps a run's thread read controls, which left the chat list with it", async
   expect(button(/^智能体/)!.textContent).toContain("1");
   await openAgentsTab();
   expect([...document.body.querySelectorAll("[aria-label]")].map(e => e.getAttribute("aria-label")))
-    .toContain("3 unread messages");
+    .toContain("3 条未读消息");
   await act(async () => { button(/Email joker/)!.click(); });
 
   // A run is a thread you read, or mean to come back to, like any other. Moving runs out of the
   // chat list took away the row that said so and the control that set it.
   expect([...document.body.querySelectorAll("[aria-label]")].map(e => e.getAttribute("aria-label")))
-    .toContain("3 unread messages");
+    .toContain("3 条未读消息");
 
   const trigger =
-    document.querySelector<HTMLButtonElement>('[aria-label="Reply to Acme 的操作"]')!;
+    document.querySelector<HTMLButtonElement>('[aria-label="Reply to Acme的操作"]')!;
   await act(async () => trigger.click());
   const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
     .find(element => element.textContent === "标记为已读")!;

@@ -48,11 +48,11 @@ function ThemeModeButton() {
 function HelpButton({ onOpenHelp }: { onOpenHelp: () => void }) {
   return (
     <Tooltip
-      content="平台指南与名词解释"
+      content="帮助信息"
       render={(
         <button
           type="button"
-          aria-label="平台指南与名词解释"
+          aria-label="帮助信息"
           onClick={onOpenHelp}
           className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-kumo-inactive transition-colors hover:bg-kumo-tint hover:text-kumo-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring focus-visible:ring-offset-2 focus-visible:ring-offset-kumo-elevated"
         >

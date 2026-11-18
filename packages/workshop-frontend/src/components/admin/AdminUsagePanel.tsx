@@ -1,66 +1,51 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import type { RpcStub } from 'capnweb'
-import { Button, Input, Pagination, useKumoToastManager } from '@cloudflare/kumo'
-import {
-  Users,
-  Scroll,
-  Lightning,
-  ChatCircleDots,
-  ArrowClockwise,
-  SortAscending,
-  SortDescending,
-} from '@phosphor-icons/react'
-import type { AdminApi, UsageStatsResponse } from '@gadgets/workshop-shared/api'
-import UserBillingCell from '../../features/billing/UserBillingCell'
-import { useBillingAdmin } from '../../features/billing/useBillingAdmin'
+import { Banner, Button, Input, useKumoToastManager } from '@cloudflare/kumo'
+import { ArrowClockwise } from '@phosphor-icons/react'
+import type { AdminApi, UsageStatsResponse, UserUsageRecord } from '@gadgets/workshop-shared/api'
+import type { BillingUsageTotals } from '@gadgets/workshop-shared/billing'
+import { useBillingAccounts, useBillingAdminApi } from '../../features/billing/useBillingAdmin'
+import { presetRange } from '../../features/billing/usageRange'
+import { UsageRangePicker } from '../../features/billing/UsageRangePicker'
+import { useUsageReport } from '../../features/billing/admin/useUsageReport'
+import { LEGACY_OVERLAP_RANGE } from '../../features/billing/admin/legacyUsage'
+import { UsageReportOverview } from '../../features/billing/admin/UsageReportOverview'
+import { UsageBreakdown } from '../../features/billing/admin/UsageBreakdown'
+import { AdminUserTable, type UserSortField, type UserSortOrder } from './AdminUserTable'
 
 interface AdminUsagePanelProps {
   admin: RpcStub<AdminApi>
 }
 
-type SortField = 'lastActive' | 'totalTokens' | 'callCount' | 'workspaceCount' | 'createdAt' | 'estimatedCost'
-type SortOrder = 'asc' | 'desc'
-
-// 有缘心之助：一页的用户数，也是一次计费查询的人数（不超过 BILLING_ACCOUNTS_PER_REQUEST）。
 const PAGE_SIZE = 50
-const PAGINATION_LABELS = {
-  navigation: '用户分页', firstPage: '第一页', previousPage: '上一页', nextPage: '下一页', lastPage: '最后一页',
-  pageNumber: '页码',
-}
 
-function formatCostDisplay(cost: number) {
-  if (!cost || cost <= 0) return '$0.0000'
-  if (cost < 0.0001) return '<$0.0001'
-  return `$${cost.toFixed(4)}`
-}
+const SectionCard = ({ title, description, children }: {
+  title: string
+  description?: string
+  children: ReactNode
+}) => (
+  <div className="bg-kumo-elevated border border-kumo-line rounded-xl p-6">
+    <h3 className="text-base font-semibold text-kumo-strong">{title}</h3>
+    {description && <p className="text-xs text-kumo-subtle mt-0.5 mb-4">{description}</p>}
+    <div className={description ? '' : 'mt-4'}>{children}</div>
+  </div>
+)
 
-function formatDateTime(iso: string) {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
-  return d.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatRelativeTime(iso: string) {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
-  const diffMs = Date.now() - d.getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-  if (diffSec < 60) return '刚刚'
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin} 分钟前`
-  const diffHour = Math.floor(diffMin / 60)
-  if (diffHour < 24) return `${diffHour} 小时前`
-  const diffDays = Math.floor(diffHour / 24)
-  if (diffDays < 30) return `${diffDays} 天前`
-  return formatDateTime(iso)
+const sortValue = (user: UserUsageRecord, field: UserSortField,
+  byUser: ReadonlyMap<string, BillingUsageTotals>): number => {
+  const usage = byUser.get(user.username)
+  switch (field) {
+    case 'requests': return usage?.requests ?? 0
+    case 'tokens': return usage
+      ? usage.inputTokens + usage.outputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
+      : 0
+    case 'rawCost': return usage?.rawCostUsd ?? 0
+    case 'charged': return usage?.chargedUsd ?? 0
+    case 'lastActive': return new Date(user.lastActive).getTime()
+    case 'createdAt': return new Date(user.createdAt).getTime()
+    case 'workspaceCount': return user.workspaceCount
+    case 'callCount': return user.callCount
+  }
 }
 
 export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
@@ -68,22 +53,64 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
   const [refreshing, setRefreshing] = useState(false)
   const [data, setData] = useState<UsageStatsResponse | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortField, setSortField] = useState<SortField>('lastActive')
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
-  const toasts = useKumoToastManager()
+  const [sortField, setSortField] = useState<UserSortField>('lastActive')
+  const [sortOrder, setSortOrder] = useState<UserSortOrder>('desc')
   const [page, setPage] = useState(1)
   const [markingInternal, setMarkingInternal] = useState(false)
+  const [range, setRange] = useState(() => presetRange('last30'))
+  const toasts = useKumoToastManager()
+
+  const filteredUsers = useMemo(() => {
+    if (!data?.users) return []
+    let list = [...data.users]
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      list = list.filter(
+        (u) => u.username.toLowerCase().includes(q) || u.displayName.toLowerCase().includes(q),
+      )
+    }
+    return list
+  }, [data?.users, searchQuery])
+
+  const billingApi = useBillingAdminApi(admin)
+  const { report, error: reportError, reload: reloadReport } = useUsageReport(billingApi ?? undefined, range)
+  // 「计费上线前（估算）」用固定区间，不随选择器的时间范围变化。
+  const { report: legacyReport } = useUsageReport(billingApi ?? undefined, LEGACY_OVERLAP_RANGE)
+  const postLaunchChatUsd = legacyReport?.bySource.find((row) => row.source === 'chat')?.rawCostUsd ?? null
+  const preBilling = data?.overview != null && postLaunchChatUsd != null
+    ? { legacyTotalUsd: data.overview.totalCost, postLaunchChatUsd }
+    : undefined
+
+  const byUser = useMemo(
+    () => new Map((report?.byUser ?? []).map((row) => [row.userKey, row])),
+    [report],
+  )
+
+  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
+  const currentPage = Math.min(page, pageCount)
+  const sortedUsers = useMemo(() => {
+    return filteredUsers.toSorted((a, b) => {
+      const diff = sortValue(a, sortField, byUser) - sortValue(b, sortField, byUser)
+      return sortOrder === 'asc' ? diff : -diff
+    })
+  }, [filteredUsers, sortField, sortOrder, byUser])
+  const visibleUsers = sortedUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+  const { accounts, replace } = useBillingAccounts(
+    billingApi ?? undefined,
+    visibleUsers.map((user) => user.username),
+  )
+  const billing = billingApi ? { api: billingApi, accounts, replace } : null
 
   async function fetchUsage(isManual = false) {
     if (isManual) setRefreshing(true)
     try {
-      const stats = await admin.getUsageStats()
-      setData(stats)
-      if (isManual) {
-        toasts.add({ title: '用量数据已更新', variant: 'success' })
-      }
+      setData(await admin.getUsageStats())
+      // 只有手动刷新才重拉报表；首次加载由 useUsageReport 自己的 effect 负责——
+      // 这里的闭包可能仍持有 billingApi 尚未就绪时的旧 reload，调用它会作废进行中的请求。
+      if (isManual) reloadReport()
+      if (isManual) toasts.add({ title: '用量数据已更新', variant: 'success' })
     } catch (err) {
-      console.error('Failed to load usage stats:', err)
       toasts.add({
         title: err instanceof Error ? err.message : '获取用量统计失败',
         variant: 'error',
@@ -96,6 +123,7 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
 
   useEffect(() => {
     fetchUsage(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [admin])
 
   // 有缘心之助：开启计费前把现有团队都设为内部用户（只记账不扣费）。
@@ -112,7 +140,7 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
     }
   }
 
-  function handleSort(field: SortField) {
+  function handleSort(field: UserSortField) {
     setPage(1)
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
@@ -121,37 +149,6 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
       setSortOrder('desc')
     }
   }
-
-  const filteredUsers = useMemo(() => {
-    if (!data?.users) return []
-    let list = [...data.users]
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim()
-      list = list.filter(
-        (u) =>
-          u.username.toLowerCase().includes(q) ||
-          u.displayName.toLowerCase().includes(q)
-      )
-    }
-    list.sort((a, b) => {
-      const valA = a[sortField]
-      const valB = b[sortField]
-      if (typeof valA === 'string') {
-        const timeA = new Date(valA).getTime()
-        const timeB = new Date(valB as string).getTime()
-        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA
-      }
-      return sortOrder === 'asc'
-        ? (valA as number) - (valB as number)
-        : (valB as number) - (valA as number)
-    })
-    return list
-  }, [data?.users, searchQuery, sortField, sortOrder])
-
-  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
-  const currentPage = Math.min(page, pageCount)
-  const pageUsers = filteredUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-  const billing = useBillingAdmin(admin, pageUsers.map((user) => user.username))
 
   if (loading) {
     return (
@@ -162,17 +159,9 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
     )
   }
 
-  const overview = data?.overview ?? {
-    totalUsers: 0,
-    totalWorkspaces: 0,
-    totalTokens: 0,
-    totalCost: 0,
-    totalCalls: 0,
-  }
-
   return (
     <div className="space-y-6">
-      {/* 头部标题与刷新 */}
+      {/* 头部标题、区间与刷新 */}
       <div className="bg-kumo-elevated border border-kumo-line rounded-xl p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -181,105 +170,38 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
               全平台用户的活跃行为、剧本/工作区数量以及模型调用 Token 消耗实时汇总。
             </p>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => fetchUsage(true)}
-            loading={refreshing}
-            disabled={refreshing}
-          >
+          <Button variant="secondary" size="sm" onClick={() => fetchUsage(true)}
+            loading={refreshing} disabled={refreshing}>
             <ArrowClockwise size={16} className={`mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
             刷新数据
           </Button>
         </div>
-
-        {/* 指标卡片网格 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          <div className="bg-kumo-base border border-kumo-line rounded-lg p-4">
-            <div className="flex items-center justify-between text-kumo-subtle">
-              <span className="text-xs font-medium">总用户数</span>
-              <Users size={18} className="text-kumo-brand" />
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-kumo-strong">
-              {overview.totalUsers.toLocaleString()}
-            </div>
-            <div className="mt-1 text-xs text-kumo-subtle">全平台已注册/活跃用户</div>
+        {billingApi && (
+          <div className="mt-4">
+            <UsageRangePicker value={range} onValueChange={setRange} />
           </div>
-
-          <div className="bg-kumo-base border border-kumo-line rounded-lg p-4">
-            <div className="flex items-center justify-between text-kumo-subtle">
-              <span className="text-xs font-medium">剧本/工作区总数</span>
-              <Scroll size={18} className="text-purple-500" />
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-kumo-strong">
-              {overview.totalWorkspaces.toLocaleString()}
-            </div>
-            <div className="mt-1 text-xs text-kumo-subtle">用户累计创建的故事项目</div>
-          </div>
-
-          <div className="bg-kumo-base border border-kumo-line rounded-lg p-4">
-            <div className="flex items-center justify-between text-kumo-subtle">
-              <span className="text-xs font-medium">累计消耗 Tokens</span>
-              <Lightning size={18} className="text-amber-500" />
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-kumo-strong">
-              {overview.totalTokens.toLocaleString()}
-            </div>
-            <div className="mt-1 text-xs text-kumo-subtle">
-              所有 AI 模型的输入与输出
-            </div>
-          </div>
-
-          <div className="bg-kumo-base border border-kumo-line rounded-lg p-4">
-            <div className="flex items-center justify-between text-kumo-subtle">
-              <span className="text-xs font-medium">预估总消费</span>
-              <ChatCircleDots size={18} className="text-emerald-500" />
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
-              {formatCostDisplay(overview.totalCost)}
-            </div>
-            <div
-              className="mt-1 text-xs text-kumo-subtle truncate"
-              title="按各模型官方单价核算，Gemini 系列另含 2026 年底前半价优惠"
-            >
-              AI 对话 {overview.totalCalls.toLocaleString()} 轮（按各模型单价估算）
-            </div>
-          </div>
-        </div>
-
-        {/* 官方计费说明提示 */}
-        <div className="mt-4 px-3.5 py-2.5 bg-kumo-base/60 border border-kumo-line rounded-lg flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-kumo-subtle">
-          <span>
-            💡 <strong>计费规则说明：</strong>按各模型官方单价分别核算。Gemini 3.8 Flash 2026 年底前享半价（输入 $0.75 / 输出 $3.75 / 缓存读取 $0.075 每百万 Tokens），2027 年恢复原价（$1.50 / $7.50 / $0.15）；OpenAI 与 Workers AI 模型按各自价目表计费，不含折扣。
-          </span>
-          <span className="flex flex-shrink-0 gap-3">
-            <a
-              href="https://ai.google.dev/gemini-api/docs/pricing"
-              target="_blank"
-              rel="noreferrer"
-              className="text-kumo-brand hover:underline"
-            >
-              Gemini 价目表 ↗
-            </a>
-            <a
-              href="https://openai.com/api/pricing/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-kumo-brand hover:underline"
-            >
-              OpenAI 价目表 ↗
-            </a>
-            <a
-              href="https://developers.cloudflare.com/workers-ai/platform/pricing/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-kumo-brand hover:underline"
-            >
-              Workers AI 价目表 ↗
-            </a>
-          </span>
-        </div>
+        )}
       </div>
+
+      {billing && (
+        <>
+          <SectionCard title="计费概览">
+            {reportError ? (
+              <Banner variant="error" title={reportError} />
+            ) : report ? (
+              <UsageReportOverview report={report} stats={data?.overview ?? null} preBilling={preBilling} />
+            ) : (
+              <div className="py-6 text-sm text-kumo-subtle">正在加载计费报表...</div>
+            )}
+          </SectionCard>
+
+          {report && (
+            <SectionCard title="用量构成" description="按北京时间归组；Token 为实际用量。">
+              <UsageBreakdown report={report} />
+            </SectionCard>
+          )}
+        </>
+      )}
 
       {/* 用户明细列表 */}
       <div className="bg-kumo-elevated border border-kumo-line rounded-xl p-6">
@@ -294,7 +216,7 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
             {billing && (
               <Button variant="secondary" loading={markingInternal} onClick={markAllInternal}>全部设为内部</Button>
             )}
-            <Input className="sm:w-64"
+            <Input className="sm:w-64" aria-label="搜索用户"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
@@ -304,143 +226,19 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
             />
           </div>
         </div>
-
-        {/* 表格 */}
-        <div className="overflow-x-auto border border-kumo-line rounded-lg">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr className="bg-kumo-base/80 border-b border-kumo-line text-xs font-medium text-kumo-subtle select-none">
-                <th className="py-3 px-4">用户</th>
-                <th
-                  className="py-3 px-4 cursor-pointer hover:text-kumo-strong transition-colors"
-                  onClick={() => handleSort('workspaceCount')}
-                >
-                  <div className="flex items-center gap-1">
-                    <span>剧本项目</span>
-                    {sortField === 'workspaceCount' && (
-                      sortOrder === 'asc' ? <SortAscending size={14} /> : <SortDescending size={14} />
-                    )}
-                  </div>
-                </th>
-                <th
-                  className="py-3 px-4 cursor-pointer hover:text-kumo-strong transition-colors"
-                  onClick={() => handleSort('callCount')}
-                >
-                  <div className="flex items-center gap-1">
-                    <span>AI 会话轮次</span>
-                    {sortField === 'callCount' && (
-                      sortOrder === 'asc' ? <SortAscending size={14} /> : <SortDescending size={14} />
-                    )}
-                  </div>
-                </th>
-                <th
-                  className="py-3 px-4 cursor-pointer hover:text-kumo-strong transition-colors"
-                  onClick={() => handleSort('totalTokens')}
-                >
-                  <div className="flex items-center gap-1">
-                    <span>消耗 Tokens</span>
-                    {sortField === 'totalTokens' && (
-                      sortOrder === 'asc' ? <SortAscending size={14} /> : <SortDescending size={14} />
-                    )}
-                  </div>
-                </th>
-                <th
-                  className="py-3 px-4 cursor-pointer hover:text-kumo-strong transition-colors"
-                  onClick={() => handleSort('estimatedCost')}
-                >
-                  <div className="flex items-center gap-1">
-                    <span>预估费用</span>
-                    {sortField === 'estimatedCost' && (
-                      sortOrder === 'asc' ? <SortAscending size={14} /> : <SortDescending size={14} />
-                    )}
-                  </div>
-                </th>
-                <th
-                  className="py-3 px-4 cursor-pointer hover:text-kumo-strong transition-colors"
-                  onClick={() => handleSort('lastActive')}
-                >
-                  <div className="flex items-center gap-1">
-                    <span>最后活跃</span>
-                    {sortField === 'lastActive' && (
-                      sortOrder === 'asc' ? <SortAscending size={14} /> : <SortDescending size={14} />
-                    )}
-                  </div>
-                </th>
-                <th
-                  className="py-3 px-4 cursor-pointer hover:text-kumo-strong transition-colors"
-                  onClick={() => handleSort('createdAt')}
-                >
-                  <div className="flex items-center gap-1">
-                    <span>首次进入</span>
-                    {sortField === 'createdAt' && (
-                      sortOrder === 'asc' ? <SortAscending size={14} /> : <SortDescending size={14} />
-                    )}
-                  </div>
-                </th>
-                {billing && <th className="py-3 px-4 text-right">余额 · 方案</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-kumo-line/60">
-              {filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={billing ? 8 : 7} className="py-12 text-center text-kumo-subtle text-sm">
-                    {searchQuery ? '没有找到符合条件的用户' : '暂无用户活动记录'}
-                  </td>
-                </tr>
-              ) : (
-                pageUsers.map((user) => (
-                  <tr
-                    key={user.username}
-                    className="hover:bg-kumo-tint/40 transition-colors"
-                  >
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-kumo-tint flex items-center justify-center text-xs font-semibold text-kumo-strong border border-kumo-line flex-shrink-0">
-                          {user.displayName.slice(0, 1).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-medium text-kumo-strong truncate">
-                            {user.displayName}
-                          </div>
-                          <div className="text-xs text-kumo-subtle truncate">
-                            {user.username}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-kumo-default">
-                      {user.workspaceCount}
-                    </td>
-                    <td className="py-3 px-4 font-mono text-kumo-default">
-                      {user.callCount.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 font-mono font-medium text-amber-600 dark:text-amber-400">
-                      {user.totalTokens.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 font-mono text-xs font-medium text-kumo-strong">
-                      {formatCostDisplay(user.estimatedCost)}
-                    </td>
-                    <td className="py-3 px-4 text-xs text-kumo-default" title={formatDateTime(user.lastActive)}>
-                      {formatRelativeTime(user.lastActive)}
-                    </td>
-                    <td className="py-3 px-4 text-xs text-kumo-subtle">
-                      {formatDateTime(user.createdAt)}
-                    </td>
-                    {billing && (
-                      <td className="py-3 px-4">
-                        <UserBillingCell billing={billing} userKey={user.username} />
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        {filteredUsers.length > PAGE_SIZE && (
-          <Pagination className="mt-4" page={currentPage} setPage={setPage} perPage={PAGE_SIZE}
-            totalCount={filteredUsers.length} labels={PAGINATION_LABELS} />
-        )}
+        <AdminUserTable
+          users={visibleUsers}
+          totalCount={filteredUsers.length}
+          page={currentPage}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          byUser={billing ? byUser : null}
+          billing={billing}
+          range={range}
+          searching={searchQuery.trim() !== ''}
+        />
       </div>
     </div>
   )

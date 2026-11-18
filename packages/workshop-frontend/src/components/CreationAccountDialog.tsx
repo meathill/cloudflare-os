@@ -87,7 +87,7 @@ export const CreationAccountDialog = ({
     subscription.catch(err => {
       if (cancelled) return
       console.error('Failed to subscribe to connected accounts:', err)
-      toasts.add({ title: 'Failed to load your connected accounts', variant: 'error' })
+      toasts.add({ title: '加载已连接账号失败', variant: 'error' })
     })
     return () => {
       cancelled = true
@@ -104,7 +104,7 @@ export const CreationAccountDialog = ({
     } catch (err) {
       if (err instanceof AuthPopupCancelledError) return
       console.error('Failed to start connection flow:', err)
-      toasts.add({ title: err instanceof Error ? err.message : 'Could not complete connection flow', variant: 'error' })
+      toasts.add({ title: err instanceof Error ? err.message : '无法完成连接流程', variant: 'error' })
     } finally {
       setStarting(null)
     }
@@ -135,7 +135,7 @@ export const CreationAccountDialog = ({
       .catch((err: unknown) => {
         console.error('Failed to start the creation configurator:', err)
         if (cancelled) return
-        const error = err instanceof Error ? err.message : 'Could not start configurator.'
+        const error = err instanceof Error ? err.message : '无法启动配置器。'
         setConfigurator({ accountId: configuratorAccountId, error })
       })
     return () => {
@@ -241,7 +241,7 @@ export const CreationAccountDialog = ({
         </div>
 
         <div className="flex shrink-0 justify-end gap-2 border-t border-kumo-line px-6 py-4">
-          <WorkshopButton onClick={onCancel} disabled={sending}>Cancel</WorkshopButton>
+          <WorkshopButton onClick={onCancel} disabled={sending}>取消</WorkshopButton>
           <WorkshopButton
             tone="primary"
             loading={submitting || sending}

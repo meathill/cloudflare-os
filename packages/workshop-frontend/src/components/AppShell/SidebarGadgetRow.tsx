@@ -77,7 +77,7 @@ export default function SidebarGadgetRow({
         <span aria-hidden="true">{initials(gadget.title)}</span>
         {collapsed && unreadMessages > 0 && <span
           role="img"
-          aria-label={`${unreadMessages} unread ${unreadMessages === 1 ? "message" : "messages"}`}
+          aria-label={`${unreadMessages} 条未读消息`}
           className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-kumo-badge-blue" />}
       </div>
       {!collapsed && (

@@ -36,7 +36,7 @@ afterAll(() => {
 const showSpawnedChat = async () => {
   const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>("button")]
     .find(item => item.textContent?.startsWith(label))!;
-  await act(async () => button("Agents").click());
+  await act(async () => button("智能体").click());
   await act(async () => button("Spawner").click());
 };
 afterEach(() => { testRoot.cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -110,18 +110,18 @@ it.each([
     notificationsRequireParticipation: enabled === undefined ? undefined : true, ...(spawned ? {spawnerName: "Spawner"} : {})};
   const {setNotifications} = await renderChat(chat, [{workspaceId: "workspace", chatId: 1,
     readThroughSequence: 0, unreadMessageCount: count, notificationsEnabled: enabled, notificationsEnabledOverride: override}]);
-  expect(document.querySelector('[aria-label="2 unread messages"]') !== null).toBe(expectedEnabled && count > 0);
-  const trigger = document.querySelector<HTMLButtonElement>('[aria-label="Actions for Notification test"]')!;
+  expect(document.querySelector('[aria-label="2 条未读消息"]') !== null).toBe(expectedEnabled && count > 0);
+  const trigger = document.querySelector<HTMLButtonElement>('[aria-label="Notification test的操作"]')!;
   await act(async () => trigger.click());
   const items = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
-  expect(items.find(item => item.textContent === "Mark thread unread")?.getAttribute("aria-disabled"))
+  expect(items.find(item => item.textContent === "标记为未读")?.getAttribute("aria-disabled"))
     .toBe(count > 0 ? "true" : null);
-  expect(items.find(item => item.textContent === "Mark thread read")?.getAttribute("aria-disabled"))
+  expect(items.find(item => item.textContent === "标记为已读")?.getAttribute("aria-disabled"))
     .toBe(count > 0 ? null : "true");
   const canMute = expectedEnabled || override !== false;
-  expect(items.some(item => item.textContent === "Enable notifications")).toBe(!expectedEnabled && override !== false);
-  expect(items.some(item => item.textContent === "Mute notifications")).toBe(canMute);
-  const toggle = items.find(item => item.textContent === (canMute ? "Mute notifications" : "Unmute notifications"))!;
+  expect(items.some(item => item.textContent === "开启通知")).toBe(!expectedEnabled && override !== false);
+  expect(items.some(item => item.textContent === "静音通知")).toBe(canMute);
+  const toggle = items.find(item => item.textContent === (canMute ? "静音通知" : "取消通知静音"))!;
   await act(async () => toggle.click());
   expect(setNotifications).toHaveBeenCalledExactlyOnceWith(1, !canMute);
 });
@@ -132,11 +132,11 @@ it.each([false, true].flatMap(spawned => [undefined, true].map(requiresParticipa
   const chat: AiChatMetadata = {id: 1, title: "Empty chat", started: new Date(), lastActive: new Date(),
     notificationsRequireParticipation: requiresParticipation, ...(spawned ? {spawnerName: "Spawner"} : {})};
   const {setNotifications} = await renderChat(chat, []);
-  const trigger = document.querySelector<HTMLButtonElement>('[aria-label="Actions for Empty chat"]')!;
+  const trigger = document.querySelector<HTMLButtonElement>('[aria-label="Empty chat的操作"]')!;
   await act(async () => trigger.click());
   const items = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
-  expect(items.some(item => item.textContent === "Enable notifications")).toBe(requiresParticipation === true);
-  const action = items.find(item => item.textContent === (requiresParticipation ? "Enable notifications" : "Mute notifications"))!;
+  expect(items.some(item => item.textContent === "开启通知")).toBe(requiresParticipation === true);
+  const action = items.find(item => item.textContent === (requiresParticipation ? "开启通知" : "静音通知"))!;
   await act(async () => action.click());
   expect(setNotifications).toHaveBeenCalledExactlyOnceWith(1, requiresParticipation === true);
 });

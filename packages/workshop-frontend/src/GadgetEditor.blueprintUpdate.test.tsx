@@ -466,8 +466,8 @@ describe('GadgetEditor, opening a chat a gadget names', () => {
   }
 
   it.each([
-    { screen: 'phone', view: 'Chat' },
-    { screen: 'desktop', view: 'Preview' },
+    { screen: 'phone', view: '对话' },
+    { screen: 'desktop', view: '预览' },
   ] as const)('selects the chat and shows it on a $screen', async ({ screen, view }) => {
     await openEditor(screen)
     await reportChatTokens({ 'tok-a': 5 })
@@ -496,25 +496,25 @@ describe('GadgetEditor, opening a chat a gadget names', () => {
   it('does nothing while the gadget is hidden behind Activity', async () => {
     await openEditor('phone')
     await reportChatTokens({ 'tok-a': 5 })
-    await click('Activity')
+    await click('活动')
 
     await openAgentChat('tok-a')
 
     expect(navigatedChats()).toEqual([])
-    expect(currentView()).toEqual(['Activity'])
+    expect(currentView()).toEqual(['活动'])
   })
 
   it('drops a request whose gadget is hidden before its chat arrives', async () => {
     await openEditor('phone')
     await reportChatTokens({})
     const request = mocks.onOpenAgentChat!('tok-a', new AbortController().signal)
-    await click('Activity')
+    await click('活动')
 
     await reportChatTokens({ 'tok-a': 5 })
     await act(async () => { await request })
 
     expect(navigatedChats()).toEqual([])
-    expect(currentView()).toEqual(['Activity'])
+    expect(currentView()).toEqual(['活动'])
   })
 
   it("drops a request whose frame's session ends just as its chat is found", async () => {

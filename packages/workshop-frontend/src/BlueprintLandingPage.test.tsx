@@ -409,10 +409,10 @@ describe('BlueprintLandingPage gatekeeper configuration', () => {
         },
       })
 
-      await act(async () => findButton('Configure')!.click())
-      await vi.waitFor(() => expect(findButton('Save connection')!.disabled).toBe(!canConfigure))
+      await act(async () => findButton('配置')!.click())
+      await vi.waitFor(() => expect(findButton('保存连接')!.disabled).toBe(!canConfigure))
       expect(harness.startResourceConfigurator.mock.calls).toEqual(canConfigure ? [[7, 'calendar']] : [])
-      expect(Boolean(findButton('Grant access'))).toBe(!canConfigure)
+      expect(Boolean(findButton('授予访问权限'))).toBe(!canConfigure)
     })
 
   it.each([{ grants: null }, { grants: [CALENDAR_PATTERN] }])(

@@ -277,7 +277,7 @@ describe('ObserverConfigModal account selection', () => {
         { ...DOC_RESOURCE, id: 'document', urlPattern },
       ]),
     })
-    const grant = findButton(rendered, 'Grant the access needed to verify this resource')
+    const grant = findButton(rendered, '授予验证此资源所需的访问权限')
     expect(grant).toBeDefined()
     await act(async () => grant!.click())
     expect(ensureAccountResources).toHaveBeenCalledWith(1, ['document'])

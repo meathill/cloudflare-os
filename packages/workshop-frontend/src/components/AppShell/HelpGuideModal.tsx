@@ -4,6 +4,7 @@ import {
   Blueprint,
   BookOpen,
   CheckCircle,
+  CurrencyDollar,
   FilmReel,
   FolderSimple,
   Lightbulb,
@@ -13,16 +14,19 @@ import {
   UsersThree,
   X,
 } from '@phosphor-icons/react'
+import { ModelPricingTable } from '../../features/ai-models/ModelPricingTable'
 
 export interface HelpGuideModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** 打开时初始选中的页签；只在首次挂载时生效。 */
+  initialTab?: TabKey
 }
 
-type TabKey = 'scenarios' | 'workflow' | 'glossary'
+type TabKey = 'scenarios' | 'workflow' | 'glossary' | 'pricing'
 
-export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>('scenarios')
+export default function HelpGuideModal({ open, onOpenChange, initialTab }: HelpGuideModalProps) {
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'scenarios')
 
   function handleTabChange(tab: TabKey) {
     setActiveTab(tab)
@@ -46,7 +50,7 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
             </div>
             <div>
               <Dialog.Title className="text-[17px] font-semibold tracking-[-0.3px] text-kumo-default">
-                编剧创作指南与实战手册
+                帮助信息
               </Dialog.Title>
               <Dialog.Description className="mt-0.5 text-[12px] leading-4 text-kumo-subtle">
                 有缘心之助剧本创作协作平台 · 面向编剧团队的工业化协作指南
@@ -108,6 +112,19 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
           >
             <BookOpen size={16} />
             <span>📖 核心概念人话速查</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange('pricing')}
+            className={[
+              'flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-[13px] font-medium transition-colors',
+              activeTab === 'pricing'
+                ? 'border-kumo-brand text-kumo-strong'
+                : 'border-transparent text-kumo-subtle hover:text-kumo-default',
+            ].join(' ')}
+          >
+            <CurrencyDollar size={16} />
+            <span>模型价格</span>
           </button>
         </div>
 
@@ -387,6 +404,9 @@ export default function HelpGuideModal({ open, onOpenChange }: HelpGuideModalPro
               </div>
             </div>
           )}
+
+          {/* TAB 4: 模型价格（打开页签时才挂载取数） */}
+          {activeTab === 'pricing' && <ModelPricingTable />}
         </div>
 
         {/* Footer */}

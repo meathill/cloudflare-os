@@ -111,13 +111,13 @@ it("loads the code chat's history only while another chat is shown over it", asy
 
 it("names the chat Back returns to", async () => {
   const view = setup();
-  const back = () => document.querySelector("[aria-label^='Back to']")?.getAttribute("aria-label");
+  const back = () => document.querySelector("[aria-label^='返回']")?.getAttribute("aria-label");
 
   await view.render(AGENT_CHAT, WORKING_CHAT, WORKING_CHAT);
-  expect(back()).toBe(`Back to Chat ${WORKING_CHAT}`);
+  expect(back()).toBe(`返回Chat ${WORKING_CHAT}`);
 
   await view.render(AGENT_CHAT);
-  expect(back()).toBe("Back to conversations");
+  expect(back()).toBe("返回对话列表");
 });
 
 // The editor takes every snapshot of a draft's chat as new code and reloads the draft's preview,

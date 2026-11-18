@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Banner, Button, Loader, useKumoToastManager } from '@cloudflare/kumo'
 import { Lightning, Wallet } from '@phosphor-icons/react'
-import type { BillingLedgerEntry, BillingUsageDay } from '@gadgets/workshop-shared/billing'
+import type { BillingLedgerEntry } from '@gadgets/workshop-shared/billing'
 import { useDocumentTitle } from '../../useDocumentTitle'
+import HelpGuideModal from '../../components/AppShell/HelpGuideModal'
 import { useBilling } from '../../features/billing/BillingContext'
 import { formatUsd } from '../../features/billing/formatUsd'
+import { BillingUsageSection } from './BillingUsageSection'
 
 const LEDGER_KIND_LABELS: Record<BillingLedgerEntry['kind'], string> = {
   topup: '在线充值',
@@ -16,19 +18,6 @@ const LEDGER_KIND_LABELS: Record<BillingLedgerEntry['kind'], string> = {
 
 // After a Checkout, Stripe's webhook usually lands within seconds: re-read a few times.
 const TOPUP_POLL_MS = [1_500, 4_000, 10_000]
-
-type DayTotal = { day: string; chargedUsd: number; requests: number }
-
-const totalsByDay = (usage: BillingUsageDay[]): DayTotal[] => {
-  const days = new Map<string, DayTotal>()
-  for (const row of usage) {
-    const total = days.get(row.day) ?? { day: row.day, chargedUsd: 0, requests: 0 }
-    total.chargedUsd += row.chargedUsd
-    total.requests += row.requests
-    days.set(row.day, total)
-  }
-  return [...days.values()]
-}
 
 const SectionLabel = ({ children }: { children: string }) => (
   <h2 className="px-1 text-[12px] font-medium uppercase tracking-[0.08em] text-kumo-inactive">{children}</h2>
@@ -44,8 +33,8 @@ const BillingPage = ({ topup }: BillingPageProps) => {
   const billing = useBilling()
   const toasts = useKumoToastManager()
   const [ledger, setLedger] = useState<BillingLedgerEntry[] | null>(null)
-  const [usage, setUsage] = useState<DayTotal[] | null>(null)
   const [checkoutTier, setCheckoutTier] = useState<number | null>(null)
+  const [pricingOpen, setPricingOpen] = useState(false)
 
   const api = billing?.api
   const balance = billing?.summary?.balanceUsd
@@ -53,7 +42,6 @@ const BillingPage = ({ topup }: BillingPageProps) => {
     if (!api) return
     let cancelled = false
     api.listLedger(20).then((rows) => { if (!cancelled) setLedger(rows) }).catch(() => {})
-    api.listUsage(30).then((rows) => { if (!cancelled) setUsage(totalsByDay(rows)) }).catch(() => {})
     return () => { cancelled = true }
   }, [api, balance])
 
@@ -110,7 +98,16 @@ const BillingPage = ({ topup }: BillingPageProps) => {
               <p className="text-sm text-kumo-subtle">
                 {summary.plan === 'internal'
                   ? '内部账号：用量照常记录，但不扣费，也不受余额限制。'
-                  : `按模型官方价格的 ${summary.markup} 倍扣费。余额用完后需要充值才能继续使用 AI。`}
+                  : '按计费 Tokens × 官方单价扣费。余额用完后需要充值才能继续使用 AI。'}
+                {summary.plan === 'standard' && (
+                  <button
+                    type="button"
+                    onClick={() => setPricingOpen(true)}
+                    className="ml-1 text-kumo-brand hover:underline"
+                  >
+                    查看模型价格
+                  </button>
+                )}
               </p>
             </div>
           )}
@@ -147,24 +144,8 @@ const BillingPage = ({ topup }: BillingPageProps) => {
       )}
 
       <section className="flex flex-col gap-3">
-        <SectionLabel>近 30 天用量</SectionLabel>
-        <div className="rounded-xl border border-kumo-line bg-kumo-base">
-          {usage === null ? (
-            <div className="p-5"><Loader size="base" /></div>
-          ) : usage.length === 0 ? (
-            <p className="p-5 text-sm text-kumo-subtle">还没有用量。</p>
-          ) : (
-            <ul className="divide-y divide-kumo-line">
-              {usage.map((day) => (
-                <li key={day.day} className="flex items-center justify-between px-5 py-3 text-sm">
-                  <span className="text-kumo-default">{day.day}</span>
-                  <span className="text-kumo-subtle">{day.requests} 次请求</span>
-                  <span className="font-medium text-kumo-default">{formatUsd(day.chargedUsd)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <SectionLabel>用量</SectionLabel>
+        {api && <BillingUsageSection api={api} />}
       </section>
 
       <section className="flex flex-col gap-3">
@@ -194,6 +175,10 @@ const BillingPage = ({ topup }: BillingPageProps) => {
           )}
         </div>
       </section>
+
+      {pricingOpen && (
+        <HelpGuideModal open onOpenChange={setPricingOpen} initialTab="pricing" />
+      )}
     </div>
   )
 }

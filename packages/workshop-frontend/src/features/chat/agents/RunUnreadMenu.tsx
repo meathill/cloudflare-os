@@ -34,7 +34,7 @@ export const RunUnreadMenu = ({ workspaceId, run, overseer }: {
         <DropdownMenu.Trigger
           render={
             <WorkshopIconButton
-              aria-label={`${run.title} 的操作`}
+              aria-label={`${run.title}的操作`}
               onClick={event => event.stopPropagation()}
               className="!h-7 !w-7 flex-shrink-0 text-kumo-inactive opacity-100 focus:opacity-100 group-hover:opacity-100 data-[popup-open]:opacity-100 sm:!h-6 sm:!w-6 sm:opacity-0"
             >

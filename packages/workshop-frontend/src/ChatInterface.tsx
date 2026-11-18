@@ -138,7 +138,7 @@ import { safeExternalUrl } from "./utils/safeExternalUrl";
 import { useAuthenticatedApi } from "./AuthContext";
 import { useVendorBranding } from "./useVendorBranding";
 import UsageLimitModal from "./features/billing/UsageLimitModal";
-import { useCostMarkup } from "./features/billing/BillingContext";
+import { useShowsModelCost } from "./features/billing/BillingContext";
 import { formatFullTimestamp } from "./utils/formatTimestamp";
 import { copyToClipboard } from "./clipboard";
 import { isImeComposing } from "./keyboardEvent";
@@ -2664,8 +2664,8 @@ function ChatInterface({
   // we've already auto-opened for, so dismissing it doesn't immediately reopen.
   const [usageModalOpen, setUsageModalOpen] = useState(false);
   const usageModalShownForRef = useRef<number | null>(null);
-  // 有缘心之助：花费按用户实际被扣的金额显示（原始成本 × 倍率；内部账号与未开计费时为 1）。
-  const costMarkup = useCostMarkup();
+  // 有缘心之助：内部账号与未开计费时显示原始模型成本；普通付费用户看不到花费（否则暴露倍率）。
+  const showsModelCost = useShowsModelCost();
   const [listTab, setListTab] = useState<ChatListTab>("chats");
   // Agents the user opened in the list. Keyed by AgentSummary.key; an agent that stops existing
   // simply stops being looked up.
@@ -5717,11 +5717,11 @@ function ChatInterface({
                               <span className="flex-shrink-0">
                                 {formatChatRowTime(chat.lastActive, bucket, chatListNow)}
                               </span>
-                              {chat.totalCost != null && (
+                              {showsModelCost && chat.totalCost != null && (
                                 <>
                                   <span className="flex-shrink-0" aria-hidden="true">·</span>
                                   <span className="flex-shrink-0 font-mono">
-                                    ${(chat.totalCost * costMarkup).toFixed(4)}
+                                    ${chat.totalCost.toFixed(4)}
                                   </span>
                                 </>
                               )}
@@ -6944,8 +6944,8 @@ function ChatInterface({
                         {currentChatMetadata.totalTokens.toLocaleString()} 个 token
                       </span>
                     )}
-                    {currentChatMetadata?.totalCost != null && (
-                      <span>${(currentChatMetadata.totalCost * costMarkup).toFixed(4)}</span>
+                    {showsModelCost && currentChatMetadata?.totalCost != null && (
+                      <span>${currentChatMetadata.totalCost.toFixed(4)}</span>
                     )}
                   </div>
                 </div>

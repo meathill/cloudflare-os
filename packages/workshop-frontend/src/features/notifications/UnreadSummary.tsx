@@ -9,7 +9,7 @@ export const UnreadSummary = ({ collapsed }: { collapsed: boolean }) => {
   return (
     <SidebarItem
       to="/unread"
-      label="Unread threads"
+      label="未读对话"
       icon={<Chats size={14} weight="regular" />}
       trailing={<UnreadBadge count={unread?.state?.unreadMessageCount ?? 0} />}
       collapsed={collapsed}
