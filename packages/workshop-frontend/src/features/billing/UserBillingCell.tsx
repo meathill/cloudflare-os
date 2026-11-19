@@ -2,16 +2,19 @@ import { useState } from 'react'
 import { Button, Loader, useKumoToastManager } from '@cloudflare/kumo'
 import type { BillingPlan, BillingUsageRange } from '@gadgets/workshop-shared/billing'
 import { UserBillingDialog } from './admin/UserBillingDialog'
+import type { PreBillingEstimate } from './admin/legacyUsage'
 import { formatUsd } from './formatUsd'
 import { emptyAccount, type BillingAdmin } from './useBillingAdmin'
 
 const PLAN_LABELS: Record<BillingPlan, string> = { standard: '普通', internal: '内部' }
 
 /** A user's plan, balance and markup in the admin user list, plus the billing detail dialog. */
-const UserBillingCell = ({ billing, userKey, range }: {
+const UserBillingCell = ({ billing, userKey, range, preBilling }: {
   billing: BillingAdmin
   userKey: string
   range: BillingUsageRange
+  /** 该用户的「计费上线前（估算）」；未加载完时不传，详情里不显示该卡。 */
+  preBilling?: PreBillingEstimate
 }) => {
   const toasts = useKumoToastManager()
   const [switching, setSwitching] = useState(false)
@@ -52,6 +55,7 @@ const UserBillingCell = ({ billing, userKey, range }: {
           account={account}
           billing={billing.api}
           range={range}
+          preBilling={preBilling}
           onClose={() => setOpen(false)}
           onUpdated={billing.replace}
         />

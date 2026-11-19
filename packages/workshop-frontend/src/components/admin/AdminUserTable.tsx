@@ -4,11 +4,12 @@ import type { UserUsageRecord } from '@gadgets/workshop-shared/api'
 import type { BillingUsageRange, BillingUsageTotals } from '@gadgets/workshop-shared/billing'
 import UserBillingCell from '../../features/billing/UserBillingCell'
 import { formatUsd4 } from '../../features/billing/formatUsd'
+import { preBillingUsd, type PreBillingEstimate } from '../../features/billing/admin/legacyUsage'
 import type { BillingAdmin } from '../../features/billing/useBillingAdmin'
 
 export type UserSortField =
   | 'lastActive' | 'createdAt' | 'workspaceCount' | 'callCount'
-  | 'requests' | 'tokens' | 'rawCost' | 'charged'
+  | 'requests' | 'tokens' | 'rawCost' | 'charged' | 'preBilling'
 export type UserSortOrder = 'asc' | 'desc'
 
 const PAGE_SIZE = 50
@@ -45,16 +46,17 @@ function formatRelativeTime(iso: string) {
   return formatDateTime(iso)
 }
 
-const SortableHead = ({ field, label, sortField, sortOrder, onSort, align = 'left' }: {
+const SortableHead = ({ field, label, sortField, sortOrder, onSort, align = 'left', title }: {
   field: UserSortField
   label: string
   sortField: UserSortField
   sortOrder: UserSortOrder
   onSort: (field: UserSortField) => void
   align?: 'left' | 'right'
+  title?: string
 }) => (
   <th className={`py-3 px-4 cursor-pointer hover:text-kumo-strong transition-colors ${align === 'right' ? 'text-right' : ''}`}
-    onClick={() => onSort(field)}>
+    title={title} onClick={() => onSort(field)}>
     <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
       <span>{label}</span>
       {sortField === field && (
@@ -66,7 +68,7 @@ const SortableHead = ({ field, label, sortField, sortOrder, onSort, align = 'lef
 
 /** 用户用量明细表：行为数据列 + 区间内计费数据列（有计费时）。纯展示，排序/分页由父组件持有。 */
 export const AdminUserTable = ({ users, totalCount, page, onPageChange, sortField, sortOrder,
-  onSort, byUser, billing, range, searching }: {
+  onSort, byUser, preBillingByUser, billing, range, searching }: {
   users: UserUsageRecord[]
   totalCount: number
   page: number
@@ -75,11 +77,12 @@ export const AdminUserTable = ({ users, totalCount, page, onPageChange, sortFiel
   sortOrder: UserSortOrder
   onSort: (field: UserSortField) => void
   byUser: ReadonlyMap<string, BillingUsageTotals> | null
+  preBillingByUser: ReadonlyMap<string, PreBillingEstimate> | null
   billing: BillingAdmin | null
   range: BillingUsageRange
   searching: boolean
 }) => {
-  const colSpan = billing ? 10 : 5
+  const colSpan = billing ? 11 : 5
   const head = (field: UserSortField, label: string, align?: 'right') => (
     <SortableHead field={field} label={label} sortField={sortField} sortOrder={sortOrder}
       onSort={onSort} align={align} />
@@ -98,6 +101,11 @@ export const AdminUserTable = ({ users, totalCount, page, onPageChange, sortFiel
               {billing && head('tokens', '区间 Tokens', 'right')}
               {billing && head('rawCost', '原始成本', 'right')}
               {billing && head('charged', '扣费', 'right')}
+              {billing && (
+                <SortableHead field="preBilling" label="计费上线前" sortField={sortField}
+                  sortOrder={sortOrder} onSort={onSort} align="right"
+                  title="按 Token 估算的旧统计减去计费上线后对话成本，不随时间范围变化" />
+              )}
               {head('lastActive', '最后活跃')}
               {head('createdAt', '首次进入')}
               {billing && <th className="py-3 px-4 text-right">余额 · 方案</th>}
@@ -148,13 +156,22 @@ export const AdminUserTable = ({ users, totalCount, page, onPageChange, sortFiel
                         {formatUsd4(usage?.chargedUsd ?? 0)}
                       </td>
                     )}
+                    {billing && (
+                      <td className="py-3 px-4 font-mono text-right text-xs text-kumo-default">
+                        {preBillingByUser
+                          ? formatUsd4(preBillingUsd(preBillingByUser.get(user.username)
+                              ?? { legacyUsd: 0, postLaunchChatUsd: 0 }))
+                          : '—'}
+                      </td>
+                    )}
                     <td className="py-3 px-4 text-xs text-kumo-default" title={formatDateTime(user.lastActive)}>
                       {formatRelativeTime(user.lastActive)}
                     </td>
                     <td className="py-3 px-4 text-xs text-kumo-subtle">{formatDateTime(user.createdAt)}</td>
                     {billing && (
                       <td className="py-3 px-4">
-                        <UserBillingCell billing={billing} userKey={user.username} range={range} />
+                        <UserBillingCell billing={billing} userKey={user.username} range={range}
+                          preBilling={preBillingByUser?.get(user.username)} />
                       </td>
                     )}
                   </tr>

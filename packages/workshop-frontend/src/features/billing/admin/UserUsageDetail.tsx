@@ -129,7 +129,7 @@ export const UserUsageDetail = ({ api, userKey, range }: {
   userKey: string
   range: BillingUsageRange
 }) => {
-  const { report, error } = useUsageReport(api, range, userKey)
+  const { report, error } = useUsageReport(api, { ...range, userKey })
   const [ledger, setLedger] = useState<BillingLedgerEntry[] | null>(null)
 
   useEffect(() => {

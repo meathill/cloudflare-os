@@ -80,6 +80,30 @@ describe('ModelPricingTable', () => {
     expect(document.body.textContent).toContain('—')
   })
 
+  it('merges non-Gemini / non-OpenAI providers into one group', async () => {
+    vi.mocked(api.getModelPricing).mockResolvedValueOnce([
+      ...PRICING,
+      {
+        provider: 'cloudflare',
+        id: '@cf/moonshotai/kimi-k2',
+        name: 'Kimi K2',
+        price: { input: 0.6, output: 2.5, cacheRead: 0.15, cacheWrite: 0 },
+      },
+      {
+        provider: 'opencode-go',
+        id: 'glm-5.3',
+        name: 'GLM 5.3',
+        price: { input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0 },
+      },
+    ])
+    await render()
+
+    const headings = Array.from(container.querySelectorAll('h4')).map((h) => h.textContent)
+    expect(headings).toEqual(['Google', 'OpenAI', '其他模型'])
+    expect(document.body.textContent).toContain('Kimi K2')
+    expect(document.body.textContent).toContain('GLM 5.3')
+  })
+
   it('shows the long-context tier note under the model row', async () => {
     await render()
 

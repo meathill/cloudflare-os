@@ -6,8 +6,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RpcStub } from 'capnweb'
 import type { AdminApi, UsageStatsResponse, UserUsageRecord } from '@gadgets/workshop-shared/api'
-import type { BillingAccountInfo, BillingPlan, BillingUsageRange, BillingUsageReport, BillingUsageTotals } from '@gadgets/workshop-shared/billing'
-import { BILLING_LAUNCH_DAY } from '../../features/billing/admin/legacyUsage'
+import type { BillingAccountInfo, BillingPlan, BillingUsageReport, BillingUsageReportQuery, BillingUsageTotals } from '@gadgets/workshop-shared/billing'
+import { BILLING_LAUNCH_DAY, LEGACY_COST_FROZEN_DAY } from '../../features/billing/admin/legacyUsage'
 
 vi.mock('@cloudflare/kumo', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@cloudflare/kumo')>()),
@@ -67,14 +67,15 @@ describe('AdminUsagePanel billing', () => {
     users: string[],
     accounts: BillingAccountInfo[],
     billingReport: BillingUsageReport | null = report(),
-    extras: { totalCost?: number; legacyReport?: BillingUsageReport } = {},
+    extras: { totalCost?: number; legacyReport?: BillingUsageReport;
+      estimatedCosts?: Record<string, number> } = {},
   ) => {
     const setPlan = vi.fn<(userKey: string, plan: BillingPlan) => Promise<BillingAccountInfo>>(
       async (userKey, plan) => account(userKey, plan))
     const getAccounts = vi.fn<(userKeys: string[]) => Promise<BillingAccountInfo[]>>(
       async (userKeys) => accounts.filter((a) => userKeys.includes(a.userKey)))
-    const getUsageReport = vi.fn<(range: BillingUsageRange) => Promise<BillingUsageReport>>(
-      async (range) => (range.from === BILLING_LAUNCH_DAY ? extras.legacyReport : billingReport) ?? report())
+    const getUsageReport = vi.fn<(query: BillingUsageReportQuery) => Promise<BillingUsageReport>>(
+      async (query) => (query.from === BILLING_LAUNCH_DAY ? extras.legacyReport : billingReport) ?? report())
     const listLedgerEntries = vi.fn<() => Promise<[]>>(async () => [])
     const billing = billingReport === null ? null : {
       getAccounts, setPlan, getUsageReport, listLedgerEntries,
@@ -85,7 +86,9 @@ describe('AdminUsagePanel billing', () => {
     const stats: UsageStatsResponse = {
       overview: { totalUsers: users.length, totalWorkspaces: 7, totalTokens: 0,
         totalCost: extras.totalCost ?? 0, totalCalls: 0 },
-      users: users.map(user),
+      users: users.map((name) => ({
+        ...user(name), estimatedCost: extras.estimatedCosts?.[name] ?? 0,
+      })),
     }
     const admin = { getUsageStats: async () => stats, getBillingAdmin: async () => billing } as unknown as RpcStub<AdminApi>
     container = document.createElement('div')
@@ -117,13 +120,19 @@ describe('AdminUsagePanel billing', () => {
   it('shows platform cost, the pre-billing estimate and gross margin excluding platform cost', async () => {
     // 旧统计累计 $10，上线到冻结日的对话成本 $3 → 计费上线前 $7。
     // 毛利新口径：$2 − ($1 − $0.4) = $1.4。
-    await render(['a@x.com'], [], report({
+    const { getUsageReport } = await render(['a@x.com'], [], report({
       totals: totals({ rawCostUsd: 1, chargedUsd: 2, platformCostUsd: 0.4 }),
       bySource: [{ ...totals({ rawCostUsd: 1, platformCostUsd: 0.4 }), source: 'chat' }],
     }), {
       totalCost: 10,
-      legacyReport: report({ bySource: [{ ...totals({ rawCostUsd: 3 }), source: 'chat' }] }),
+      legacyReport: report({
+        totals: totals({ rawCostUsd: 3 }),
+        bySource: [{ ...totals({ rawCostUsd: 3 }), source: 'chat' }],
+      }),
     })
+    // 固定区间那次调用按 chat 来源过滤——title / web-search 也挂在用户名下，不能算进旧统计口径。
+    expect(getUsageReport).toHaveBeenCalledWith(
+      { from: BILLING_LAUNCH_DAY, to: LEGACY_COST_FROZEN_DAY, source: 'chat' })
     const text = container!.textContent!
     expect(text).toContain('平台承担')
     expect(text).toContain('$0.4000')
@@ -132,6 +141,29 @@ describe('AdminUsagePanel billing', () => {
     expect(text).toContain('$7.0000')
     expect(text).toContain('旧统计累计 $10.0000')
     expect(text).toContain('不随时间范围变化')
+  })
+
+  it('shows each user their own pre-billing estimate, floored at zero', async () => {
+    // a：旧统计 $10 − 上线后对话 $3 = $7；b：旧统计 $1 − 对话 $5 → 不为负 $0。
+    await render(['a@x.com', 'b@x.com'], [], report({
+      byUser: [
+        { ...totals(), userKey: 'a@x.com' },
+        { ...totals({ rawCostUsd: 0.4, chargedUsd: 0.5 }), userKey: 'b@x.com' },
+      ],
+    }), {
+      estimatedCosts: { 'a@x.com': 10, 'b@x.com': 1 },
+      legacyReport: report({
+        totals: totals({ rawCostUsd: 8 }),
+        byUser: [
+          { ...totals({ rawCostUsd: 3 }), userKey: 'a@x.com' },
+          { ...totals({ rawCostUsd: 5 }), userKey: 'b@x.com' },
+        ],
+      }),
+    })
+    expect(container!.textContent).toContain('计费上线前')
+    expect(row('a@x.com').textContent).toContain('$7.0000')
+    // b 的其他计费列都不为 $0.0000，这个值只可能来自「计费上线前」列。
+    expect(row('b@x.com').textContent).toContain('$0.0000')
   })
 
   it('shows only the behavior table when billing is unavailable', async () => {

@@ -1,6 +1,7 @@
 import type { UsageOverviewStats } from '@gadgets/workshop-shared/api'
 import type { BillingUsageReport } from '@gadgets/workshop-shared/billing'
 import { formatUsd4 } from '../formatUsd'
+import { preBillingUsd, type PreBillingEstimate } from './legacyUsage'
 
 /** 充值到账统计进报表的流水类型。 */
 const TOPUP_KINDS = new Set(['topup', 'refund', 'dispute'])
@@ -22,7 +23,7 @@ export const UsageReportOverview = ({ report, stats, preBilling }: {
   report: BillingUsageReport
   stats: UsageOverviewStats | null
   /** 计费上线前的估算数据；undefined 时隐藏该卡。 */
-  preBilling?: { legacyTotalUsd: number; postLaunchChatUsd: number }
+  preBilling?: PreBillingEstimate
 }) => {
   const totals = report.totals
   const totalTokens = totals.inputTokens + totals.outputTokens
@@ -32,9 +33,7 @@ export const UsageReportOverview = ({ report, stats, preBilling }: {
   const topupCount = topups.reduce((sum, row) => sum + row.count, 0)
   // 毛利口径：用户扣费减去「收费请求」的原始成本，平台承担的成本不算进毛利分母。
   const grossUsd = totals.chargedUsd - (totals.rawCostUsd - totals.platformCostUsd)
-  const preBillingUsd = preBilling
-    ? Math.max(0, preBilling.legacyTotalUsd - preBilling.postLaunchChatUsd)
-    : 0
+  const preBillingValue = preBilling ? preBillingUsd(preBilling) : 0
 
   return (
     <div>
@@ -82,8 +81,8 @@ export const UsageReportOverview = ({ report, stats, preBilling }: {
         {preBilling && (
           <MetricCard
             label="计费上线前（估算）"
-            value={formatUsd4(preBillingUsd)}
-            detail={`旧统计累计 ${formatUsd4(preBilling.legacyTotalUsd)}，减去计费上线后对话成本 ${formatUsd4(preBilling.postLaunchChatUsd)}；按 Token 估算，不随时间范围变化`}
+            value={formatUsd4(preBillingValue)}
+            detail={`旧统计累计 ${formatUsd4(preBilling.legacyUsd)}，减去计费上线后对话成本 ${formatUsd4(preBilling.postLaunchChatUsd)}；按 Token 估算，不随时间范围变化`}
           />
         )}
         <MetricCard

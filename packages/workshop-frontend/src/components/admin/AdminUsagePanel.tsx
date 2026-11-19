@@ -8,7 +8,7 @@ import { useBillingAccounts, useBillingAdminApi } from '../../features/billing/u
 import { presetRange } from '../../features/billing/usageRange'
 import { UsageRangePicker } from '../../features/billing/UsageRangePicker'
 import { useUsageReport } from '../../features/billing/admin/useUsageReport'
-import { LEGACY_OVERLAP_RANGE } from '../../features/billing/admin/legacyUsage'
+import { LEGACY_OVERLAP_QUERY, preBillingUsd, type PreBillingEstimate } from '../../features/billing/admin/legacyUsage'
 import { UsageReportOverview } from '../../features/billing/admin/UsageReportOverview'
 import { UsageBreakdown } from '../../features/billing/admin/UsageBreakdown'
 import { AdminUserTable, type UserSortField, type UserSortOrder } from './AdminUserTable'
@@ -32,7 +32,8 @@ const SectionCard = ({ title, description, children }: {
 )
 
 const sortValue = (user: UserUsageRecord, field: UserSortField,
-  byUser: ReadonlyMap<string, BillingUsageTotals>): number => {
+  byUser: ReadonlyMap<string, BillingUsageTotals>,
+  preBillingByUser: ReadonlyMap<string, PreBillingEstimate> | null): number => {
   const usage = byUser.get(user.username)
   switch (field) {
     case 'requests': return usage?.requests ?? 0
@@ -41,6 +42,10 @@ const sortValue = (user: UserUsageRecord, field: UserSortField,
       : 0
     case 'rawCost': return usage?.rawCostUsd ?? 0
     case 'charged': return usage?.chargedUsd ?? 0
+    case 'preBilling': {
+      const estimate = preBillingByUser?.get(user.username)
+      return estimate ? preBillingUsd(estimate) : 0
+    }
     case 'lastActive': return new Date(user.lastActive).getTime()
     case 'createdAt': return new Date(user.createdAt).getTime()
     case 'workspaceCount': return user.workspaceCount
@@ -74,11 +79,11 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
 
   const billingApi = useBillingAdminApi(admin)
   const { report, error: reportError, reload: reloadReport } = useUsageReport(billingApi ?? undefined, range)
-  // 「计费上线前（估算）」用固定区间，不随选择器的时间范围变化。
-  const { report: legacyReport } = useUsageReport(billingApi ?? undefined, LEGACY_OVERLAP_RANGE)
-  const postLaunchChatUsd = legacyReport?.bySource.find((row) => row.source === 'chat')?.rawCostUsd ?? null
+  // 「计费上线前（估算）」用固定区间 + 只看 chat 来源，不随选择器的时间范围变化。
+  const { report: legacyReport } = useUsageReport(billingApi ?? undefined, LEGACY_OVERLAP_QUERY)
+  const postLaunchChatUsd = legacyReport?.totals.rawCostUsd ?? null
   const preBilling = data?.overview != null && postLaunchChatUsd != null
-    ? { legacyTotalUsd: data.overview.totalCost, postLaunchChatUsd }
+    ? { legacyUsd: data.overview.totalCost, postLaunchChatUsd }
     : undefined
 
   const byUser = useMemo(
@@ -86,14 +91,26 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
     [report],
   )
 
+  // 每人的「计费上线前（估算）」：旧统计按人累计估算 − 该用户上线后的 chat 原始成本。
+  // legacyReport 未到时为 null，表格显示「—」。
+  const preBillingByUser = useMemo(() => {
+    if (!data?.users || !legacyReport) return null
+    const chatByUser = new Map(legacyReport.byUser.map((row) => [row.userKey, row.rawCostUsd]))
+    return new Map(data.users.map((user) => [user.username, {
+      legacyUsd: user.estimatedCost,
+      postLaunchChatUsd: chatByUser.get(user.username) ?? 0,
+    }]))
+  }, [data?.users, legacyReport])
+
   const pageCount = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
   const currentPage = Math.min(page, pageCount)
   const sortedUsers = useMemo(() => {
     return filteredUsers.toSorted((a, b) => {
-      const diff = sortValue(a, sortField, byUser) - sortValue(b, sortField, byUser)
+      const diff = sortValue(a, sortField, byUser, preBillingByUser)
+        - sortValue(b, sortField, byUser, preBillingByUser)
       return sortOrder === 'asc' ? diff : -diff
     })
-  }, [filteredUsers, sortField, sortOrder, byUser])
+  }, [filteredUsers, sortField, sortOrder, byUser, preBillingByUser])
   const visibleUsers = sortedUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   const { accounts, replace } = useBillingAccounts(
@@ -235,6 +252,7 @@ export default function AdminUsagePanel({ admin }: AdminUsagePanelProps) {
           sortOrder={sortOrder}
           onSort={handleSort}
           byUser={billing ? byUser : null}
+          preBillingByUser={billing ? preBillingByUser : null}
           billing={billing}
           range={range}
           searching={searchQuery.trim() !== ''}

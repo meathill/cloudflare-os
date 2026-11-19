@@ -8,6 +8,7 @@ import type { RpcStub } from 'capnweb'
 import type { BillingAdminClient } from '@gadgets/workshop-shared/api'
 import type { BillingAccountInfo, BillingUsageReport, BillingUsageRange } from '@gadgets/workshop-shared/billing'
 import { UserBillingDialog } from './UserBillingDialog'
+import type { PreBillingEstimate } from './legacyUsage'
 
 vi.mock('@cloudflare/kumo', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@cloudflare/kumo')>()),
@@ -51,7 +52,7 @@ describe('UserBillingDialog', () => {
     vi.restoreAllMocks()
   })
 
-  const render = async (acc: BillingAccountInfo) => {
+  const render = async (acc: BillingAccountInfo, preBilling?: PreBillingEstimate) => {
     const setMarkup = vi.fn<(userKey: string, markup: number | null) => Promise<BillingAccountInfo>>(
       async (userKey, markup) => account({ userKey, markup, effectiveMarkup: markup ?? 2 }))
     const billing = {
@@ -67,7 +68,7 @@ describe('UserBillingDialog', () => {
     document.body.append(host)
     root = createRoot(host)
     act(() => root!.render(
-      <UserBillingDialog account={acc} billing={billing} range={RANGE}
+      <UserBillingDialog account={acc} billing={billing} range={RANGE} preBilling={preBilling}
         onClose={() => {}} onUpdated={onUpdated} />,
     ))
     await flush()
@@ -112,5 +113,20 @@ describe('UserBillingDialog', () => {
   it('shows the deployment default for a standard user without a personal markup', async () => {
     await render(account({ markup: null, effectiveMarkup: 2 }))
     expect(button('默认（2x）')).toBeDefined()
+  })
+
+  it('shows the pre-billing estimate card with the combined raw cost when provided', async () => {
+    // 旧统计 $10 − 上线后对话 $3 = $7；加上累计原始成本 $1 → 合计约 $8。
+    await render(account({ rawCostTotalUsd: 1 }), { legacyUsd: 10, postLaunchChatUsd: 3 })
+    const text = document.body.textContent!
+    expect(text).toContain('计费上线前（估算）')
+    expect(text).toContain('$7.00')
+    expect(text).toContain('旧统计 $10.00 − 上线后对话 $3.00')
+    expect(text).toContain('合计原始成本约 $8.00')
+  })
+
+  it('hides the pre-billing estimate card when not provided', async () => {
+    await render(account())
+    expect(document.body.textContent).not.toContain('计费上线前')
   })
 })

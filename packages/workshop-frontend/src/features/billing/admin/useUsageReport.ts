@@ -1,19 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RpcStub } from 'capnweb'
 import type { BillingAdminClient } from '@gadgets/workshop-shared/api'
-import type { BillingUsageRange, BillingUsageReport } from '@gadgets/workshop-shared/billing'
+import type { BillingUsageReport, BillingUsageReportQuery } from '@gadgets/workshop-shared/billing'
 
 const errorMessage = (err: unknown) =>
   err instanceof Error ? err.message : '加载计费报表失败'
 
 /**
- * 按区间（可选限定单用户）拉取计费用量报表。依赖变化后丢弃过期响应，
+ * 拉取计费用量报表（区间 + 可选单用户 / 单来源）。依赖变化后丢弃过期响应，
  * 保证慢请求回得晚也不会覆盖新结果。
  */
 export const useUsageReport = (
   api: RpcStub<BillingAdminClient> | undefined,
-  range: BillingUsageRange,
-  userKey?: string,
+  query: BillingUsageReportQuery,
 ) => {
   const [report, setReport] = useState<BillingUsageReport | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +23,6 @@ export const useUsageReport = (
     // 都会作废新闭包已经发出的请求或已经拿到的报表。
     if (!api) return
     const current = ++version.current
-    const query = userKey ? { ...range, userKey } : range
     api.getUsageReport(query).then(
       (result) => {
         if (current === version.current) {
@@ -39,9 +37,9 @@ export const useUsageReport = (
         }
       },
     )
-    // range 是每次渲染新建的对象，按字段依赖即可。
+    // query 是每次渲染新建的对象，按字段依赖即可。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, range.from, range.to, userKey])
+  }, [api, query.from, query.to, query.userKey, query.source])
 
   useEffect(() => {
     reload()

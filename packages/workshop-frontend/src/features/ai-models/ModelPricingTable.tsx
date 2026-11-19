@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { Loader, Table } from '@cloudflare/kumo'
-import type { AiModelProvider, ModelPrice, ModelPricing } from '@gadgets/workshop-shared/api'
+import type { ModelPrice, ModelPricing } from '@gadgets/workshop-shared/api'
 import { useAuthenticatedApi } from '../../AuthContext'
 import { PROVIDER_LABELS } from './modelForm'
 
@@ -12,6 +12,11 @@ type PricingState =
 // 官方价最多 6 位小数；去掉多余的尾零，0.075 / 2 / 10 原样显示。
 function formatPrice(value: number): string {
   return value.toFixed(6).replace(/\.?0+$/, '')
+}
+
+// Gemini / OpenAI 各成一组；其余（Workers AI、OpenCode Go 等）接入渠道不同但都按厂商官方价计，合为一组。
+function groupLabel(provider: ModelPricing['provider']): string {
+  return provider === 'google' || provider === 'openai' ? PROVIDER_LABELS[provider] : '其他模型'
 }
 
 function priceNote(price: Pick<ModelPrice, 'input' | 'output' | 'cacheRead'>): string {
@@ -45,20 +50,19 @@ export const ModelPricingTable = () => {
     return <p className="py-10 text-center text-[13px] text-kumo-subtle">暂无模型价格。</p>
   }
 
-  // 按 provider 归组，保持接口返回的顺序（与模型选择器一致）。
-  const groups = new Map<AiModelProvider, ModelPricing[]>()
+  // 归组后保持接口返回的顺序（与模型选择器一致）。
+  const groups = new Map<string, ModelPricing[]>()
   for (const model of state.models) {
-    const group = groups.get(model.provider) ?? []
-    group.push(model)
-    groups.set(model.provider, group)
+    const label = groupLabel(model.provider)
+    groups.set(label, [...(groups.get(label) ?? []), model])
   }
 
   return (
     <div className="space-y-5">
-      {[...groups.entries()].map(([provider, models]) => (
-        <section key={provider}>
+      {[...groups.entries()].map(([label, models]) => (
+        <section key={label}>
           <div className="mb-1.5 flex items-baseline justify-between">
-            <h4 className="text-[13px] font-semibold text-kumo-default">{PROVIDER_LABELS[provider]}</h4>
+            <h4 className="text-[13px] font-semibold text-kumo-default">{label}</h4>
             <span className="text-[11px] text-kumo-inactive">单位：美元 / 百万 Tokens</span>
           </div>
           <Table>

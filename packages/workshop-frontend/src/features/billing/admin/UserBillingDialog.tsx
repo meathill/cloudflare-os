@@ -4,6 +4,7 @@ import { Banner, Button, Dialog, Input, useKumoToastManager } from '@cloudflare/
 import type { BillingAdminClient } from '@gadgets/workshop-shared/api'
 import type { BillingAccountInfo, BillingPlan, BillingUsageRange } from '@gadgets/workshop-shared/billing'
 import { formatUsd } from '../formatUsd'
+import { preBillingUsd, type PreBillingEstimate } from './legacyUsage'
 import { UserUsageDetail } from './UserUsageDetail'
 
 const errorMessage = (err: unknown, fallback: string) =>
@@ -39,10 +40,12 @@ const OverviewItem = ({ label, value, detail }: {
  * 单用户计费详情：概况、倍率、余额调整、区间用量、流水与逐次明细。
  * account 由父组件持有，setPlan / setMarkup / grant 成功后经 onUpdated 回流。
  */
-export const UserBillingDialog = ({ account, billing, range, onClose, onUpdated }: {
+export const UserBillingDialog = ({ account, billing, range, preBilling, onClose, onUpdated }: {
   account: BillingAccountInfo
   billing: RpcStub<BillingAdminClient>
   range: BillingUsageRange
+  /** 「计费上线前（估算）」；未传时概况少一张卡。 */
+  preBilling?: PreBillingEstimate
   onClose: () => void
   onUpdated: (account: BillingAccountInfo) => void
 }) => {
@@ -118,13 +121,17 @@ export const UserBillingDialog = ({ account, billing, range, onClose, onUpdated 
 
         <section className="mb-5">
           <SectionTitle>概况</SectionTitle>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className={`grid grid-cols-2 gap-2 ${preBilling ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
             <OverviewItem label="余额" value={formatUsd(account.balanceUsd)} />
             <OverviewItem label="累计充值" value={formatUsd(account.topUpTotalUsd)}
               detail="充值 / 退款 / 争议净额" />
             <OverviewItem label="方案" value={PLAN_LABELS[account.plan]} />
             <OverviewItem label="累计扣费" value={formatUsd(account.chargedTotalUsd)}
               detail={`原始成本 ${formatUsd(account.rawCostTotalUsd)}`} />
+            {preBilling && (
+              <OverviewItem label="计费上线前（估算）" value={formatUsd(preBillingUsd(preBilling))}
+                detail={`旧统计 ${formatUsd(preBilling.legacyUsd)} − 上线后对话 ${formatUsd(preBilling.postLaunchChatUsd)}，合计原始成本约 ${formatUsd(preBillingUsd(preBilling) + account.rawCostTotalUsd)}`} />
+            )}
           </div>
         </section>
 
