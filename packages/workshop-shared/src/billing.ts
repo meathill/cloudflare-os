@@ -189,6 +189,14 @@ export type BillingUsageReport = {
   ledger: { kind: BillingLedgerKind; amountUsd: number; count: number }[];
 };
 
+/** An admin's usage-report query: a range, optionally narrowed to one user and/or one usage source. The ledger summary is never narrowed by source. */
+export type BillingUsageReportQuery = BillingUsageRange & {
+  /** Restrict to one user's usage and ledger. */
+  userKey?: string;
+  /** Restrict the usage breakdowns and totals to one source. */
+  source?: BillingUsageSource;
+};
+
 /**
  * One day of one model's usage as the user themselves sees it: billed tokens (actual times the
  * markup that applied when each request was charged) and what it cost them — never the raw cost.
@@ -280,8 +288,8 @@ export interface BillingAdminApi extends RpcTarget {
   setMarkup(userKey: string, markup: number | null, actor: string): Promise<BillingAccountInfo>;
   /** A user's ledger, newest first. */
   listLedger(userKey: string, limit?: number): Promise<BillingLedgerEntry[]>;
-  /** The usage report for a range, optionally of one user alone. */
-  getUsageReport(query: BillingUsageRange & { userKey?: string }): Promise<BillingUsageReport>;
+  /** The usage report for a range, optionally of one user alone and/or one source. */
+  getUsageReport(query: BillingUsageReportQuery): Promise<BillingUsageReport>;
   /** Ledger entries in a range, newest first. */
   listLedgerEntries(query: BillingLedgerQuery): Promise<BillingLedgerEntry[]>;
   /** One user's metered requests on one day, newest first, paged by `before`. */

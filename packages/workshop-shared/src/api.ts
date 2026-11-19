@@ -32,7 +32,7 @@ import type { GatekeeperAppSurface } from "./gatekeeper.js";
 import type {
   BillingAccountInfo, BillingLedgerEntry, BillingLedgerQuery, BillingPlan, BillingSummary,
   BillingUsageEvent, BillingUsageEventQuery, BillingUsageRange, BillingUsageReport,
-  BillingUserUsageRow,
+  BillingUsageReportQuery, BillingUserUsageRow,
 } from "./billing.js";
 
 /**
@@ -2669,7 +2669,7 @@ export interface BillingAdminClient extends RpcTarget {
   /** Set a user's own markup (0–10), or null to follow the deployment default. */
   setMarkup(userKey: string, markup: number | null): Promise<BillingAccountInfo>;
   /** The usage report for a range, optionally of one user alone. */
-  getUsageReport(query: BillingUsageRange & { userKey?: string }): Promise<BillingUsageReport>;
+  getUsageReport(query: BillingUsageReportQuery): Promise<BillingUsageReport>;
   /** Ledger entries in a range, newest first. */
   listLedgerEntries(query: BillingLedgerQuery): Promise<BillingLedgerEntry[]>;
   /** One user's metered requests on one day, newest first, paged by `before`. */

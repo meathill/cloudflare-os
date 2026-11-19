@@ -1,7 +1,7 @@
 import { ADMIN_ACCESS_ERROR_CODES, AdminApi, AdminAuditPage, AdminAuditQuery, AdminAuditStats, AdminAuditStatsQuery, AdminFormat, AdminFormatPatch, AdminInspectOptions, AdminModel, AdminResourceVendor, AdminSettingChange, AdminSettingMethod, AdminSettingsView, AdminUserPage, AdminUserQuery, AdminUserView, AdminVia, AdminWorkspaceAccess, AdminWorkspacePage, AdminWorkspaceQuery, AdminWorkspaceView, AiModelConfig, AiModelProvider, AmbientGatekeeperMode, BannerColor, BlueprintPublicInfo, DeploymentUpdateStatus, GatewayModel, GatewayModelLevelTest, GatewayModelMode, GatewayModelSettings, GatewayModelTest, MAX_ADMIN_AUDIT_RETENTION_DAYS, MAX_ANNOUNCEMENT_LENGTH, MAX_INSTANCE_INSTRUCTIONS_LENGTH, MAX_SITE_NAME_LENGTH, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, ReasoningLevel, SUGGESTED_MODELS, createAdminAccessError, getAdminAccessErrorCode, isAdminWorkspaceAccess, isAmbientGatekeeperMode, isBannerColor, isHexColor, UsageOverviewStats, UsageStatsResponse, type BillingAdminClient } from '@gadgets/workshop-shared/api';
 import type {
   BillingAccountInfo, BillingLedgerEntry, BillingLedgerQuery, BillingPlan, BillingService,
-  BillingUsageEvent, BillingUsageEventQuery, BillingUsageRange, BillingUsageReport,
+  BillingUsageEvent, BillingUsageEventQuery, BillingUsageReport, BillingUsageReportQuery,
 } from '@gadgets/workshop-shared/billing';
 import { GatekeeperVendor, getResourceTypeId, findResourceType } from '@gadgets/workshop-shared/gatekeeper';
 import { DurableObject } from 'cloudflare:workers';
@@ -1805,7 +1805,7 @@ class BillingAdminClientImpl extends RpcTarget implements BillingAdminClient {
     return admin.setMarkup(userKey, markup, this.adminUserId);
   }
 
-  async getUsageReport(query: BillingUsageRange & { userKey?: string }): Promise<BillingUsageReport> {
+  async getUsageReport(query: BillingUsageReportQuery): Promise<BillingUsageReport> {
     using admin = await this.billing.admin();
     return admin.getUsageReport(query);
   }
