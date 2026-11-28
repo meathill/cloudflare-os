@@ -124,7 +124,7 @@ const PdfPage = ({ doc, pageNumber, width }: {
     <div
       ref={hostRef}
       role="group"
-      aria-label={`Page ${pageNumber}`}
+      aria-label={`第 ${pageNumber} 页`}
       className="relative shrink-0 overflow-hidden bg-kumo-base shadow-sm ring-1 ring-kumo-line"
       style={{ width, height: Math.round(width * aspect) }}
     />
@@ -164,7 +164,7 @@ export const PdfPreview = ({ bytes }: AttachmentPreviewProps) => {
 
   if (failure) {
     throw failure instanceof PasswordException
-      ? new AttachmentPreviewError("This PDF is password-protected. Download it to open it.")
+      ? new AttachmentPreviewError("此 PDF 受密码保护，请下载后打开。")
       : failure;
   }
 
@@ -173,14 +173,14 @@ export const PdfPreview = ({ bytes }: AttachmentPreviewProps) => {
     <div className="min-h-full">
       {doc && doc.numPages > MAX_PAGES && (
         <div className="sticky top-0 z-10 border-b border-kumo-line bg-kumo-elevated px-4 py-2 text-center text-[12px] leading-4 text-kumo-subtle">
-          Only the first {MAX_PAGES} pages are shown. Download the file to see everything.
+          仅显示前 {MAX_PAGES} 页。下载文件可查看全部内容。
         </div>
       )}
       <div ref={containerRef} className="flex flex-col items-center gap-3 px-4 py-4">
         {doc ? Array.from({ length: pageCount }, (_, index) => (
           <PdfPage key={index} doc={doc} pageNumber={index + 1} width={width} />
         )) : (
-          <div className="grid h-40 place-items-center" role="status" aria-label="Loading preview">
+          <div className="grid h-40 place-items-center" role="status" aria-label="正在加载预览">
             <Loader size="base" />
           </div>
         )}

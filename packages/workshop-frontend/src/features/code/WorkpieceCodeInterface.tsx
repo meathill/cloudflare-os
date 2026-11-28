@@ -26,6 +26,7 @@ import {
 import { reportIssue } from '../../errorReporting'
 import { saveBlobToFile, saveTextToFile } from '../../fileTransfers'
 import { isTransientRpcError } from '../../rpcErrors'
+import { useConnectionHold } from '../idle-disconnect/useConnectionIdle'
 
 // The code view over a workpiece's git-backed files -- a gadget's code or a worktree's checkout.
 // The two differ here in exactly two places: which summary field names the *accepted commit*
@@ -225,7 +226,7 @@ export default function WorkpieceCodeInterface({
   const branchMode = selectedChatId !== null
   const workpieceId = summary.id
   const acceptedCommit = acceptedCommitOf(summary)
-  const workpieceNoun = summary.type === 'worktree' ? 'worktree' : 'gadget'
+  const workpieceNoun = summary.type === 'worktree' ? '工作树' : '应用'
 
   // Keep refs to the current props so long-lived callbacks (the OT client delegate, editor
   // sessions) always read the latest values.
@@ -279,6 +280,7 @@ export default function WorkpieceCodeInterface({
   const [clientError, setClientError] = useState(false)
   // Unacknowledged local edits are stuck behind a failing submission ("connection issue").
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  useConnectionHold(hasUnsavedChanges)
 
   // Per-open-file remote-delta listeners, keyed by `${gadgetId}\u0000${path}` (see EditSession).
   const fileListenersRef = useRef(new Map<string, Set<(change: FileChange) => void>>())
@@ -426,8 +428,7 @@ export default function WorkpieceCodeInterface({
       },
       onLocalEditsDiscarded: () => {
         toastsRef.current.add({
-          title: "Your latest code edits were discarded — this conversation's changes were " +
-            'reverted or changed by someone else at the same time.',
+          title: "你最近的代码编辑已被放弃，因为此对话的更改同时被其他人回退或修改。",
           variant: 'warning',
         })
       },
@@ -1092,7 +1093,7 @@ export default function WorkpieceCodeInterface({
   // content has loaded.
   const isEditingLocked = !branchMode || isAgentActive || !clientReady
   // Outside a chat nothing on screen says why the code is read-only, so say how to unlock it.
-  const lockedHint = branchMode ? undefined : 'Select or start a conversation to edit'
+  const lockedHint = branchMode ? undefined : '选择或开始对话以编辑'
 
   // Apply whole-file operations (create / delete / rename) as local changes. `set` and `remove`
   // need no base text; the seeding call matters for an unpinned gadget, which it makes part of
@@ -1226,19 +1227,19 @@ export default function WorkpieceCodeInterface({
   const handleFileCreate = (filename: string) => {
     if (isEditingLocked) return
     if (fileExists(filename)) {
-      toasts.add({ title: `File already exists: ${filename}`, variant: 'error' })
+      toasts.add({ title: `文件已存在：${filename}`, variant: 'error' })
       return
     }
     if (applyLocalFileChanges([[filename, { set: '' }]])) {
       setActiveFile(filename)
-      toasts.add({ title: `Created file: ${filename}`, variant: 'success' })
+      toasts.add({ title: `已创建文件：${filename}`, variant: 'success' })
     }
   }
 
   const handleFileDelete = (filename: string) => {
     if (isEditingLocked) return
     if (!fileExists(filename)) {
-      toasts.add({ title: 'File not found', variant: 'error' })
+      toasts.add({ title: '未找到文件', variant: 'error' })
       return
     }
     if (applyLocalFileChanges([[filename, { remove: true }]])) {
@@ -1246,7 +1247,7 @@ export default function WorkpieceCodeInterface({
         const remaining = displayedFilesRef.current.filter(name => name !== filename)
         setActiveFile(remaining.length > 0 ? remaining[0] : null)
       }
-      toasts.add({ title: `Deleted file: ${filename}`, variant: 'success' })
+      toasts.add({ title: `已删除文件：${filename}`, variant: 'success' })
     }
   }
 
@@ -1256,11 +1257,11 @@ export default function WorkpieceCodeInterface({
     // FileBrowser for why an executable is among them), and this is the backstop.
     if (leafKindOf(oldName) !== 'file') return
     if (!fileExists(oldName)) {
-      toasts.add({ title: 'File not found', variant: 'error' })
+      toasts.add({ title: '未找到文件', variant: 'error' })
       return
     }
     if (fileExists(newName)) {
-      toasts.add({ title: `File already exists: ${newName}`, variant: 'error' })
+      toasts.add({ title: `文件已存在：${newName}`, variant: 'error' })
       return
     }
     const target = { client, gadgetId: workpieceId, contentBase }
@@ -1277,23 +1278,23 @@ export default function WorkpieceCodeInterface({
     // untouched -- and refuse a destination that has since come to exist.
     const chatFilesNow = target.client.getFiles(target.gadgetId)
     if (!chatFilesNow?.has(oldName) && target.client.getRemovedPaths(target.gadgetId).has(oldName)) {
-      toasts.add({ title: 'File not found', variant: 'error' })
+      toasts.add({ title: '未找到文件', variant: 'error' })
       return
     }
     const text = chatFilesNow?.get(oldName) ?? baseContent
     if (typeof text !== 'string') {
-      toasts.add({ title: 'Only text files can be renamed in this editor', variant: 'error' })
+      toasts.add({ title: '此编辑器只能重命名文本文件', variant: 'error' })
       return
     }
     if (chatFilesNow?.has(newName) || fileExists(newName)) {
-      toasts.add({ title: `File already exists: ${newName}`, variant: 'error' })
+      toasts.add({ title: `文件已存在：${newName}`, variant: 'error' })
       return
     }
     if (applyLocalFileChanges([[oldName, { remove: true }], [newName, { set: text }]])) {
       if (activeFile === oldName) {
         setActiveFile(newName)
       }
-      toasts.add({ title: `Renamed file: ${oldName} \u2192 ${newName}`, variant: 'success' })
+      toasts.add({ title: `已重命名文件：${oldName} \u2192 ${newName}`, variant: 'success' })
     }
   }
 
@@ -1306,7 +1307,7 @@ export default function WorkpieceCodeInterface({
     const blob = content === null ? null : await reader.readBlob(content.oid)
       .then(stream => new Response(stream).blob()).catch(() => null)
     if (blob === null) {
-      toasts.add({ title: `Could not download ${filename}`, variant: 'error' })
+      toasts.add({ title: `无法下载 ${filename}`, variant: 'error' })
       return
     }
     saveBlobToFile(blob, filename)
@@ -1338,14 +1339,14 @@ export default function WorkpieceCodeInterface({
         style={{ height }}
       >
         <p className="m-0 text-sm text-kumo-danger">
-          Failed to load this {workpieceNoun}&apos;s code.
+          无法加载此 {workpieceNoun}的代码。
         </p>
         <WorkshopButton
           tone="secondary"
           className="!h-8"
           onClick={() => setTreeRetryToken(token => token + 1)}
         >
-          Try again
+          重试
         </WorkshopButton>
       </div>
     )
@@ -1357,7 +1358,7 @@ export default function WorkpieceCodeInterface({
         className="flex justify-center items-center px-6 text-center text-kumo-danger text-sm"
         style={{ height }}
       >
-        Failed to load this conversation&apos;s code changes. Try reloading the page.
+        无法加载此对话的代码更改，请尝试重新加载页面。
       </div>
     )
   }
@@ -1368,7 +1369,7 @@ export default function WorkpieceCodeInterface({
         className="flex justify-center items-center text-kumo-subtle"
         style={{ height }}
       >
-        Loading code files...
+        正在加载代码文件…
       </div>
     )
   }
@@ -1409,31 +1410,31 @@ export default function WorkpieceCodeInterface({
     : activeReview.kind === 'text'
       ? activeReview.text
       : activeReview.kind === 'blob'
-        ? `(${activeFile} is not a text file; its previous content cannot be shown)`
-        : `(${activeReview.message}; its previous content cannot be shown)`
+        ? `(${activeFile} 不是文本文件，无法显示此前的内容)`
+        : `(${activeReview.message}；无法显示此前的内容)`
   // Either of the open file's two reads failing is shown in its pane, with a retry.
   const activeFileError = (activeResolved === undefined ? activeBaseError : null) ??
     (activeReviewLoading ? reviewError : null)
   const activeFileDownloadable = activeFileText !== null || activeResolved?.kind === 'blob'
   const activeFileModeLabel = !branchMode
-    ? 'Viewing'
+    ? '正在查看'
     : isEditingLocked
-      ? 'Reviewing changes in'
-      : 'Editing changes in'
+      ? '正在审核更改：'
+      : '正在编辑更改：'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height, width: '100%' }}>
       {hasUnsavedChanges && (
         <div className="bg-kumo-tint border-b border-kumo-line px-4 py-2 flex items-center gap-2 text-sm text-kumo-warning">
           <span className="text-base">&#9888;&#65039;</span>
-          <span>Connection issue - changes will be saved when connection is restored</span>
+          <span>连接出现问题，恢复后将保存更改</span>
         </div>
       )}
       <div className="relative flex min-h-0 flex-1">
         {fileDrawerOpen && (
           <button
             type="button"
-            aria-label="Close files"
+            aria-label="关闭文件列表"
             onClick={() => setFileDrawerOpen(false)}
             className="absolute inset-0 z-20 bg-black/25 md:hidden"
           />
@@ -1442,7 +1443,7 @@ export default function WorkpieceCodeInterface({
           ref={fileDrawerRef}
           role={compactLayout ? 'dialog' : undefined}
           aria-modal={compactLayout ? true : undefined}
-          aria-label={compactLayout ? 'Files' : undefined}
+          aria-label={compactLayout ? '文件' : undefined}
           aria-hidden={compactLayout && !fileDrawerOpen ? true : undefined}
           inert={compactLayout && !fileDrawerOpen ? true : undefined}
           tabIndex={compactLayout ? -1 : undefined}
@@ -1488,8 +1489,8 @@ export default function WorkpieceCodeInterface({
         >
           <div className={`${activeFile ? 'flex' : 'flex md:hidden'} h-11 shrink-0 items-center justify-between gap-2 border-b border-kumo-line bg-kumo-base px-2 md:h-9 md:px-3`}>
             <WorkshopIconButton
-              aria-label="Open files"
-              title="Files"
+              aria-label="打开文件列表"
+              title="文件"
               onClick={() => setFileDrawerOpen(true)}
               ref={fileDrawerTriggerRef}
               className="!h-9 !w-9 md:!hidden"
@@ -1499,7 +1500,7 @@ export default function WorkpieceCodeInterface({
             <div className="min-w-0 flex-1 truncate text-[13px] leading-4 text-kumo-subtle md:text-[12px]">
               {activeFile ? (
                 <>{activeFileModeLabel} <span className="font-mono font-medium text-kumo-default">{activeFile}</span></>
-              ) : 'Files'}
+              ) : '文件'}
             </div>
             {summary.type === 'worktree' && (
               // The worktree's HEAD -- the agent's last explicit commit. Display only: what the
@@ -1507,8 +1508,8 @@ export default function WorkpieceCodeInterface({
               <span
                 className="flex shrink-0 items-center gap-1 rounded bg-kumo-tint px-1.5 py-0.5 font-mono text-[11px] leading-4 text-kumo-subtle"
                 title={summary.headCommit === summary.baseCommit
-                  ? `HEAD ${summary.headCommit} (no commits since the worktree was created)`
-                  : `HEAD ${summary.headCommit}\nCreated at ${summary.baseCommit}`}
+                  ? `HEAD ${summary.headCommit}（工作树创建后暂无提交）`
+                  : `HEAD ${summary.headCommit}\n创建于 ${summary.baseCommit}`}
               >
                 <GitBranch size={11} aria-hidden="true" />
                 <span className="sr-only">HEAD </span>
@@ -1517,8 +1518,8 @@ export default function WorkpieceCodeInterface({
             )}
             {activeFile && (
               <WorkshopIconButton
-                aria-label={`Download ${activeFile}`}
-                title="Download file"
+                aria-label={`下载 ${activeFile}`}
+                title="下载文件"
                 onClick={() => handleFileDownload(activeFile)}
                 disabled={!activeFileDownloadable}
                 className="!h-9 !w-9 md:!h-6 md:!w-6"
@@ -1534,10 +1535,10 @@ export default function WorkpieceCodeInterface({
             <Banner
               variant="error"
               size="sm"
-              title="Some of this draft's changes could not be loaded"
+              title="无法加载此草稿的部分更改"
               action={
                 <Banner.Action onClick={() => setMergedRetryToken(token => token + 1)}>
-                  Try again
+                  重试
                 </Banner.Action>
               }
               className="m-2 w-auto shrink-0"
@@ -1548,12 +1549,12 @@ export default function WorkpieceCodeInterface({
               <div className="flex h-full flex-col items-center justify-center bg-kumo-base px-6 text-center">
                 <div className="max-w-[360px]">
                   <p className="m-0 text-[15px] leading-[22px] font-semibold tracking-[-0.3px] text-kumo-default">
-                    No files yet
+                    暂无文件
                   </p>
                   <p className="mt-1.5 mb-0 text-[13px] leading-[19px] tracking-[-0.25px] text-kumo-subtle">
                     {branchMode
-                      ? 'Keep building with the agent in chat and files will appear here as it works, or create one yourself.'
-                      : 'Open a conversation and build with the agent, and its accepted files will appear here.'}
+                      ? '继续在对话中与智能体构建，文件会随工作进展显示在这里，也可以自行创建文件。'
+                      : '打开对话并与智能体构建，接受后的文件会显示在这里。'}
                   </p>
                   {branchMode && (
                     <div className="mt-4 flex justify-center">
@@ -1563,7 +1564,7 @@ export default function WorkpieceCodeInterface({
                         tone="primary"
                         className="!h-8"
                       >
-                        New file
+                        新建文件
                       </WorkshopButton>
                     </div>
                   )}
@@ -1572,18 +1573,18 @@ export default function WorkpieceCodeInterface({
             ) : activeResolved === undefined || activeReviewLoading ? (
               activeFileError !== null ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3 bg-kumo-base px-6 text-center">
-                  <p className="m-0 text-sm text-kumo-danger">Failed to load this file.</p>
+                  <p className="m-0 text-sm text-kumo-danger">加载此文件失败。</p>
                   <WorkshopButton
                     tone="secondary"
                     className="!h-8"
                     onClick={() => setFileRetryToken(token => token + 1)}
                   >
-                    Try again
+                    重试
                   </WorkshopButton>
                 </div>
               ) : (
                 <div className="flex h-full items-center justify-center bg-kumo-base text-kumo-subtle">
-                  Loading file...
+                  正在加载文件…
                 </div>
               )
             ) : activeResolved.kind === 'blob' && activeFile !== null ? (

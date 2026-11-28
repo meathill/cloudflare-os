@@ -43,7 +43,7 @@ const sharing: ContextCollectionSharing = {
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>("button")]
   .find((candidate) => candidate.textContent?.trim() === label);
 
-const addRole = () => document.querySelector<HTMLElement>("[aria-label='Role for users you add']");
+const addRole = () => document.querySelector<HTMLElement>("[aria-label='新增用户的角色']");
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -158,18 +158,18 @@ describe("ShareCollectionDialog", () => {
       await Promise.resolve();
     });
 
-    await act(async () => button("Select users")?.click());
+    await act(async () => button("选择用户")?.click());
     expect(receiver).toBeDefined();
 
     // Change the role control while the picker is still open.
     const roleTrigger = [...document.querySelectorAll<HTMLElement>("button")]
-      .find((candidate) => candidate.textContent?.includes("Viewer"));
+      .find((candidate) => candidate.textContent?.includes("查看者"));
     await act(async () => {
       roleTrigger?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
       roleTrigger?.click();
     });
     const editorOption = [...document.querySelectorAll<HTMLElement>("[role=menuitem]")]
-      .find((option) => option.textContent === "Editor");
+      .find((option) => option.textContent === "编辑者");
     expect(editorOption).toBeDefined();
     await act(async () => {
       editorOption?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
@@ -204,14 +204,14 @@ describe("ShareCollectionDialog", () => {
     mocks.selectUsers = vi.fn<SelectUsers>(async (picked) => { receiver = picked; });
     root = await renderDialog();
 
-    await choose(addRole(), "Owner");
-    expect(addRole()?.textContent).toContain("Owner");
+    await choose(addRole(), "所有者");
+    expect(addRole()?.textContent).toContain("所有者");
 
-    await choose(document.querySelector<HTMLElement>("[aria-label='Role for you']"), "Can edit");
+    await choose(document.querySelector<HTMLElement>("[aria-label='你的角色']"), "可编辑");
     await flush();
-    expect(addRole()?.textContent).toContain("Editor");
+    expect(addRole()?.textContent).toContain("编辑者");
 
-    await act(async () => button("Select users")?.click());
+    await act(async () => button("选择用户")?.click());
     await act(async () => receiver!.receive({ ticket: "picked" }));
     expect(shareContextCollection).toHaveBeenLastCalledWith("collection", "picked", "editor");
   });
@@ -233,19 +233,19 @@ describe("ShareCollectionDialog", () => {
     const onChanged = vi.fn<() => void>();
     root = await renderDialog(onChanged);
 
-    await choose(document.querySelector<HTMLElement>("[aria-label='Role for Bob']"), "Can edit");
+    await choose(document.querySelector<HTMLElement>("[aria-label='Bob的角色']"), "可编辑");
     await flush();
     expect(document.body.textContent).toContain("Git tokens could not be revoked yet");
     expect(document.body.textContent).toContain("Network down.");
     expect(document.body.textContent).toContain("Bob");
-    expect(button("Select users")?.disabled).toBe(true);
-    expect(document.querySelector<HTMLButtonElement>("[aria-label='Role for Bob']")?.disabled).toBe(true);
+    expect(button("选择用户")?.disabled).toBe(true);
+    expect(document.querySelector<HTMLButtonElement>("[aria-label='Bob的角色']")?.disabled).toBe(true);
 
-    await act(async () => button("Retry")?.click());
+    await act(async () => button("重试")?.click());
     await flush();
     expect(getContextCollectionSharing).toHaveBeenCalledTimes(3);
     expect(document.body.textContent).not.toContain("Network down.");
-    expect(button("Select users")?.disabled).toBe(false);
+    expect(button("选择用户")?.disabled).toBe(false);
 
     act(() => mocks.closeDialog?.());
     expect(onChanged).toHaveBeenCalledTimes(1);
@@ -269,18 +269,18 @@ describe("ShareCollectionDialog", () => {
     root = createRoot(container);
     await act(async () => root?.render(<PartialLeaveParent />));
 
-    await choose(document.querySelector("[aria-label='Role for you']"), "Leave collection");
+    await choose(document.querySelector("[aria-label='你的角色']"), "退出知识集合");
     expect(leaveContextCollection).not.toHaveBeenCalled();
-    expect(document.body.textContent).toContain("permanently deletes");
-    expect(document.body.textContent).toContain("even if anyone in the organization can view it");
-    await act(async () => button("Cancel")?.click());
-    expect(button("Leave")).toBeUndefined();
+    expect(document.body.textContent).toContain("永久删除");
+    expect(document.body.textContent).toContain("即使组织内所有人都能查看");
+    await act(async () => button("取消")?.click());
+    expect(button("退出")).toBeUndefined();
     expect(leaveContextCollection).not.toHaveBeenCalled();
-    await choose(document.querySelector("[aria-label='Role for you']"), "Leave collection");
-    await act(async () => button("Leave")?.click());
+    await choose(document.querySelector("[aria-label='你的角色']"), "退出知识集合");
+    await act(async () => button("退出")?.click());
     expect(document.body.textContent).toContain("Library refreshed");
     expect(document.body.textContent).toContain("Git tokens could not be revoked yet");
-    expect(button("Leave")).toBeDefined();
+    expect(button("退出")).toBeDefined();
   });
 
   it("keeps old-role actions disabled until both sharing and permissions have refreshed", async () => {
@@ -294,17 +294,17 @@ describe("ShareCollectionDialog", () => {
     } as unknown as ContextApi;
     root = await renderDialog();
 
-    await choose(document.querySelector("[aria-label='Role for you']"), "Can edit");
-    expect(button("Select users")?.disabled).toBe(true);
-    expect(document.querySelector<HTMLButtonElement>("[aria-label='Role for Bob']")?.disabled).toBe(true);
+    await choose(document.querySelector("[aria-label='你的角色']"), "可编辑");
+    expect(button("选择用户")?.disabled).toBe(true);
+    expect(document.querySelector<HTMLButtonElement>("[aria-label='Bob的角色']")?.disabled).toBe(true);
     await act(async () => refreshedSharing.resolve({
       ...twoOwners,
       members: twoOwners.members.map((member) => member.isViewer ? { ...member, role: "editor" } : member),
     }));
-    expect(button("Select users")?.disabled).toBe(true);
+    expect(button("选择用户")?.disabled).toBe(true);
     await act(async () => refreshedPermissions.resolve({ ...ownerPermissions, canManageOwners: false }));
-    expect(button("Select users")?.disabled).toBe(false);
-    expect(document.querySelector("[aria-label='Role for Bob']")).toBeNull();
+    expect(button("选择用户")?.disabled).toBe(false);
+    expect(document.querySelector("[aria-label='Bob的角色']")).toBeNull();
   });
 
   it.each([false, true])("reconciles late picker deliveries after cancellation (cleanup rejects: %s)", async (rejectCleanup) => {
@@ -326,16 +326,16 @@ describe("ShareCollectionDialog", () => {
     } as unknown as ContextApi;
     mocks.selectUsers = (picked) => { receiver = picked; return picker.promise; };
     root = await renderDialog();
-    await act(async () => button("Select users")?.click());
+    await act(async () => button("选择用户")?.click());
     const receive = receiver!.receive({ ticket: "late" });
     const outcome = receive.catch(() => {});
     await act(async () => picker.resolve());
     expect(document.body.textContent).not.toContain("Late arrival");
-    expect(button("Select users")?.disabled).toBe(false);
+    expect(button("选择用户")?.disabled).toBe(false);
 
     await act(async () => { delivery.resolve(); await outcome; });
     expect(document.body.textContent).toContain("Late arrival");
-    expect(button("Select users")?.disabled).toBe(false);
+    expect(button("选择用户")?.disabled).toBe(false);
   });
 
   it("refreshes the parent listing when a delivery finishes after Share has closed", async () => {
@@ -366,13 +366,13 @@ describe("ShareCollectionDialog", () => {
       </>;
     };
     await act(async () => root?.render(<Parent />));
-    await act(async () => button("Select users")?.click());
+    await act(async () => button("选择用户")?.click());
     const receive = receiver!.receive({ ticket: "late" });
     await act(async () => picker.resolve());
     act(() => mocks.closeDialog?.());
     expect(document.body.textContent).toContain("Members in library: 1");
     await act(async () => { delivery.resolve(); await receive; });
     expect(document.body.textContent).toContain("Members in library: 2");
-    expect(button("Select users")).toBeUndefined();
+    expect(button("选择用户")).toBeUndefined();
   });
 });

@@ -127,11 +127,11 @@ export const ShareSnapshotPreview = ({
           <div className="flex flex-shrink-0 items-center gap-0.5">
             <SnapshotRefreshButton onRefresh={refresh} />
             {/* The recipient's export menu, as it is for a snapshot. */}
-            <GadgetExportMenu gadget={ready.stub} gadgetTitle={gadgetTitle} label="Export snapshot" />
-            <Tooltip content="Full screen" asChild>
+            <GadgetExportMenu gadget={ready.stub} gadgetTitle={gadgetTitle} label="导出快照" />
+            <Tooltip content="全屏" asChild>
               <WorkshopIconButton
                 ref={fullscreenButtonRef}
-                aria-label="Enter full screen"
+                aria-label="进入全屏"
                 onClick={() => onFullscreenChange(true)}
               >
                 <ArrowsOutSimple size={17} />
@@ -148,7 +148,7 @@ export const ShareSnapshotPreview = ({
         tabIndex={fullscreen ? -1 : undefined}
         role={fullscreen ? 'dialog' : undefined}
         aria-modal={fullscreen ? true : undefined}
-        aria-label={fullscreen ? 'Snapshot full screen' : undefined}
+        aria-label={fullscreen ? '快照全屏' : undefined}
         className={fullscreen
           ? 'visual-viewport-fixed z-20 bg-kumo-base outline-none'
           : 'relative aspect-video overflow-hidden bg-kumo-base'}
@@ -179,7 +179,7 @@ export const ShareSnapshotPreview = ({
         {/* Escape isn't on a touch keyboard, and Back would leave the workspace. */}
         {fullscreen && (
           <WorkshopIconButton
-            aria-label="Exit full screen"
+            aria-label="退出全屏"
             className="absolute right-3 top-3 z-10 border border-kumo-line bg-kumo-base/90 shadow-md backdrop-blur-sm"
             onClick={() => onFullscreenChange(false)}
           >

@@ -156,7 +156,7 @@ describe('diffRenderExtension (modified side)', () => {
     expect(rows[96].textContent).toBe('line 130')
     const button = rows[48]
     expect(button.tagName).toBe('BUTTON')
-    expect(button.textContent).toBe('Show 34 hidden deleted lines') // 130 - 2*48
+    expect(button.textContent).toBe('显示隐藏的 34 行已删除内容') // 130 - 2*48
     button.dispatchEvent(new MouseEvent('click'))
     expect(expanded).toBe(diffModel.changes[0].key)
 

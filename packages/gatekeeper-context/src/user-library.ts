@@ -35,6 +35,9 @@ function makeUserLibraryStorage(storage: DurableObjectStorage) {
       // Set once the account starts disconnecting, and kept after its index is wiped, so a share
       // racing the disconnect can't index a collection the disconnect will never visit.
       disconnected: false,
+      // The private collection agent-saved skills go to when the agent names none; "" until the
+      // first save creates it.
+      defaultSkillCollectionId: "",
     },
   });
 }
@@ -62,6 +65,24 @@ export class UserLibraryDurableObject extends DurableObject<Cloudflare.Env> {
 
   removeOwnedCollection(id: string): void {
     this.storage.ownedCollections.delete(id);
+  }
+
+  // --- Where agent-saved skills go by default ---
+
+  getDefaultSkillCollectionId(): string {
+    return this.storage.defaultSkillCollectionId.get();
+  }
+
+  /**
+   * Compare-and-set: record `candidateId` only while the stored ID is still `expectedId`, the one the
+   * caller found unusable. Returns the ID now stored, so a caller that lost a race uses the winner's.
+   */
+  claimDefaultSkillCollection(candidateId: string, expectedId: string): string {
+    this.#assertConnected();
+    let current = this.storage.defaultSkillCollectionId.get();
+    if (current !== expectedId) return current;
+    this.storage.defaultSkillCollectionId.put(candidateId);
+    return candidateId;
   }
 
   // --- Collections shared with this account ---

@@ -21,11 +21,11 @@ export const GatewayTestButton = ({ name, testing, onTest, size = 'sm' }: {
     variant="secondary"
     size={size}
     className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-    aria-label={testing ? `Testing ${name}…` : `Test ${name}`}
+    aria-label={testing ? `正在测试 ${name}…` : `测试 ${name}`}
     aria-disabled={testing}
     onClick={() => onTest()}
   >
-    {testing ? 'Testing…' : 'Test'}
+    {testing ? '正在测试…' : '测试'}
   </Button>
 )
 
@@ -38,15 +38,15 @@ const resultColor = (result: GatewayModelTest) =>
 // pass names; a pass of the Auto Router model names the gateway model that answered.
 const resultWording = (result: GatewayModelTest, subject: 'provider' | 'model') => {
   if (!result.ok) {
-    return <>Failed{result.status !== undefined && ` (${result.status})`}:{' '}{result.message}</>
+    return <>失败{result.status !== undefined && ` (${result.status})`}:{' '}{result.message}</>
   }
   const via = result.routedModel !== undefined && (
-    <> via <span className="font-mono">{result.routedModel}</span></>
+    <>，经由 <span className="font-mono">{result.routedModel}</span></>
   )
   return subject === 'provider' ? (
-    <><span className="font-mono">{result.model}</span> answered through the gateway{via}.</>
+    <>模型 <span className="font-mono">{result.model}</span> 已通过网关响应{via}。</>
   ) : (
-    <>Answered through the gateway{via}.</>
+    <>已通过网关响应{via}。</>
   )
 }
 
@@ -57,15 +57,13 @@ const unauthorized = (result: GatewayModelTest) =>
 
 const UnauthorizedHint = () => (
   <p className="mt-1 text-kumo-subtle">
-    The gateway may hold no key or credits for this provider, or{' '}
-    <code className="font-mono">CF_AI_GATEWAY_API_TOKEN</code> may not be allowed to run
-    models.
+    网关中可能没有此服务商的密钥或余额，或者 <code className="font-mono">CF_AI_GATEWAY_API_TOKEN</code> 没有运行模型的权限。
   </p>
 )
 
 const NotRun = ({ reason }: { reason: string | undefined }) => (
   <p className="mt-2 text-kumo-danger">
-    Couldn’t run the test{reason === undefined ? '.' : `: ${reason}`}
+    无法运行测试{reason === undefined ? '.' : `: ${reason}`}
   </p>
 )
 
@@ -110,7 +108,7 @@ export const GatewayLevelTestsStatus = ({ test }: {
             <li key={result.reasoning ?? 'none'} className={resultColor(result)}>
               <span className="font-medium text-kumo-default">
                 {result.reasoning === null
-                  ? 'No level set'
+                  ? '未设置级别'
                   : REASONING_LEVEL_LABELS[result.reasoning]}
               </span>
               : {resultWording(result, 'model')}

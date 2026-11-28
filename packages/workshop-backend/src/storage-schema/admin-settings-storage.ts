@@ -15,7 +15,7 @@ import {
   type AdminWorkspaceAccess,
   type AiModelProvider, type AmbientGatekeeperMode, type BannerConfig, type BlueprintOutput,
   type BlueprintPublicInfo, type GatewayModel, type GatewayModelMode, type GatewayModelSettings,
-  type ReasoningLevel,
+  type ReasoningLevel, type UserUsageRecord,
 } from "@gadgets/workshop-shared/api";
 
 export type AdminConfig = {
@@ -243,6 +243,10 @@ export function makeAdminSettingsStorage(storage: DurableObjectStorage) {
       // authoritative featured bit; this DO keeps the publishable deployment-wide copy.
       featuredBlueprints: collection<BlueprintPublicInfo>()({
         primaryKey: 'id',
+      }),
+      // 有缘心之助：按用户名汇总的行为与 Token 消耗用量。
+      userUsage: collection<UserUsageRecord>()({
+        primaryKey: 'username',
       }),
     },
     singletons: {

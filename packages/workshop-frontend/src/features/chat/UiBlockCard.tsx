@@ -59,7 +59,7 @@ export const UiBlockCard = ({
   const [chip, setChip] = useState<Chip | null>(null)
   // A view reads any file its reply pinned: readSnapshotFile refuses what the message did not pin.
   const readCurrentFile = useEffectEvent(async (source: string) => {
-    if (!files) throw new Error('Files are unavailable in this view.')
+    if (!files) throw new Error('此视图中文件不可用。')
     return readSnapshotFile(files, source)
   })
 
@@ -156,11 +156,11 @@ export const UiBlockCard = ({
     }
   }
 
-  const title = block.title ?? 'View'
+  const title = block.title ?? '视图'
   return (
     <div ref={cardRef} className="group/view my-3">
       {refused !== undefined ? (
-        <Banner variant="error" title="This view stopped" description={refused} />
+        <Banner variant="error" title="此视图已停止" description={refused} />
       ) : !stopped && (
         // The frame reaches past the answer's column by the body's padding, so the view's content
         // lines up with the prose around it.
@@ -176,37 +176,37 @@ export const UiBlockCard = ({
       {refused === undefined && (
         // Workshop chrome the frame cannot draw: where the view ends.
         <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] leading-4 text-kumo-inactive">
-          <span>{stopped ? 'View stopped' : block.kind === 'open' ? 'Drawing…' : 'Live view'}</span>
+          <span>{stopped ? '视图已停止' : block.kind === 'open' ? '正在绘制…' : '实时视图'}</span>
           <button
             type="button"
-            aria-label={stopped ? `Run ${title} again` : `Stop ${title}`}
+            aria-label={stopped ? `重新运行 ${title}` : `停止 ${title}`}
             onClick={() => setStopped(!stopped)}
             className={`cursor-pointer rounded px-1 font-medium transition-[color,opacity] duration-150 ease-out hover:text-kumo-default focus-visible:text-kumo-default focus-visible:outline-none ${
               stopped ? '' : 'sm:opacity-0 sm:group-hover/view:opacity-100 sm:group-focus-within/view:opacity-100'
             }`}
           >
-            {stopped ? 'Run' : 'Stop'}
+            {stopped ? '运行' : '停止'}
           </button>
         </div>
       )}
       <div aria-live="polite">
         {chip && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-kumo-line px-3 py-2" role="group" aria-label="Send to the agent">
+          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-kumo-line px-3 py-2" role="group" aria-label="发送给智能体">
             <PaperPlaneRightIcon size={14} className="text-kumo-subtle" aria-hidden />
             <div
               // A keyboard user has to be able to scroll a long message to read it all.
               tabIndex={0}
               role="region"
-              aria-label="Message to send"
+              aria-label="要发送的消息"
               className="max-h-32 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words"
             >
               <Text size="sm">{chip.message}</Text>
             </div>
             {sendBlockedReason !== undefined && <Text size="sm" variant="secondary">{sendBlockedReason}</Text>}
             <div className="ml-auto flex gap-2">
-              <WorkshopButton onClick={() => setChip(null)}>Dismiss</WorkshopButton>
+              <WorkshopButton onClick={() => setChip(null)}>忽略</WorkshopButton>
               <WorkshopButton tone="primary" disabled={chip.sending || sendBlockedReason !== undefined} onClick={send}>
-                Send
+                发送
               </WorkshopButton>
             </div>
           </div>

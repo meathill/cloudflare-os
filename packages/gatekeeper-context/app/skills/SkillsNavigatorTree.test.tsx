@@ -189,8 +189,8 @@ describe("SkillsNavigatorTree", () => {
       bubbles: true,
       cancelable: true,
     })));
-    expect(document.body.textContent).not.toContain("Rename");
-    expect(document.body.textContent).not.toContain("Delete");
+    expect(document.body.textContent).not.toContain("重命名");
+    expect(document.body.textContent).not.toContain("删除");
   });
 
   it("lets a viewer open or leave a collection shared with them, without management actions", () => {
@@ -200,14 +200,14 @@ describe("SkillsNavigatorTree", () => {
       access: { source: "private", membership: { role: "viewer", shared: true } },
     });
 
-    expect(row("collection")?.textContent).toContain("Shared with you · Viewer");
+    expect(row("collection")?.textContent).toContain("与你共享 · 查看者");
     openMenu("collection");
-    expect(menuItems().map((item) => item.textContent)).toEqual(["Open collection", "Leave"]);
+    expect(menuItems().map((item) => item.textContent)).toEqual(["打开知识集合", "退出"]);
 
-    act(() => menuItems().find((item) => item.textContent === "Leave")?.click());
+    act(() => menuItems().find((item) => item.textContent === "退出")?.click());
     expect(onLeaveCollection).toHaveBeenCalledWith({ id: "collection", title: "collection" });
     openMenu("collection");
-    act(() => menuItems().find((item) => item.textContent === "Open collection")?.click());
+    act(() => menuItems().find((item) => item.textContent === "打开知识集合")?.click());
     expect(onOpenCollection).toHaveBeenCalledWith("collection");
   });
 
@@ -218,20 +218,20 @@ describe("SkillsNavigatorTree", () => {
       access: { source: "private", membership: { role: "editor", shared: true } },
     });
 
-    expect(row("collection")?.textContent).toContain("Shared with you · Editor");
+    expect(row("collection")?.textContent).toContain("与你共享 · 编辑者");
     openMenu("collection");
     expect([...document.querySelectorAll<HTMLElement>("[role=menuitem]")]
       .map((item) => item.textContent)).toEqual([
-      "Open collection",
-      "Add skill",
-      "Upload skills",
-      "Edit",
-      "Share",
-      "Leave",
+      "打开知识集合",
+      "添加技能",
+      "上传技能",
+      "编辑",
+      "分享",
+      "退出",
     ]);
 
     const share = [...document.querySelectorAll<HTMLElement>("[role=menuitem]")]
-      .find((item) => item.textContent === "Share");
+      .find((item) => item.textContent === "分享");
     act(() => share?.click());
     expect(onShareCollection).toHaveBeenCalledWith({ id: "collection", title: "collection" });
   });
@@ -242,8 +242,8 @@ describe("SkillsNavigatorTree", () => {
       access: { source: "private", membership: { role: "owner", shared: true } },
     });
 
-    expect(row("collection")?.textContent).toContain("Shared");
-    expect(row("collection")?.textContent).not.toContain("Shared with you");
+    expect(row("collection")?.textContent).toContain("已共享");
+    expect(row("collection")?.textContent).not.toContain("与你共享");
   });
 
   it("moves skills but not legacy directories in a writable collection", () => {
@@ -251,8 +251,8 @@ describe("SkillsNavigatorTree", () => {
 
     expect(row("Incident Response")?.draggable).toBe(true);
     expect(row("Incident Response")?.textContent).toContain("Review code");
-    expect(row("Incident Response")?.textContent).toContain("12m ago");
-    expect(row("Incident Response")?.querySelector('[aria-label="Updated 12 minutes ago"]'))
+    expect(row("Incident Response")?.textContent).toContain("12 分钟前");
+    expect(row("Incident Response")?.querySelector('[aria-label="12 分钟前更新"]'))
       .not.toBeNull();
     expect(row("legacy")?.draggable).toBe(false);
   });
@@ -265,16 +265,16 @@ describe("SkillsNavigatorTree", () => {
     });
     const collectionRow = row("collection");
 
-    expect(collectionRow?.textContent).toContain("Git managed");
-    expect(collectionRow?.textContent).toContain("Private");
-    expect(collectionRow?.textContent).toContain("just now");
-    expect(collectionRow?.querySelector('[aria-label="Updated just now"]')).not.toBeNull();
+    expect(collectionRow?.textContent).toContain("由 Git 管理");
+    expect(collectionRow?.textContent).toContain("私有");
+    expect(collectionRow?.textContent).toContain("刚刚");
+    expect(collectionRow?.querySelector('[aria-label="刚刚更新"]')).not.toBeNull();
     act(() => collectionRow?.dispatchEvent(new MouseEvent("contextmenu", {
       bubbles: true,
       cancelable: true,
     })));
     const refresh = [...document.querySelectorAll<HTMLElement>("[role=menuitem]")]
-      .find((item) => item.textContent?.includes("Refresh"));
+      .find((item) => item.textContent?.includes("刷新"));
     expect(refresh).toBeDefined();
 
     await act(async () => {
@@ -287,7 +287,7 @@ describe("SkillsNavigatorTree", () => {
   it("identifies an organization collection", () => {
     renderTree({ writable: true, access: { source: "public" }, visibility: "public" });
 
-    expect(row("collection")?.textContent).toContain("Organization");
+    expect(row("collection")?.textContent).toContain("组织");
   });
 
   it("keeps delete available when collection metadata fails to load", () => {
@@ -298,7 +298,7 @@ describe("SkillsNavigatorTree", () => {
     });
 
     openMenu("collection");
-    expect(menuItems().map((item) => item.textContent)).toEqual(["Open collection", "Share", "Delete"]);
+    expect(menuItems().map((item) => item.textContent)).toEqual(["打开知识集合", "分享", "删除"]);
 
     act(() => menuItems()[2]?.click());
     expect(onDelete).toHaveBeenCalledWith({
@@ -315,13 +315,13 @@ describe("SkillsNavigatorTree", () => {
       documentsFailed: true,
     });
 
-    const retryRow = row("click to try again");
-    expect(retryRow?.textContent).toBe("Couldn't load contents, click to try again");
+    const retryRow = row("点击重试");
+    expect(retryRow?.textContent).toBe("无法加载内容，点击重试");
 
     openMenu("collection");
     const menu = document.querySelector<HTMLElement>("[role=menu]");
     expect([...menu!.querySelectorAll<HTMLElement>("[role=menuitem]")]
-      .map((item) => item.textContent)).toEqual(["Open collection", "Edit"]);
+      .map((item) => item.textContent)).toEqual(["打开知识集合", "编辑"]);
 
     act(() => retryRow?.click());
     expect(onRetryCollection).toHaveBeenCalledWith("collection");
@@ -336,11 +336,11 @@ describe("SkillsNavigatorTree", () => {
     });
 
     await act(async () => {
-      row("click to try again")?.click();
+      row("点击重试")?.click();
       await Promise.resolve();
     });
 
-    expect(document.body.textContent).toContain("Couldn't load collection contents");
+    expect(document.body.textContent).toContain("无法加载知识集合内容");
   });
 
   it("shows collection actions in the action menu", () => {
@@ -355,12 +355,12 @@ describe("SkillsNavigatorTree", () => {
     expect(menu).not.toBeNull();
     expect([...menu!.querySelectorAll<HTMLElement>('[role="menuitem"]')]
       .map((item) => item.textContent)).toEqual([
-        "Open collection",
-        "Add skill",
-        "Upload skills",
-        "Edit",
-        "Share",
-        "Delete",
+        "打开知识集合",
+        "添加技能",
+        "上传技能",
+        "编辑",
+        "分享",
+        "删除",
       ]);
   });
 
@@ -373,7 +373,7 @@ describe("SkillsNavigatorTree", () => {
       cancelable: true,
     })));
     const upload = [...document.body.querySelectorAll<HTMLElement>("[role=menuitem]")]
-      .find((item) => item.textContent?.includes("Upload skills"));
+      .find((item) => item.textContent?.includes("上传技能"));
     act(() => upload?.click());
 
     expect(onUploadSkills).toHaveBeenCalledWith({
@@ -392,12 +392,12 @@ describe("SkillsNavigatorTree", () => {
       cancelable: true,
     })));
     const rename = [...document.body.querySelectorAll<HTMLElement>("[role=menuitem]")]
-      .find((item) => item.textContent?.includes("Rename"));
+      .find((item) => item.textContent?.includes("重命名"));
     act(() => rename?.click());
 
-    expect(container?.querySelector('[aria-label="Rename skill"]')).toBeNull();
+    expect(container?.querySelector('[aria-label="重命名技能"]')).toBeNull();
     act(() => vi.advanceTimersByTime(0));
-    expect(container?.querySelector('[aria-label="Rename skill"]')).not.toBeNull();
+    expect(container?.querySelector('[aria-label="重命名技能"]')).not.toBeNull();
   });
 
   it("shows an invalid skill manifest with its error and opens it for fixing", () => {
@@ -421,7 +421,7 @@ describe("SkillsNavigatorTree", () => {
     expect(skillRow?.textContent).not.toContain("Unused");
 
     openMenu("pricing-analytics");
-    expect(menuItems().map((item) => item.textContent)).toEqual(["Delete"]);
+    expect(menuItems().map((item) => item.textContent)).toEqual(["删除"]);
 
     act(() => skillRow?.click());
     expect(onSelectSkill).toHaveBeenCalledWith("collection", "pricing-analytics/SKILL.md");
@@ -435,15 +435,15 @@ describe("SkillsNavigatorTree", () => {
       documentCount: 40,
     });
 
-    expect(container?.textContent).not.toContain("No contents");
-    act(() => row("40 files, no skills. Open collection")?.click());
+    expect(container?.textContent).not.toContain("暂无内容");
+    act(() => row("40 个文件，没有技能。打开知识集合")?.click());
     expect(onOpenCollection).toHaveBeenCalledWith("collection");
   });
 
   it("calls a collection with no documents empty", () => {
     renderTree({ writable: true, children: [], documentCount: 0 });
 
-    expect(row("No contents")).toBeDefined();
-    expect(container?.textContent).not.toContain("Open collection");
+    expect(row("暂无内容")).toBeDefined();
+    expect(container?.textContent).not.toContain("打开知识集合");
   });
 });

@@ -27,6 +27,10 @@
       "types": "./src/limits.ts",
       "import": "./src/limits.ts"
     },
+    "./billing": {
+      "types": "./src/billing.ts",
+      "import": "./src/billing.ts"
+    },
     "./code-change": {
       "types": "./src/code-change.ts",
       "import": "./src/code-change.ts"

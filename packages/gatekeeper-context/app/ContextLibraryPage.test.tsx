@@ -153,7 +153,7 @@ describe("ContextLibraryPage deep links", () => {
     await vi.waitFor(() => expect(text()).not.toContain("Body of other.md"));
     expect(navigate).not.toHaveBeenCalled();
 
-    await act(async () => button("Context & Skills").click());
+    await act(async () => button("知识库与技能").click());
     expect(navigate).toHaveBeenLastCalledWith("/", { replace: false });
   });
 
@@ -177,27 +177,27 @@ describe("ContextLibraryPage deep links", () => {
   it("shows a missing document as unavailable, not as an empty file", async () => {
     const api = new FakeContextApi();
     const { navigate } = await render(api, "/collections/c1/files/gone.md");
-    await vi.waitFor(() => expect(text()).toContain("This document is unavailable"));
+    await vi.waitFor(() => expect(text()).toContain("此文档不可用"));
     expect(container!.querySelector('input[value="gone.md"]')).toBeNull();
-    await act(async () => button("Back to collection").click());
+    await act(async () => button("返回集合").click());
     expect(navigate).toHaveBeenLastCalledWith("/collections/c1", { replace: true });
   });
 
   it("shows a missing or inaccessible collection as unavailable", async () => {
     const api = new FakeContextApi(false);
     const { navigate } = await render(api, "/collections/c1/files/guides/setup.md");
-    await vi.waitFor(() => expect(text()).toContain("This collection is unavailable"));
-    await act(async () => button("Context & Skills").click());
+    await vi.waitFor(() => expect(text()).toContain("此知识集合已不可用"));
+    await act(async () => button("知识库与技能").click());
     expect(navigate).toHaveBeenLastCalledWith("/", { replace: true });
   });
 
   it("reads nothing for a malformed path", async () => {
     const api = new FakeContextApi();
     const { navigate } = await render(api, "/collections/c1/docs/a.md");
-    expect(text()).toContain("This page doesn't exist");
+    expect(text()).toContain("此页面不存在");
     expect(api.getContextCollectionMetadata).not.toHaveBeenCalled();
     expect(api.getContextDocument).not.toHaveBeenCalled();
-    await act(async () => button("Context & Skills").click());
+    await act(async () => button("知识库与技能").click());
     expect(navigate).toHaveBeenLastCalledWith("/", { replace: true });
   });
 });

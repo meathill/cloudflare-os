@@ -40,15 +40,15 @@ export const GadgetSaveDialog = ({
       writeSavedFile(storageKey, { accountId, url, name: fileName })
       const href = safeExternalUrl(url)
       toasts.add({
-        title: `Saved to ${resource.title}`,
+        title: `已保存到 ${resource.title}`,
         variant: 'success',
-        actions: href ? [{ children: 'Open', onClick: () => window.open(href, '_blank', 'noopener') }] : undefined,
+        actions: href ? [{ children: '打开', onClick: () => window.open(href, '_blank', 'noopener') }] : undefined,
       })
       onClose()
     } catch (err) {
       console.error(`Failed to save Gadget to ${resource.title}:`, err)
       toasts.add({
-        title: err instanceof Error && err.message ? err.message : `Failed to save to ${resource.title}`,
+        title: err instanceof Error && err.message ? err.message : `保存到 ${resource.title} 失败`,
         variant: 'error',
       })
     } finally {
@@ -60,11 +60,11 @@ export const GadgetSaveDialog = ({
     return (
       <DeleteConfirmationDialog
         open
-        title={`Update “${saved.name}”?`}
-        description="This replaces its content with the current version of this gadget. Suggestions that are pending in it are discarded, and comments may lose their place."
+        title={`更新 “${saved.name}”？`}
+        description="这将用此 gadget 的当前版本覆盖其内容。其中待处理的建议会被丢弃，评论可能会失去位置。"
         isDeleting={updating}
-        confirmLabel="Update"
-        confirmingLabel="Updating…"
+        confirmLabel="更新"
+        confirmingLabel="更新中…"
         onOpenChange={open => { if (!open) onClose() }}
         onConfirm={async () => {
           setUpdating(true)
@@ -77,16 +77,16 @@ export const GadgetSaveDialog = ({
 
   return (
     <CreationAccountDialog
-      title={`Save to ${resource.title}`}
+      title={`保存到 ${resource.title}`}
       target={target}
       purpose="save"
-      submitLabel="Save"
+      submitLabel="保存"
       submitDisabled={!name.trim()}
       // A savable type has a configurator, whose choice is where the file goes.
       onSubmit={({ accountId, configuration }) => save(accountId, configuration!, name.trim())}
       onCancel={onClose}
     >
-      <WorkshopInput label="Name" value={name} onChange={event => setName(event.target.value)} />
+      <WorkshopInput label="名称" value={name} onChange={event => setName(event.target.value)} />
     </CreationAccountDialog>
   )
 }

@@ -499,7 +499,8 @@ test("search finds the commands for agents' everyday tasks in the API's own word
     ...["redeem share link", "redeem a share link", "open workspace with share key", "join workspace from link",
       "join a shared workspace", "open a workspace shared with me", "configure observers"]
       .map((task): [string, RegExp, number] => [task, openWorkspace, 1]),
-    ["observer verification", openWorkspace, 4],
+    // 有缘心之助：request/confirm-email-verification 两个命令排在 open-workspace 前面，阈值放宽到 6。
+    ["observer verification", openWorkspace, 6],
     ["choose accounts to observe a shared workspace", openWorkspace, 3],
     ["share key", openWorkspace, 3],
     // An admin's write to a workspace.

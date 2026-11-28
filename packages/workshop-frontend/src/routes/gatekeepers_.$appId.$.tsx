@@ -21,7 +21,7 @@ export const Route = createFileRoute('/gatekeepers_/$appId/$')({
 function GatekeeperApp() {
   const { appId, _splat } = Route.useParams()
   const app = useGatekeeperApps().find((a) => a.id === appId)
-  useDocumentTitle(app?.title ?? 'App')
+  useDocumentTitle(app?.title ?? '应用')
   // A trailing slash names the same place; keep apps from seeing an empty last segment.
   const path = `/${(_splat ?? '').replace(/\/+$/, '')}`
   return <GatekeeperAppPage appId={appId} path={path} />

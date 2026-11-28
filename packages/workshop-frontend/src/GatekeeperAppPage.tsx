@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { GatekeeperUiFrame } from '@gadgets/workshop-shared/gatekeeper'
+import type { GatekeeperAppSurface, GatekeeperUiFrame } from '@gadgets/workshop-shared/gatekeeper'
 import { useAuthenticatedApi } from './AuthContext'
 import SandboxedGatekeeperApp from './SandboxedGatekeeperApp'
 import { reportIssue } from './errorReporting'
@@ -14,7 +14,12 @@ function disposeFrame(frame: GatekeeperUiFrame | null) {
  * Fetches the app frame (iframe HTML + `ui` capability) from the backend and hosts it, delivering
  * the app-local `path` to it without refetching when only the path changes.
  */
-export default function GatekeeperAppPage({ appId, path }: { appId: string, path: string }) {
+export default function GatekeeperAppPage({ appId, path, surface = 'app' }: {
+  appId: string
+  path: string
+  /** 有缘心之助：'admin' opens the app's admin-only view inside the admin panel. */
+  surface?: GatekeeperAppSurface
+}) {
   const { authenticatedApi } = useAuthenticatedApi()
   // Wrap the frame in an object: it holds a `ui` RPC stub, and we never want useState's setter to
   // treat a stored value as an updater function.
@@ -25,10 +30,10 @@ export default function GatekeeperAppPage({ appId, path }: { appId: string, path
     let cancelled = false
     let acquired: GatekeeperUiFrame | null = null
     authenticatedApi
-      .getGatekeeperApp(appId)
+      .getGatekeeperApp(appId, surface)
       .then((frame) => {
         if (!frame) {
-          if (!cancelled) setError('This app is not available on this deployment.')
+          if (!cancelled) setError('此部署中没有此应用。')
           return
         }
         if (cancelled) {
@@ -49,7 +54,7 @@ export default function GatekeeperAppPage({ appId, path }: { appId: string, path
       cancelled = true
       disposeFrame(acquired)
     }
-  }, [authenticatedApi, appId])
+  }, [authenticatedApi, appId, surface])
 
   if (error) {
     return (
@@ -57,7 +62,7 @@ export default function GatekeeperAppPage({ appId, path }: { appId: string, path
     )
   }
   if (!state) {
-    return <div className="px-4 py-16 text-center text-sm text-kumo-subtle">Loading…</div>
+    return <div className="px-4 py-16 text-center text-sm text-kumo-subtle">正在加载…</div>
   }
 
   // Fill the routed area below the header so the embedded app can manage its own internal layout.

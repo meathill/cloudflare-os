@@ -46,7 +46,7 @@ export const FocusChip = (props: { focus: TitledFocus } & (
         <button
           type="button"
           onClick={props.onOpen}
-          aria-label={`Show ${label}`}
+          aria-label={`查看 ${label}`}
           className={`${CHIP_CLASS} cursor-pointer px-2.5 py-1 transition-colors hover:bg-kumo-tint hover:text-kumo-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring`}
         >
           {face}
@@ -78,7 +78,7 @@ export const FocusChip = (props: { focus: TitledFocus } & (
           className="themed-floating-shadow !z-[1100] !w-auto !min-w-0 !max-w-[min(20rem,calc(100vw-24px))] rounded-xl border border-kumo-line bg-kumo-base !px-3 !py-2 text-[12px] leading-[18px] text-kumo-default !outline-none [&>:first-child]:hidden"
         >
           <Popover.Title className="block break-words text-[12px] font-normal leading-[18px] text-kumo-default">
-            The agent will be told you're viewing {label}
+            智能体将被告知你正在查看 {label}
           </Popover.Title>
           {/* Scrolled rather than clamped, since this is where the user checks what will be sent. */}
           {context && (
@@ -92,7 +92,7 @@ export const FocusChip = (props: { focus: TitledFocus } & (
         type="button"
         onClick={props.onDismiss}
         disabled={props.disabled}
-        aria-label={`Don't send ${label} with this message`}
+        aria-label={`此消息不发送 ${label}`}
         className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-kumo-inactive transition-colors hover:bg-kumo-tint hover:text-kumo-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring disabled:cursor-not-allowed disabled:opacity-50"
       >
         <X size={10} weight="bold" />

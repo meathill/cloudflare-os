@@ -165,6 +165,9 @@ export interface GatekeeperUserSelectionReceiver extends RpcTarget {
   receive(selection: GatekeeperUserSelection): Promise<void>;
 }
 
+/** 有缘心之助：where a gatekeeper's management app is opened; see AppUiContext.surface. */
+export type GatekeeperAppSurface = "app" | "admin";
+
 /**
  * Per-open context the Workshop passes to GatekeeperUser.startAppUi(). Supplied
  * fresh each time rather than baked into the account: a user's admin status can
@@ -174,6 +177,13 @@ export interface GatekeeperUserSelectionReceiver extends RpcTarget {
 export type AppUiContext = {
   /** Whether the opening user is currently a deployment admin. */
   isAdmin: boolean;
+
+  /**
+   * 有缘心之助：where the app is opened. "app" is its own page (/gatekeepers/<id>); "admin" is a tab
+   * of the deployment admin panel, opened only for deployment admins, where a gatekeeper may show
+   * what it keeps from everyone else. Absent from a Workshop older than this field: treat as "app".
+   */
+  surface?: GatekeeperAppSurface;
 
   /**
    * Redeems the tickets this account's UI receives from the Workshop user
@@ -284,6 +294,21 @@ export type AccountDescription = {
    * surfaces it as a nav entry / page using this title.
    */
   providesUi?: { title: string; icon?: AvatarImage };
+
+  /**
+   * 有缘心之助：set by an auto-provisioned account minted in a form its gatekeeper no longer
+   * supports (e.g. without the identity newer accounts carry). The Workshop then revokes it and
+   * provisions a fresh one in its place; workspaces drop the old account's ambient record by
+   * themselves, since it names an account that is gone.
+   */
+  superseded?: true;
+
+  /**
+   * 有缘心之助：when set, the Workshop forwards each text message this account's owner sends in a
+   * chat to `GatekeeperUser.observeUserMessage`. Only the user's own prompt text is forwarded —
+   * never AI replies, attachments or slash commands.
+   */
+  observesUserMessages?: true;
 }
 
 /** Describes metadata about a specific instance of a resource. Returned by Gatekeeper.describe(). */
@@ -908,6 +933,12 @@ export interface GatekeeperConnectCallback extends WorkerEntrypoint {
 }
 
 /**
+ * 有缘心之助：管理员导出的一个文件（见 GatekeeperUser.exportForAdmin）。`body` 对文本
+ * contentType 是原文，否则是 base64（同 Context 的 ContextDocument）。
+ */
+export type GatekeeperExportFile = { path: string; contentType: string; body: string };
+
+/**
  * RPC interface to an Adapter. This is a privileged interface exposed to the Gadget Workshop UI
  * itself, not to Gadgets nor AI agents.
  *
@@ -1068,6 +1099,34 @@ export interface GatekeeperUser extends WorkerEntrypoint {
    * the tickets its UI receives from the Workshop user picker (GatekeeperUserSelection).
    */
   startAppUi?(context: AppUiContext): Promise<GatekeeperUiFrame>;
+
+  /**
+   * 有缘心之助：receive one text message the account's owner sent in a Workshop chat. Called by
+   * the Workshop for accounts whose describe() sets AccountDescription.observesUserMessages.
+   * `sentAt` is the message's timestamp in milliseconds; `text` is the user's own prompt text.
+   * Implementations must not reply through this — it is a one-way observation.
+   */
+  observeUserMessage?(message: { text: string; sentAt: number }): Promise<void>;
+
+  /**
+   * 有缘心之助：export every file this account holds, for a deployment admin's export (see
+   * AdminApi.exportUserGatekeeperContent). Called only through the Workshop's own Durable
+   * Object binding after the admin's call was recorded in the audit log; it bypasses the
+   * gatekeeper's own sharing authorization, which that record compensates for. An account
+   * that does not implement it is reported as not supporting export.
+   */
+  exportForAdmin?(): Promise<GatekeeperExportFile[]>;
+
+  /**
+   * 有缘心之助：delete the named top-level items this account itself may delete (for Context:
+   * collection IDs), for a deployment admin's deletion (see
+   * AdminApi.deleteUserGatekeeperContent). Called only through the Workshop's own Durable
+   * Object binding after the admin's call was recorded in the audit log. The account deletes
+   * with its own authority over each item, so nothing it may not delete is forced: such an id
+   * is skipped. Returns the ids actually deleted. An account that does not implement it is
+   * reported as not supporting deletion.
+   */
+  deleteForAdmin?(ids: string[]): Promise<string[]>;
 
   // TODO:
   // - Query whether account has scope to access a particular URL.

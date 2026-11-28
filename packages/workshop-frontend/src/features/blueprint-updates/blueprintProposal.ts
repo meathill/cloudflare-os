@@ -56,20 +56,16 @@ export type BlueprintProposalDetails = {
 const shortCommit = (commitId: string) => commitId.slice(0, 7)
 
 const METHODS: Record<BlueprintMerge['kind'], string> = {
-  follow: 'Follow only: the release is recorded, no file changes',
-  fastForward: 'Fast-forward: the files are replaced by the release’s',
-  merge: 'Three-way merge',
+  follow: '仅跟随：记录版本，不更改文件',
+  fastForward: '快进：使用该版本替换文件',
+  merge: '三方合并',
 }
 
 const CONFLICTS_NOTE =
-  'Each file with conflicts holds conflict markers where the two sides disagree, to be ' +
-  'resolved before accepting. A file that one side deleted and the other changed has no ' +
-  'markers: it holds the changed version.'
+  '冲突文件在双方存在分歧的位置包含冲突标记，接受前需要解决。一方删除而另一方修改的文件没有标记，保留的是修改后的版本。'
 
 const UNVERIFIED_BASE_NOTE =
-  'The gadget and the blueprint share no history, so the merge base is a guess at what the ' +
-  'gadget was built from. A change of the gadget’s that the guess happens to include looks ' +
-  'like something the blueprint removed, and is undone without a conflict being reported.'
+  '应用与蓝图没有共同历史，因此合并基准只能根据应用原始版本猜测。猜测结果中包含的应用更改可能被误认为蓝图删除的内容并被撤销，且不会报告冲突。'
 
 /**
  * Describes a proposal to merge a blueprint's release into a gadget. Its `kind` says what it does
@@ -88,9 +84,8 @@ export const describeBlueprintProposal = (
   const conflicted = merge.conflictPaths.length > 0
 
   const summary = merge.kind === 'follow'
-    ? 'This gadget already has everything in this version, so nothing in it changes. ' +
-      'Accepting means it gets its future updates from this blueprint.'
-    : 'This gadget hasn’t been changed since it was last updated, so it simply becomes this version.'
+    ? '此应用已包含此版本的全部内容，因此不会更改文件。接受后，应用今后将从此蓝图获取更新。'
+    : '此应用自上次更新以来没有更改，因此将直接更新到此版本。'
 
   const missingBindings = Object.entries(merge.missingBindings ?? {})
     .map(([name, { title, description }]) => ({ name, title: title || name, description }))
@@ -102,39 +97,37 @@ export const describeBlueprintProposal = (
   ]
 
   return {
-    heading: `${titleOf(merge.title)}, version ${merge.version}`,
+    heading: `${titleOf(merge.title)}，版本 ${merge.version}`,
     ...(combined ? {
       customizations:
-        'You’ve customized this gadget beyond what was in the original blueprint. ' + (
+        '你对应用所做的自定义超出了原蓝图的内容。' + (
           reviewed
             ? decided
-              ? 'An agent was asked to make sure your customizations are compatible with the new version.'
-              : 'An agent is now making sure your customizations are compatible with the new version.'
+              ? '已请智能体确认你的自定义内容与新版本兼容。'
+              : '智能体正在确认你的自定义内容与新版本兼容。'
             : conflicted
-              ? 'Some of your customizations clash with the new version, and no agent is ' +
-                'checking them.' + (decided ? '' : ' Ask in this chat to have them sorted out before accepting.')
-              : 'No agent is checking that your customizations are compatible with the new version.'
+              ? '部分自定义内容与新版本冲突，目前没有智能体检查。' + (decided ? '' : '请在接受前通过此对话请求解决。')
+              : '目前没有智能体检查你的自定义内容是否与新版本兼容。'
         ),
     } : { summary }),
     // A guessed base can only have misled a merge that changed something.
     ...(merge.unverifiedBase && changesFiles ? {
       warning: {
-        title: 'Some of your changes may have been undone',
+        title: '你的部分更改可能已被撤销',
         description:
-          'This gadget’s history doesn’t connect to the blueprint’s, so the update may have ' +
-          'quietly undone changes made to this gadget.' +
-          (decided ? '' : ' Check the result carefully before accepting.'),
+          '应用的历史与蓝图不相连，因此更新可能在未提示的情况下撤销了应用中的更改。' +
+          (decided ? '' : '请在接受前仔细检查结果。'),
       },
     } : {}),
     ...(decided ? {} : {
       nextStep: changesFiles
-        ? 'Nothing changes until you accept. Try this version in the preview first.'
-        : 'Nothing changes until you accept.',
+        ? '接受之前不会更改任何内容。请先在预览中试用此版本。'
+        : '接受之前不会更改任何内容。',
     }),
     missingBindings,
     // The agent that reviews a merge is asked to set these up. No other proposal starts one.
     ...(missingBindings.length > 0 && !(combined && reviewed) && !decided
-      ? { missingBindingsHint: 'Ask in this chat to have them set up.' }
+      ? { missingBindingsHint: '请在此对话中请求配置。' }
       : {}),
     details: {
       method: METHODS[merge.kind],

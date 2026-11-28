@@ -874,15 +874,17 @@ describe("AdminSettings gateway providers", () => {
   const OPENAI_ON = { ...OPENAI_OFF, enabledBy: "admin" };
   const GOOGLE_OFF = { provider: "google" };
   const AUTO_OFF = { provider: "cloudflare-auto-router" };
+  const GO_OFF = { provider: "opencode-go" };
+  const VERTEX_OFF = { provider: "google-vertex" };
 
   it("turns a provider on and off, storing and mirroring each change", async () => {
     const { inDo, put, mirror } = adminSettings();
     expect(await providers(inDo)).toStrictEqual(
-        { stored: [], view: [AUTO_OFF, ...FLOOR, OPENAI_OFF, GOOGLE_OFF] });
+        { stored: [], view: [AUTO_OFF, ...FLOOR, OPENAI_OFF, GOOGLE_OFF, VERTEX_OFF, GO_OFF] });
 
     await inDo(admin => admin.setGatewayProviderEnabled("openai", true, ACTOR));
     expect(await providers(inDo)).toStrictEqual(
-        { stored: ["openai"], view: [AUTO_OFF, ...FLOOR, OPENAI_ON, GOOGLE_OFF] });
+        { stored: ["openai"], view: [AUTO_OFF, ...FLOOR, OPENAI_ON, GOOGLE_OFF, VERTEX_OFF, GO_OFF] });
     expect(put).toHaveBeenCalledTimes(1);
     expect(put.mock.calls[0]![0]).toBe(".adminConfig");
     expect(JSON.parse(mirror.current!).addedProviders).toStrictEqual(["openai"]);
@@ -900,7 +902,7 @@ describe("AdminSettings gateway providers", () => {
 
     await inDo(admin => admin.setGatewayProviderEnabled("openai", false, ACTOR));
     expect(await providers(inDo)).toStrictEqual(
-        { stored: [], view: [AUTO_OFF, ...FLOOR, OPENAI_OFF, GOOGLE_OFF] });
+        { stored: [], view: [AUTO_OFF, ...FLOOR, OPENAI_OFF, GOOGLE_OFF, VERTEX_OFF, GO_OFF] });
     expect(JSON.parse(mirror.current!).addedProviders).toStrictEqual([]);
     const off = (await inDo(admin => admin.getSettings("admin"))).gatewayModels!;
     expect(off.providers).toEqual(["cloudflare", "anthropic"]);
@@ -992,6 +994,8 @@ describe("AdminSettings gateway providers", () => {
       expect(gatewayModels!.providerSettings).toStrictEqual([
         AUTO_OFF, ...FLOOR, OPENAI_OFF,
         { provider: "google", enabledBy: "admin" },
+        VERTEX_OFF,
+        GO_OFF,
       ]);
       expect(gatewayModels!.models.map(model => model.id)).toContain("gemini-3.6-flash");
       await inDo(admin => admin.setGatewayModelMode("claude-fable-5-2", "hidden", ACTOR));
@@ -1013,7 +1017,7 @@ const listed = (inDo: ReturnType<typeof adminSettings>["inDo"]) => inDo(async ad
 
 describe("AdminSettings gateway order", () => {
   // The providers AI Gateway serves, in catalog order.
-  const SERVED = ["cloudflare-auto-router", "cloudflare", "anthropic", "openai", "google"] as const;
+  const SERVED = ["cloudflare-auto-router", "cloudflare", "anthropic", "openai", "google", "google-vertex", "opencode-go"] as const;
 
   it("lists a provider's models, added ones among them, in the order set", async () => {
     const { inDo, order } = adminSettings();

@@ -26,6 +26,9 @@ const MODELS_DEV_PROVIDER_IDS: Record<AiModelProvider, string | null> = {
   ollama: null,
   // No model can be added under it: Auto Router is the gateway's one model of its own.
   'cloudflare-auto-router': null,
+  'opencode-go': 'opencode-go',
+  // 有缘心之助：建议列表用部署自有的目录（SUGGESTED_MODELS），不依赖 models.dev。
+  'google-vertex': null,
 }
 
 // The longest ID or name the server accepts for an added model.

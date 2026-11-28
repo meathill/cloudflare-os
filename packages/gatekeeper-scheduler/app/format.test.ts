@@ -11,7 +11,7 @@ const common = {
 
 describe("formatCadence", () => {
   it("describes interval, weekday, and one-shot schedules", () => {
-    expect(formatCadence({ kind: "interval", everyMs: 3_600_000, anchorMs: 0 })).toBe("Every hour");
+    expect(formatCadence({ kind: "interval", everyMs: 3_600_000, anchorMs: 0 })).toBe("每 1 小时");
     expect(
       formatCadence({
         kind: "calendar",
@@ -25,14 +25,19 @@ describe("formatCadence", () => {
           anchorMs: 0,
         },
       }),
-    ).toBe("Weekdays at 8:00 AM");
+    ).toBe("工作日 8:00");
+    expect(formatCadence({
+      kind: "calendar",
+      timeZone: "Asia/Shanghai",
+      rule: { freq: "weekly", interval: 2, byDay: ["MO", "WE"], hour: 8, minute: 0, anchorMs: 0 },
+    })).toBe("每 2 周：周一和周三 8:00");
     expect(
       formatCadence({
         kind: "once",
         fireAt: Date.UTC(2026, 6, 30, 14),
         timeZone: "America/Chicago",
       }),
-    ).toBe("Once on Jul 30, 2026 at 9:00 AM");
+    ).toBe("2026年7月30日 9:00 执行一次");
   });
 });
 
@@ -53,10 +58,10 @@ describe("formatTiming", () => {
       failureCode: "authorization_failed",
     };
 
-    expect(formatTiming(active, now).relative).toBe("Next run in 2 hours");
+    expect(formatTiming(active, now).relative).toBe("下次运行：2小时后");
     expect(formatTiming(dead, now)).toMatchObject({
-      relative: "Failed 1 minute ago",
-      diagnostic: "Authorization failed after retries.",
+      relative: "1分钟前失败",
+      diagnostic: "重试后授权仍然失败。",
     });
   });
 
@@ -68,7 +73,7 @@ describe("formatTiming", () => {
     };
 
     expect(formatTiming(active, Date.UTC(2026, 6, 30, 12))).toEqual({
-      relative: "Next run pending",
+      relative: "等待下次运行",
     });
   });
 
@@ -82,7 +87,7 @@ describe("formatTiming", () => {
       retrying: true,
     };
 
-    expect(formatTiming(retrying, now).relative).toBe("Next run in 5 minutes (retry)");
+    expect(formatTiming(retrying, now).relative).toBe("下次运行：5分钟后（重试）");
   });
 });
 
@@ -96,9 +101,9 @@ describe("formatOccurrences", () => {
 
   it("reports progress toward a counted bound", () => {
     expect(formatOccurrences({ ...hourly, occurrences: { count: 3 }, occurrenceCount: 1 }))
-      .toBe("1 of 3 occurrences");
+      .toBe("已用计划次数：1 / 3");
     expect(formatOccurrences({ ...hourly, occurrences: { count: 1 } }))
-      .toBe("0 of 1 occurrence");
+      .toBe("已用计划次数：0 / 1");
   });
 
   it("renders a time bound in the schedule's own timezone", () => {
@@ -114,8 +119,9 @@ describe("formatOccurrences", () => {
     };
 
     // Rendered in the cadence's zone, not UTC: 13:00Z is 9am in New York.
-    expect(formatOccurrences(calendar)).toContain("Aug 3, 2026");
-    expect(formatOccurrences(calendar)).toContain("EDT");
+    expect(formatOccurrences(calendar)).toContain("2026年8月3日");
+    expect(formatOccurrences(calendar)).toContain("GMT-4");
+    expect(formatOccurrences(calendar)).toContain("09:00");
   });
 
   it("omits a bound the schedule does not have", () => {
@@ -133,19 +139,19 @@ describe("formatTiming terminal copy", () => {
 
   it("distinguishes a used bound from a delivered one-shot", () => {
     expect(formatTiming({ ...base, occurrences: { count: 2 } }, 0).diagnostic)
-      .toBe("This recurring task used its last scheduled occurrence.");
+      .toBe("此周期任务已到达设定的结束条件。");
     expect(
       formatTiming(
         { ...base, cadence: { kind: "once", fireAt: 0, timeZone: "UTC" } },
         0,
       ).diagnostic,
-    ).toBe("This one-time task completed.");
+    ).toBe("此一次性任务已完成。");
   });
 
   it("explains a recurrence that expired before its first occurrence", () => {
     const expired = { ...base, status: "expired", expiredAt: 0 } as ManagementSchedule;
 
     expect(formatTiming(expired, 0).diagnostic)
-      .toBe("This recurring task's cutoff passed before its first occurrence.");
+      .toBe("此周期任务在首次执行前已超过截止时间。");
   });
 });

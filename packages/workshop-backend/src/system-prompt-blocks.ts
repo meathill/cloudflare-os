@@ -7,18 +7,22 @@ import type { Api, Context, Model } from "@earendil-works/pi-ai";
 // `content`, and the chat's project-specific text as its `sections` (see runAgentPass). pi renders
 // both as one system block, so a change to the project-specific text would miss the cache from
 // the start of the prompt. The onPayload hook that ai-models.ts installs on every model handle
-// splits that block at the end of the content and marks a cache breakpoint there. The two blocks
-// concatenate to exactly the text pi rendered.
+// splits that block at the end of the content and marks cache breakpoints at both halves. The two
+// blocks concatenate to exactly the text pi rendered.
 //
-// - anthropic-messages: pi's breakpoint on the system block moves to the static block, so the
-//   request keeps the same number of breakpoints (Anthropic allows 4). The head of the request
-//   -- the tools, any system blocks before the prompt, and the static text -- is the same in
-//   every chat of the agent's kind, so its breakpoints are kept for 1 hour, not 5 minutes: a
-//   chat that resumes after a longer pause still reads it, and so does a new chat. The chat's
-//   own messages keep pi's 5 minutes.
+// - anthropic-messages: pi's breakpoint on the system block moves to the static block, and the
+//   dynamic block gains one of its own, both kept for 1 hour. The head of the request -- any
+//   system blocks before the prompt and the static text -- is the same in every chat of the
+//   agent's kind, and the dynamic text is stable within a workspace (the snapshot is pinned and
+//   the catalog changes rarely), so a chat that resumes after a longer pause, and a new chat of
+//   the same workspace, read both halves at the cache rate. The chat's own messages keep pi's
+//   5 minutes. The tools give up the breakpoint pi put on them: the static block's breakpoint
+//   already caches the tools ahead of it, and the request stays within Anthropic's 4 breakpoints
+//   even when an OAuth identity block takes a slot beside the static text, the dynamic text and
+//   the last message.
 // - openai-responses, GPT-5.6 and later: the leading developer message (after the
 //   additional_tools items pi declares the tools in, for models that take them) becomes two
-//   input_text parts, with an explicit prompt_cache_breakpoint on the first. These models look up
+//   input_text parts, with an explicit prompt_cache_breakpoint on each. These models look up
 //   cached prefixes only at message ends; older ones cache at fixed intervals and don't support
 //   the field.
 // - Other APIs: unchanged.
@@ -87,18 +91,27 @@ function splitAnthropicSystem(payload: object, staticText: string): object | und
   }
   const { cache_control, ...block } = prompt;
   // Anthropic requires every 1-hour breakpoint to come before any 5-minute one, so all of the
-  // head's breakpoints change together.
+  // head's breakpoints change together. The tools drop theirs: the static block's breakpoint
+  // caches the tools ahead of it, and the fourth slot stays free for the OAuth identity block.
   return {
     ...payload,
     ...("tools" in payload && Array.isArray(payload.tools)
-        ? { tools: payload.tools.map(cachedForAnHour) }
+        ? { tools: payload.tools.map(withoutBreakpoint) }
         : {}),
     system: [
       ...system.slice(0, -1).map(cachedForAnHour),
       cachedForAnHour({ ...block, text: staticText, cache_control }),
-      { ...block, text: prompt.text.slice(staticText.length) },
+      cachedForAnHour({ ...block, text: prompt.text.slice(staticText.length), cache_control }),
     ],
   };
+}
+
+// `block` without its breakpoint, if it had one.
+function withoutBreakpoint(block: unknown): unknown {
+  if (typeof block !== "object" || block === null || !("cache_control" in block)) return block;
+  const rest = { ...(block as Record<string, unknown>) };
+  delete rest.cache_control;
+  return rest;
 }
 
 // `block` with its breakpoint, if it has one, kept for 1 hour.
@@ -125,7 +138,8 @@ function splitOpenAiResponsesInstructions(payload: object, staticText: string): 
     ...instructions,
     content: [
       { type: "input_text", text: staticText, prompt_cache_breakpoint: { mode: "explicit" } },
-      { type: "input_text", text: instructions.content.slice(staticText.length) },
+      { type: "input_text", text: instructions.content.slice(staticText.length),
+        prompt_cache_breakpoint: { mode: "explicit" } },
     ],
   };
   return { ...payload, input };

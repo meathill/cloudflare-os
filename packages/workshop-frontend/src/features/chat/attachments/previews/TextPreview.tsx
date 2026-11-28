@@ -8,7 +8,7 @@ export const TextPreview = ({ bytes, name }: AttachmentPreviewProps) => {
   // The chat re-renders on every streamed token; a large file is decoded once, not each time.
   const text = useMemo(() => decodeText(bytes), [bytes]);
   if (text === "") {
-    return <div className="grid h-full place-items-center text-[13px] text-kumo-subtle">This file is empty.</div>;
+    return <div className="grid h-full place-items-center text-[13px] text-kumo-subtle">此文件为空。</div>;
   }
   return <CodeEditor filename={name} text={text} />;
 };

@@ -58,7 +58,7 @@ describe.each(['profile', 'out-of-credits'] as const)('%s native billing connect
     root = createRoot(container)
     const render = () => root!.render(panel === 'profile' ? <UsageSettings /> : <OutOfCreditsModal open onClose={() => {}} />)
     await act(async () => render())
-    const connect = Array.from(document.body.querySelectorAll('button')).find(b => b.textContent?.includes('Connect Cloudflare'))!
+    const connect = Array.from(document.body.querySelectorAll('button')).find(b => b.textContent?.includes('连接 Cloudflare'))!
     await act(async () => connect.click())
     expect(authentication.open).toHaveBeenCalledOnce()
     let finishFocus!: (value: CloudflareUsageInfo) => void

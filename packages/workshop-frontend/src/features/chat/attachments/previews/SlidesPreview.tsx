@@ -10,10 +10,10 @@ import { SlideFrame } from "./SlideFrame";
 const MAX_SLIDE_WIDTH = 960;
 
 const UNSUPPORTED_NAMES: Record<SlideUnsupportedKind, string> = {
-  chart: "charts",
+  chart: "图表",
   diagram: "SmartArt",
-  object: "embedded objects",
-  picture: "some pictures",
+  object: "嵌入对象",
+  picture: "部分图片",
 };
 
 /** A deck's slides, refusing a password-protected file. */
@@ -22,17 +22,17 @@ export const readDeck = async (bytes: Uint8Array): Promise<SlideDeck> => {
   return readOffice("slides", bytes, {}, { lane: "viewer" });
 };
 
-const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
+const listFormat = new Intl.ListFormat("zh-CN", { type: "conjunction" });
 
 /** What the preview leaves out, for the notice above the slides. */
 const omissions = (deck: SlideDeck): string | null => {
   const parts: string[] = [];
   if (deck.unsupported.length > 0) {
     const names = listFormat.format(deck.unsupported.map((kind) => UNSUPPORTED_NAMES[kind]));
-    parts.push(`${names[0].toUpperCase()}${names.slice(1)} aren’t drawn.`);
+    parts.push(`未绘制${names}。`);
   }
-  if (deck.truncated) parts.push(`Only the first ${deck.slides.length} slides are shown.`);
-  return parts.length > 0 ? `${parts.join(" ")} Download the file to see everything.` : null;
+  if (deck.truncated) parts.push(`仅显示前 ${deck.slides.length} 张幻灯片。`);
+  return parts.length > 0 ? `${parts.join("")}下载文件可查看全部内容。` : null;
 };
 
 /** A PowerPoint deck, each slide drawn as the file lays it out. */
@@ -62,7 +62,7 @@ export const SlidesPreview = ({ bytes }: AttachmentPreviewProps) => {
       <div className="px-4 py-4">
         <div ref={containerRef} className="flex flex-col items-center gap-3">
           {deck.slides.length === 0 ? (
-            <div className="py-10 text-center text-[13px] text-kumo-subtle">This presentation has no slides.</div>
+            <div className="py-10 text-center text-[13px] text-kumo-subtle">此演示文稿没有幻灯片。</div>
           ) : width > 0 && deck.slides.map((slide) => (
             <SlideFrame
               key={slide.number}

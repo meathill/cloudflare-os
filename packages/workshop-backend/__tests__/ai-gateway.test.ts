@@ -304,7 +304,8 @@ describe("GatewayModels", () => {
       ...Object.keys(SUGGESTED_MODELS.cloudflare),
     ]);
     expect(models.providerSettings.map(({ provider }) => provider)).toEqual(
-        ["openai", "anthropic", "cloudflare-auto-router", "cloudflare", "google"]);
+        ["openai", "anthropic", "cloudflare-auto-router", "cloudflare", "google", "google-vertex",
+         "opencode-go"]);
     expect(models.addableProviders).toEqual(["openai", "anthropic", "cloudflare"]);
   });
 
@@ -641,7 +642,7 @@ describe("GatewayModels", () => {
   });
 
   describe("providers", () => {
-    const CATALOG_ORDER = ["cloudflare-auto-router", "cloudflare", "anthropic", "openai", "google"];
+    const CATALOG_ORDER = ["cloudflare-auto-router", "cloudflare", "anthropic", "openai", "google", "google-vertex", "opencode-go"];
     const GEMINI = "gemini-4-neon";
     it("enables the environment's, and the ones an admin added that the gateway serves", () => {
       expect([...gatewayModels({}, "anthropic").providers]).toEqual(["anthropic"]);
@@ -689,13 +690,17 @@ describe("GatewayModels", () => {
             { provider: "anthropic", enabledBy: "environment" },
             { provider: "openai" },
             { provider: "google", enabledBy: "admin" },
+            { provider: "google-vertex" },
+            { provider: "opencode-go" },
           ]);
       // The environment's listing comes first, so a provider it lists can't be turned off.
       expect(gatewayModels({ addedProviders: ["anthropic", "cloudflare"] }, "anthropic")
           .providerSettings.map(({ enabledBy }) => enabledBy))
-          .toEqual([undefined, "admin", "environment", undefined, undefined]);
+          .toEqual([undefined, "admin", "environment", undefined, undefined, undefined, undefined]);
     });
 
+    // The environment enabling google without a token is a deployment that does not start. An
+    // admin doing so must not be: every gateway read builds this table.
     it("builds with google enabled by an admin on a deployment that has no token", async () => {
       const models = new GatewayModels(
         new AiGatewayConfig(tokenless()), { ...NO_CONFIG, addedProviders: ["google"] },
@@ -729,7 +734,10 @@ describe("GatewayModels", () => {
         return String(err).includes("is not supported through AI Gateway");
       }
     })();
-    const addable = !unroutable && provider !== "cloudflare-auto-router";
+    // 有缘心之助：OpenCode Go 的模型按固定的厂商价目表计价，也不能添加；Vertex 的 Google 凭据
+    // 是部署级 BYOK，用户添加的模型会骑到部署的 GCP billing，同样不开放。
+    const addable = !unroutable && provider !== "cloudflare-auto-router"
+        && provider !== "opencode-go" && provider !== "google-vertex";
 
     const models = gatewayModels({
       addedModels: [{ provider, id: "test-model", name: "Test", contextWindow: 1000 }],

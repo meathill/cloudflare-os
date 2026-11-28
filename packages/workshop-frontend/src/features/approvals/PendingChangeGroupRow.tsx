@@ -86,7 +86,7 @@ export const PendingChangeGroupRow = ({
             // user which service is waiting. Both badges are repeated inside the group.
             <span className="flex min-w-0 shrink items-center gap-1 text-[11.5px] leading-4 text-kumo-inactive">
               <ArrowSquareOut size={11} className="flex-shrink-0" aria-hidden="true" />
-              <span className="truncate">Asked elsewhere</span>
+              <span className="truncate">来自其他对话</span>
             </span>
           )}
           {autoApprovedCount > 0 && (
@@ -94,8 +94,8 @@ export const PendingChangeGroupRow = ({
               <Lightning size={11} weight="fill" className="flex-shrink-0" aria-hidden="true" />
               <span className="truncate">
                 {autoApprovedCount === group.entries.length
-                  ? 'Standing rule'
-                  : `${autoApprovedCount} on a standing rule`}
+                  ? '已设自动批准'
+                  : `${autoApprovedCount} 个已设自动批准`}
               </span>
             </span>
           )}
@@ -118,8 +118,7 @@ export const PendingChangeGroupRow = ({
           <div className="max-h-[min(18rem,20vh)] overflow-y-auto">
             {group.hasCreation && (
               <p className="m-0 border-b border-kumo-line px-5 py-2 text-[11.5px] leading-4 text-kumo-inactive">
-                This resource does not exist yet. Approve its creation first — everything queued
-                behind it applies after, and discarding it discards them too.
+                此资源尚未创建。请先批准创建——排在它后面的请求会随后应用；放弃它也会一并放弃这些请求。
               </p>
             )}
             {group.entries.map(entry => {
@@ -137,20 +136,20 @@ export const PendingChangeGroupRow = ({
                     // conversation did. A wholly-elsewhere group says it once, on its row.
                     <p className="m-0 flex items-center gap-1.5 px-5 pt-2 text-[11.5px] leading-4 text-kumo-inactive">
                       <ArrowSquareOut size={11} aria-hidden="true" />
-                      Asked elsewhere in this workspace
+                      来自此工作区的其他对话
                     </p>
                   )}
                   {ruled && (
                     <p className="m-0 flex flex-wrap items-center gap-x-1.5 bg-kumo-tint/60 px-5 pt-2 text-[11.5px] leading-4 text-kumo-inactive">
                       {blocker
-                        ? `Standing rule enabled, waiting on "${blocker.description.title}" above it.`
-                        : 'Standing rule enabled.'}
+                        ? `已设自动批准，正在等待上方的“${blocker.description.title}”。`
+                        : '已设自动批准。'}
                       <button
                         type="button"
                         onClick={actions.onManageRules}
                         className="cursor-pointer text-kumo-default underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring"
                       >
-                        Manage rule
+                        管理规则
                       </button>
                     </p>
                   )}

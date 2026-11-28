@@ -20,7 +20,7 @@ export class AttachmentPreviewBoundary extends Component<Props, State> {
     return {
       message: error instanceof AttachmentPreviewError
         ? error.message
-        : "This file couldn’t be previewed.",
+        : "无法预览此文件。",
     };
   }
 

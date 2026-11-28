@@ -66,8 +66,8 @@ const action = (label: string) => [...container.querySelectorAll("button")].find
 it("uses a standard navigation link with a trailing unread count", async () => {
   await render();
   const nav = container.querySelector('a[href="/unread"]')!;
-  expect(nav.textContent).toBe("Unread threads1");
-  expect(nav.querySelector('[aria-label="1 unread message"]')).not.toBeNull();
+  expect(nav.textContent).toBe("未读对话1");
+  expect(nav.querySelector('[aria-label="1 条未读消息"]')).not.toBeNull();
   expect(container.querySelector('[role="menu"]')).toBeNull();
 });
 it("shows message counts in the summary and each thread, not just unread-thread counts", async () => {
@@ -75,23 +75,23 @@ it("shows message counts in the summary and each thread, not just unread-thread 
     chats: [{ ...chats[0], unreadMessageCount: 4 },
       { ...chats[0], chatId: 9, unreadMessageCount: 3 }] };
   await render();
-  expect(container.querySelector('a[href="/unread"]')?.textContent).toBe("Unread threads7");
-  expect(container.querySelector('ul [aria-label="4 unread messages"]')).not.toBeNull();
-  expect(container.querySelector('ul [aria-label="3 unread messages"]')).not.toBeNull();
+  expect(container.querySelector('a[href="/unread"]')?.textContent).toBe("未读对话7");
+  expect(container.querySelector('ul [aria-label="4 条未读消息"]')).not.toBeNull();
+  expect(container.querySelector('ul [aria-label="3 条未读消息"]')).not.toBeNull();
 });
 
 it("removes muted unread chats from the inbox and restores them on unmute", async () => {
   mock.unread = {...mock.unread!, state: {workspaces: [], unreadChatCount: 0, unreadMessageCount: 0, chats: []},
     chats: [{...chats[0], notificationsEnabled: false}]};
   await render();
-  expect(container.querySelector('a[href="/unread"]')?.textContent).toBe("Unread threads");
+  expect(container.querySelector('a[href="/unread"]')?.textContent).toBe("未读对话");
   expect(container.querySelector('ul a')).toBeNull();
-  expect(container.querySelector('[aria-label="1 unread message"]')).toBeNull();
+  expect(container.querySelector('[aria-label="1 条未读消息"]')).toBeNull();
   mock.unread = {...mock.unread!, state: {...mock.unread!.state!, unreadChatCount: 1, unreadMessageCount: 1},
     chats: [{...chats[0], notificationsEnabled: true}]};
   await act(async () => mock.listeners.forEach(listener => listener()));
   expect(container.querySelector('ul a')?.textContent).toContain("Unread elsewhere");
-  expect(container.querySelector('ul [aria-label="1 unread message"]')).not.toBeNull();
+  expect(container.querySelector('ul [aria-label="1 条未读消息"]')).not.toBeNull();
 });
 
 it("lists previews of only unread threads and opens the exact conversation", async () => {
@@ -112,12 +112,12 @@ it("uses the User DO inbox order and refreshes when read state changes", async (
   expect([...container.querySelectorAll("ul h2")].map(item => item.textContent)).toEqual(["Newest", "Unread elsewhere"]);
   mock.unread = { ...mock.unread!, state: { workspaces: [], unreadChatCount: 0, unreadMessageCount: 0, chats: [] }, chats: [] };
   await act(async () => mock.listeners.forEach(listener => listener()));
-  expect(container.textContent).toContain("You’re all caught up");
+  expect(container.textContent).toContain("全部已读");
 });
 
 it("marks all locally known unread heads read", async () => {
   await render();
-  await act(async () => action("Mark all read").click());
+  await act(async () => action("全部标为已读").click());
   expect(markAllRead).toHaveBeenCalledExactlyOnceWith();
 });
 
@@ -125,25 +125,25 @@ it("does not show all caught up while local state is loading", async () => {
   mock.unread!.state = undefined;
   getUnreadThreads.mockReturnValueOnce(new Promise(() => {}));
   await render(true);
-  expect(container.textContent).toContain("Loading unread threads…");
-  expect(container.textContent).not.toContain("You’re all caught up");
+  expect(container.textContent).toContain("正在加载未读对话…");
+  expect(container.textContent).not.toContain("全部已读");
 });
 it("loads the whole inbox without workspace metadata calls, retaining rows on a failed refresh", async () => {
   await render();
   getUnreadThreads.mockRejectedValueOnce(new Error("Unavailable"));
   mock.unread = {...mock.unread!, state: {...mock.unread!.state!}};
   await act(async () => mock.listeners.forEach(listener => listener()));
-  expect(container.textContent).toContain("Couldn’t refresh unread threads");
-  expect(container.querySelector('ul [aria-label="1 unread message"]')).not.toBeNull();
-  await act(async () => action("Retry").click());
+  expect(container.textContent).toContain("无法刷新未读对话");
+  expect(container.querySelector('ul [aria-label="1 条未读消息"]')).not.toBeNull();
+  await act(async () => action("重试").click());
   expect(container.textContent).toContain("The deployment is ready.");
 });
 
 it("does not report all caught up when the first inbox query fails", async () => {
   getUnreadThreads.mockRejectedValueOnce(new Error("Unavailable"));
   await render();
-  expect(container.textContent).toContain("Couldn’t refresh unread threads");
-  expect(container.textContent).not.toContain("You’re all caught up");
+  expect(container.textContent).toContain("无法刷新未读对话");
+  expect(container.textContent).not.toContain("全部已读");
 });
 
 it("ignores an older inbox response when a newer unread update has arrived", async () => {
@@ -153,7 +153,7 @@ it("ignores an older inbox response when a newer unread update has arrived", asy
   mock.unread = {...mock.unread!, state: {workspaces: [], unreadChatCount: 0, unreadMessageCount: 0, chats: []}, chats: []};
   await act(async () => mock.listeners.forEach(listener => listener()));
   await act(async () => pending.resolve([chats[0]]));
-  expect(container.textContent).toContain("You’re all caught up");
+  expect(container.textContent).toContain("全部已读");
   expect(container.textContent).not.toContain("Unread elsewhere");
 });
 
@@ -163,7 +163,7 @@ it("does not query the inbox again when only scoped cursor freshness changes", a
   const queries = getUnreadThreads.mock.calls.length;
   mock.unread = {...mock.unread!, chats: undefined};
   await act(async () => mock.listeners.forEach(listener => listener()));
-  expect(container.querySelector('a[href="/unread"]')?.textContent).toBe("Unread threads1");
+  expect(container.querySelector('a[href="/unread"]')?.textContent).toBe("未读对话1");
   expect(getUnreadThreads).toHaveBeenCalledTimes(queries);
   mock.unread = {...mock.unread!, chats: cursors};
   await act(async () => mock.listeners.forEach(listener => listener()));

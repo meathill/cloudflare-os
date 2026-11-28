@@ -1,6 +1,7 @@
 import { StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
+import { KumoLocaleProvider } from '@cloudflare/kumo'
 import { RpcPromise, RpcStub, newWebSocketRpcSession } from 'capnweb'
 import { PublicApi, ServerConfig } from '@gadgets/workshop-shared/api'
 import { RpcContext } from './RpcContext'
@@ -15,6 +16,7 @@ import { installWorkshopErrorReporting, reportIssue } from './errorReporting'
 import { applySiteFavicon, cacheBustSiteLogoUrl } from './siteLogoUtils'
 import { getBackendHost } from './connectHandoff';
 import { useStaleBackendReconnect } from './features/stale-session/useStaleBackendReconnect'
+import { startConnectionIdle } from './features/idle-disconnect/connectionIdle'
 
 // ---------------------------------------------------------------------------
 // Dev auto-login: if VITE_DEV_AUTO_LOGIN=true, automatically create/login
@@ -66,6 +68,8 @@ const MAX_BACKOFF_MS = 10000;
 const RECONNECT_PROBE_TIMEOUT_MS = 20000;
 const WAKE_PROBE_TIMEOUT_MS = 10000;
 const WAKE_PROBE_MIN_IDLE_MS = 15000;
+const HIDDEN_DISCONNECT_MS = 5 * 60_000;
+const INACTIVE_DISCONNECT_MS = 10 * 60_000;
 
 // Callbacks to call whenever `currentStub` or connection state is updated.
 const subscribers = new Set<() => void>();
@@ -140,8 +144,9 @@ function handleBroken(error: unknown) {
   // immediately. capnweb queues calls pipelined onto an unresolved `RpcPromise` and delivers them,
   // in order, once it resolves — so work issued during the outage waits for the replacement
   // instead of failing against a socket known to be gone. The `RpcPromise` takes ownership of its
-  // resolution, keeping the proven stub on a single disposal path.
-  currentStub = new RpcPromise<PublicApi>(reconnect());
+  // resolution, keeping the proven stub on a single disposal path. A hidden or idle-paused tab
+  // reconnects only once someone is back (see connectionIdle).
+  currentStub = new RpcPromise<PublicApi>(connectionIdle.whenActive().then(reconnect));
   notifySubscribers();
 }
 
@@ -176,6 +181,14 @@ window.addEventListener('online', () => void probeOnWake());
 function reconnectNow() {
   if (!isConnectionLost) disposeQuietly(currentStub);
 }
+
+// An unattended tab drops its socket so the Durable Objects it holds sessions on can hibernate
+// instead of billing duration for as long as the tab stays open.
+const connectionIdle = startConnectionIdle({
+  hiddenMs: HIDDEN_DISCONNECT_MS,
+  inactiveMs: INACTIVE_DISCONNECT_MS,
+  onIdle: reconnectNow,
+});
 
 // Current stub. handleBroken() will replace this on disconnect.
 installWorkshopErrorReporting()
@@ -288,8 +301,13 @@ devAutoLogin(currentStub).catch(() => {})
 
 root.render(
   <StrictMode>
-    <FrontendErrorBoundary>
-      <AppWithConnection />
-    </FrontendErrorBoundary>
+    <KumoLocaleProvider translations={{
+      label: { optional: '可选', tooltip: '提示' },
+      layerDialog: { close: '关闭', cancel: '取消' },
+    }}>
+      <FrontendErrorBoundary>
+        <AppWithConnection />
+      </FrontendErrorBoundary>
+    </KumoLocaleProvider>
   </StrictMode>
 )

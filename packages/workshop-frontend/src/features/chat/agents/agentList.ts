@@ -141,9 +141,9 @@ export const formatLastRun = (at: Date, now: Date): string => {
  */
 export const formatRunAge = (at: Date, now: Date): string => {
   const elapsed = now.getTime() - at.getTime()
-  if (elapsed < MINUTE_MS) return 'now'
-  if (elapsed < HOUR_MS) return `${Math.floor(elapsed / MINUTE_MS)}m`
-  if (elapsed < DAY_MS) return `${Math.floor(elapsed / HOUR_MS)}h`
-  if (elapsed < 7 * DAY_MS) return `${Math.floor(elapsed / DAY_MS)}d`
+  if (elapsed < MINUTE_MS) return '刚刚'
+  if (elapsed < HOUR_MS) return `${Math.floor(elapsed / MINUTE_MS)} 分钟`
+  if (elapsed < DAY_MS) return `${Math.floor(elapsed / HOUR_MS)} 小时`
+  if (elapsed < 7 * DAY_MS) return `${Math.floor(elapsed / DAY_MS)} 天`
   return DATE.format(at)
 }

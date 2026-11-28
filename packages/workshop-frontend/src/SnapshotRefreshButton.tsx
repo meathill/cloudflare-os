@@ -20,19 +20,19 @@ export const SnapshotRefreshButton = ({ onRefresh }: Props) => {
       await onRefresh()
     } catch (error) {
       if (getSnapshotSharingErrorCode(error) === SNAPSHOT_SHARING_ERROR_CODES.disabled) {
-        toasts.add({ title: 'An administrator turned off gadget snapshot sharing.', variant: 'error' })
+        toasts.add({ title: '管理员已关闭应用快照分享。', variant: 'error' })
         return
       }
       console.error('Failed to refresh gadget snapshot:', error)
-      toasts.add({ title: 'Failed to refresh the snapshot', variant: 'error' })
+      toasts.add({ title: '刷新快照失败', variant: 'error' })
     } finally {
       setRefreshing(false)
     }
   }
 
   return (
-    <Tooltip content="Refresh snapshot" asChild>
-      <WorkshopIconButton aria-label="Refresh snapshot" disabled={refreshing} onClick={refresh}>
+    <Tooltip content="刷新快照" asChild>
+      <WorkshopIconButton aria-label="刷新快照" disabled={refreshing} onClick={refresh}>
         <ArrowClockwise size={17} className={refreshing ? 'animate-spin' : undefined} />
       </WorkshopIconButton>
     </Tooltip>

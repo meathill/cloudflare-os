@@ -27,7 +27,7 @@ export const ComposerDictationStrip = ({ textId, words, disabled, onAdd, onDisca
   return (
     <div
       role="group"
-      aria-label="Voice typing"
+      aria-label="语音输入"
       className="flex items-start gap-1 px-4 pb-2"
       onKeyDown={(e) => {
         if (e.key !== "Escape") return;
@@ -41,7 +41,7 @@ export const ComposerDictationStrip = ({ textId, words, disabled, onAdd, onDisca
         className="m-0 max-h-[66px] min-w-0 flex-1 overflow-y-auto py-1 text-[16px] leading-[22px] text-kumo-default sm:text-[14px]"
       >
         {empty
-          ? <span className="text-kumo-subtle">Listening…</span>
+          ? <span className="text-kumo-subtle">正在聆听…</span>
           : <>{words.final}<span className="text-kumo-subtle">{words.interim}</span></>}
       </p>
       <Button
@@ -49,8 +49,8 @@ export const ComposerDictationStrip = ({ textId, words, disabled, onAdd, onDisca
         shape="square"
         size="sm"
         variant="ghost"
-        aria-label="Add to message"
-        title="Add to message"
+        aria-label="加入消息"
+        title="加入消息"
         icon={<Check />}
         disabled={disabled || empty}
         onClick={onAdd}
@@ -60,8 +60,8 @@ export const ComposerDictationStrip = ({ textId, words, disabled, onAdd, onDisca
         shape="square"
         size="sm"
         variant="ghost"
-        aria-label="Discard what you said"
-        title="Discard what you said"
+        aria-label="丢弃所说的内容"
+        title="丢弃所说的内容"
         icon={<X />}
         disabled={disabled}
         onClick={onDiscard}

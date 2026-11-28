@@ -29,16 +29,16 @@ export const GadgetSnapshotCard = ({ ownerName, refreshedAt }: Props) => {
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-kumo-default">
-            {`You're viewing a snapshot of ${ownerName ? `${ownerName}'s` : 'this'} gadget`}
+            {`你正在查看${ownerName ? `${ownerName} 的` : '这个'}应用的快照`}
           </p>
           {/* Wraps rather than truncates, so the note about refresh is never cut off. */}
           <p className="text-pretty text-xs text-kumo-subtle">
-            <span title={formatFullTimestamp(refreshedAt)}>Updated {formatRelativeTime(refreshedAt)}.</span>
-            {' '}Any changes made to the snapshot are discarded on refresh.
+            <span title={formatFullTimestamp(refreshedAt)}>{formatRelativeTime(refreshedAt)}更新。</span>
+            {' '}刷新后，对快照所做的任何更改都会被丢弃。
           </p>
         </div>
         <span aria-hidden="true" className="h-5 w-px shrink-0 bg-kumo-line" />
-        <WorkshopIconButton aria-label="Dismiss" onClick={() => setDismissed(true)}>
+        <WorkshopIconButton aria-label="关闭" onClick={() => setDismissed(true)}>
           <X size={16} />
         </WorkshopIconButton>
       </div>

@@ -92,8 +92,8 @@ describe('UpdateAvailableNotice', () => {
     await render(testUpdateStatus())
 
     expect(liveToasts()).toHaveLength(1)
-    expect(liveToasts()[0]).toMatchObject({ title: 'Update available', timeout: 0 })
-    expect(document.body.textContent).toContain('A newer release is available for this deployment.')
+    expect(liveToasts()[0]).toMatchObject({ title: '有可用更新', timeout: 0 })
+    expect(document.body.textContent).toContain('此部署有新版本可用。')
   })
 
   it('shows nothing when the status does not notify', async () => {
@@ -184,7 +184,7 @@ describe('UpdateAvailableNotice', () => {
   it('opens the admin Updates tab from "View update" without snoozing', async () => {
     await render(testUpdateStatus())
 
-    await act(async () => { button('View update').click() })
+    await act(async () => { button('查看更新').click() })
 
     expect(testState.navigate).toHaveBeenCalledTimes(1)
     expect(testState.navigate).toHaveBeenCalledWith({ to: '/admin', search: { tab: 'updates' } })

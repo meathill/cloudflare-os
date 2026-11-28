@@ -407,6 +407,203 @@ describe("AdminApiImpl.inspectUser", () => {
   });
 });
 
+describe("AdminApiImpl.exportUserGatekeeperContent", () => {
+  const USER = "ada@example.test";
+  const FILES = [
+    { path: "c1/_collection.json", contentType: "application/json", body: "{}" },
+    { path: "c1/skill/SKILL.md", contentType: "text/markdown", body: "# Skill" },
+  ];
+
+  it("rejects a bad reason before touching anything", async () => {
+    const { mint, calls } = deployment();
+    const api = mint();
+    for (let reason of ["", "   ", "r".repeat(501)]) {
+      expect(await rejection(api.exportUserGatekeeperContent(USER, "context", reason)))
+          .toBeInstanceOf(TypeError);
+    }
+    expect(calls).toEqual([]);
+  });
+
+  it("refuses a caller no longer an admin before touching anything", async () => {
+    const { mint, calls } = deployment();
+    const error = await rejection(
+        mint("former@example.test").exportUserGatekeeperContent(USER, "context", REASON));
+    expect(getAdminAccessErrorCode(error)).toBe(ADMIN_ACCESS_ERROR_CODES.notAdmin);
+    expect(calls).toEqual([]);
+  });
+
+  it("refuses an empty id as not found before touching anything", async () => {
+    const { mint, calls } = deployment();
+    const error = await rejection(mint().exportUserGatekeeperContent("", "context", REASON));
+    expect(getAdminAccessErrorCode(error)).toBe(ADMIN_ACCESS_ERROR_CODES.userNotFound);
+    expect(calls).toEqual([]);
+  });
+
+  it("records the call before reaching the account, whatever the access level", async () => {
+    // The level is not a gate: the export runs and is recorded at "off" all the same.
+    const { mint, calls, callsTo } = deployment({
+      config: { adminWorkspaceAccess: "off" as const },
+      handlers: { user: { exportGatekeeperContentForAdmin: () => FILES } },
+    });
+    const result = await mint().exportUserGatekeeperContent(USER, "context", `  ${REASON}  `);
+    expect(result).toBe(FILES);
+    expect(names(calls)).toEqual([
+      "admin.committedAdminConfig", "audits.getByName", "audit.append",
+      "users.getByName", "user.exportGatekeeperContentForAdmin",
+    ]);
+    const appends = callsTo("audit", "append");
+    expect(appends).toHaveLength(1);
+    const [record] = appends[0]!.args as [AdminUserAccessRecord];
+    expect(record).toStrictEqual({
+      kind: "user", at: expect.any(Date), admin: ADMIN, sessionId: expect.any(String),
+      via: "cli", userId: USER, method: "exportUserGatekeeperContent",
+      args: { vendorId: "context" }, reason: REASON, access: "off",
+    });
+    expect(callsTo("user", "exportGatekeeperContentForAdmin")[0]!.args).toEqual(["context"]);
+  });
+
+  it.each([
+    ["an account that does not exist", () => {
+      throw createAdminAccessError(ADMIN_ACCESS_ERROR_CODES.userNotFound);
+    }, ADMIN_ACCESS_ERROR_CODES.userNotFound],
+    ["a vendor that does not support export", () => {
+      throw new Error("该账号不支持导出（vendor: context）");
+    }, undefined],
+  ] as const)("still leaves the record when %s fails the call", async (_case, fail, code) => {
+    const { mint, callsTo } = deployment({
+      handlers: { user: { exportGatekeeperContentForAdmin: fail } },
+    });
+    const error = await rejection(mint().exportUserGatekeeperContent(USER, "context", REASON));
+    if (code === undefined) {
+      expect(String(error)).toContain("该账号不支持导出");
+    } else {
+      expect(getAdminAccessErrorCode(error)).toBe(code);
+    }
+    const appends = callsTo("audit", "append");
+    expect(appends).toHaveLength(1);
+    const [record] = appends[0]!.args as [AdminUserAccessRecord];
+    expect(record.method).toBe("exportUserGatekeeperContent");
+    expect(record.args).toEqual({ vendorId: "context" });
+  });
+
+  it("refuses the export when its record cannot be written", async () => {
+    const { mint, callsTo } = deployment({ handlers: { audit: { append: () => {
+      throw new Error("audit log unavailable");
+    } } } });
+    const error = await rejection(mint().exportUserGatekeeperContent(USER, "context", REASON));
+    expect(String(error)).toContain("audit log unavailable");
+    expect(callsTo("users", "getByName")).toEqual([]);
+  });
+});
+
+describe("AdminApiImpl.deleteUserGatekeeperContent", () => {
+  const USER = "ada@example.test";
+  const IDS = ["coll-a", "coll-b"];
+  const DELETED = [{ accountId: 0, deleted: IDS }];
+
+  it("rejects a bad reason before touching anything", async () => {
+    const { mint, calls } = deployment();
+    const api = mint();
+    for (let reason of ["", "   ", "r".repeat(501)]) {
+      expect(await rejection(api.deleteUserGatekeeperContent(USER, "context", IDS, reason)))
+          .toBeInstanceOf(TypeError);
+    }
+    expect(calls).toEqual([]);
+  });
+
+  it("rejects invalid ids before touching anything, recording nothing", async () => {
+    const { mint, calls } = deployment();
+    const api = mint();
+    const badIds: unknown[] = [
+      undefined, null, "coll-a", [], [""], ["coll-a", ""], [42],
+      Array.from({ length: 101 }, (_, index) => `coll-${index}`),
+    ];
+    for (let ids of badIds) {
+      // A malformed argument is refused by the validator before the method runs — a synchronous
+      // throw — while a well-formed but disallowed list rejects from inside it.
+      let error: unknown;
+      try {
+        await api.deleteUserGatekeeperContent(USER, "context", ids as string[], REASON);
+      } catch (thrown) {
+        error = thrown;
+      }
+      expect(error).toBeInstanceOf(Error);
+    }
+    expect(calls).toEqual([]);
+  });
+
+  it("refuses a caller no longer an admin before touching anything", async () => {
+    const { mint, calls } = deployment();
+    const error = await rejection(
+        mint("former@example.test").deleteUserGatekeeperContent(USER, "context", IDS, REASON));
+    expect(getAdminAccessErrorCode(error)).toBe(ADMIN_ACCESS_ERROR_CODES.notAdmin);
+    expect(calls).toEqual([]);
+  });
+
+  it("refuses an empty id as not found before touching anything", async () => {
+    const { mint, calls } = deployment();
+    const error = await rejection(mint().deleteUserGatekeeperContent("", "context", IDS, REASON));
+    expect(getAdminAccessErrorCode(error)).toBe(ADMIN_ACCESS_ERROR_CODES.userNotFound);
+    expect(calls).toEqual([]);
+  });
+
+  it("records the call before reaching the account, whatever the access level", async () => {
+    // The level is not a gate: the deletion runs and is recorded at "off" all the same.
+    const { mint, calls, callsTo } = deployment({
+      config: { adminWorkspaceAccess: "off" as const },
+      handlers: { user: { deleteGatekeeperContentForAdmin: () => DELETED } },
+    });
+    const result = await mint().deleteUserGatekeeperContent(USER, "context", IDS, `  ${REASON}  `);
+    expect(result).toBe(DELETED);
+    expect(names(calls)).toEqual([
+      "admin.committedAdminConfig", "audits.getByName", "audit.append",
+      "users.getByName", "user.deleteGatekeeperContentForAdmin",
+    ]);
+    const appends = callsTo("audit", "append");
+    expect(appends).toHaveLength(1);
+    const [record] = appends[0]!.args as [AdminUserAccessRecord];
+    expect(record).toStrictEqual({
+      kind: "user", at: expect.any(Date), admin: ADMIN, sessionId: expect.any(String),
+      via: "cli", userId: USER, method: "deleteUserGatekeeperContent",
+      args: { vendorId: "context", ids: IDS.join(",") }, reason: REASON, access: "off",
+    });
+    expect(callsTo("user", "deleteGatekeeperContentForAdmin")[0]!.args).toEqual(["context", IDS]);
+  });
+
+  it.each([
+    ["an account that does not exist", () => {
+      throw createAdminAccessError(ADMIN_ACCESS_ERROR_CODES.userNotFound);
+    }, ADMIN_ACCESS_ERROR_CODES.userNotFound],
+    ["a vendor that does not support deletion", () => {
+      throw new Error("该账号不支持删除（vendor: context）");
+    }, undefined],
+  ] as const)("still leaves the record when %s fails the call", async (_case, fail, code) => {
+    const { mint, callsTo } = deployment({
+      handlers: { user: { deleteGatekeeperContentForAdmin: fail } },
+    });
+    const error = await rejection(mint().deleteUserGatekeeperContent(USER, "context", IDS, REASON));
+    if (code === undefined) {
+      expect(String(error)).toContain("该账号不支持删除");
+    } else {
+      expect(getAdminAccessErrorCode(error)).toBe(code);
+    }
+    const appends = callsTo("audit", "append");
+    expect(appends).toHaveLength(1);
+    const [record] = appends[0]!.args as [AdminUserAccessRecord];
+    expect(record.method).toBe("deleteUserGatekeeperContent");
+    expect(record.args).toEqual({ vendorId: "context", ids: IDS.join(",") });
+  });
+
+  it("refuses the deletion when its record cannot be written", async () => {
+    const { mint, callsTo } = deployment({ handlers: { audit: { append: () => {
+      throw new Error("audit log unavailable");
+    } } } });
+    const error = await rejection(mint().deleteUserGatekeeperContent(USER, "context", IDS, REASON));
+    expect(String(error)).toContain("audit log unavailable");
+    expect(callsTo("users", "getByName")).toEqual([]);
+  });
+});
+
 describe("AdminApiImpl settings", () => {
   it("says who changes a setting, through which method and session", async () => {
     const { mint, callsTo } = deployment();

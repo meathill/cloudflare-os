@@ -10,7 +10,7 @@ export type BlueprintChoice = {
 }
 
 /** What to call a blueprint, which may have been published with no title. */
-export const titleOf = (title: string) => title || 'Untitled blueprint'
+export const titleOf = (title: string) => title || '未命名蓝图'
 
 export const toBlueprintChoice = ({ id, metadata }: BlueprintPublicInfo): BlueprintChoice => ({
   id,

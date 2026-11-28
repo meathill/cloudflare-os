@@ -34,7 +34,7 @@ export function useResolveAction(
     } catch (error) {
       console.error(`Failed to ${decision} action:`, error)
       toasts.add({
-        title: `Failed to ${decision} action`,
+        title: decision === 'approve' ? '批准操作失败' : '拒绝操作失败',
         description: rpcFailureDescription(error),
         variant: 'error',
       })

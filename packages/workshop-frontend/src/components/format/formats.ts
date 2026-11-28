@@ -58,8 +58,8 @@ const WIREFRAME_FOR_ICON: Record<OutputIcon, FormatWireframe> = {
  */
 export const GENERIC_OUTPUT: BlueprintOutput = {
   id: 'app',
-  noun: 'App',
-  plural: 'Apps',
+  noun: '应用',
+  plural: '应用',
   icon: 'appWindow',
 }
 

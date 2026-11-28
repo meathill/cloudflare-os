@@ -92,12 +92,12 @@ export const UploadSkillsDialog = ({
       }));
       setCandidates((current) => [...(finished ? [] : current), ...editable]);
       if (prepared.length === 0) {
-        toasts.add({ title: "No Markdown skills were found", variant: "error" });
+        toasts.add({ title: "未找到 Markdown 技能", variant: "error" });
       }
     } catch (error) {
       setCandidates([]);
       toasts.add({
-        title: error instanceof Error ? error.message : "Selected files could not be read",
+        title: error instanceof Error ? error.message : "无法读取所选文件",
         variant: "error",
       });
     } finally {
@@ -159,7 +159,7 @@ export const UploadSkillsDialog = ({
           contentType: "text/markdown",
         });
       } catch (error) {
-        nextFailures.push(`${candidate.label}: ${error instanceof Error ? error.message : "upload failed"}`);
+        nextFailures.push(`${candidate.label}: ${error instanceof Error ? error.message : "上传失败"}`);
         continue;
       }
       created++;
@@ -182,7 +182,7 @@ export const UploadSkillsDialog = ({
         const displayedFiles = failedSupportFiles.slice(0, 3).join(", ");
         const remaining = failedSupportFiles.length - 3;
         nextFailures.push(
-          `${candidate.label}: added without ${displayedFiles}${remaining > 0 ? ` and ${remaining} more` : ""}`,
+          `${candidate.label}：已添加，但未包含 ${displayedFiles}${remaining > 0 ? ` 等 ${remaining} 个文件` : ""}`,
         );
       } else {
         uploaded++;
@@ -192,7 +192,7 @@ export const UploadSkillsDialog = ({
     if (created > 0) onUploaded();
     if (nextFailures.length === 0) {
       toasts.add({
-        title: `Uploaded ${uploaded} ${uploaded === 1 ? "skill" : "skills"}`,
+        title: `已上传 ${uploaded} 个技能`,
         variant: "success",
       });
       dialog.closeAfterSuccess();
@@ -200,7 +200,7 @@ export const UploadSkillsDialog = ({
       setFinished(true);
       setFailures(nextFailures);
       toasts.add({
-        title: `${uploaded} ${uploaded === 1 ? "skill" : "skills"} uploaded, ${nextFailures.length} need attention`,
+        title: `已上传 ${uploaded} 个技能，${nextFailures.length} 项需要关注`,
         variant: "error",
       });
     }
@@ -216,12 +216,12 @@ export const UploadSkillsDialog = ({
       <Dialog className="top-[8%]! flex max-h-[84vh] w-[min(620px,calc(100vw-32px))]! translate-y-0! flex-col overflow-hidden bg-kumo-base p-0" size="lg">
         <div className="flex shrink-0 items-center justify-between gap-4 border-b border-kumo-line px-4 py-4 sm:px-6">
           <Dialog.Title className="text-[17px] leading-6 font-medium tracking-[-0.35px] text-kumo-default">
-            Upload skills
+            上传技能
           </Dialog.Title>
           <Dialog.Close
             disabled={reading || uploading}
             render={(props) => (
-              <Button {...props} variant="ghost" shape="square" aria-label="Close">
+              <Button {...props} variant="ghost" shape="square" aria-label="关闭">
                 <X size={18} />
               </Button>
             )}
@@ -231,14 +231,14 @@ export const UploadSkillsDialog = ({
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-5 sm:px-6">
           {target.collectionEditable && (
             <Select
-              label="Target collection"
+              label="目标知识集合"
               className="w-full"
-              placeholder="Select a collection"
+              placeholder="选择知识集合"
               value={collectionId}
               onValueChange={(value) => setCollectionId(value as string)}
               renderValue={(id) => {
                 const collection = collections.find((candidate) => candidate.id === id);
-                if (!collection) return "Select a collection";
+                if (!collection) return "选择知识集合";
                 return (
                   <span className="flex items-center gap-2">
                     {collection.icon ? <span>{collection.icon}</span> : null}
@@ -261,21 +261,21 @@ export const UploadSkillsDialog = ({
           {candidates.length > 0 && (
             <div
               role="group"
-              aria-label={target.collectionEditable ? undefined : "Skills to upload"}
+              aria-label={target.collectionEditable ? undefined : "待上传的技能"}
               aria-labelledby={target.collectionEditable ? "skills-to-upload-label" : undefined}
               className="mt-2 flex flex-col gap-2"
             >
               {target.collectionEditable && (
-                <span id="skills-to-upload-label"><Label>Skills to upload</Label></span>
+                <span id="skills-to-upload-label"><Label>待上传的技能</Label></span>
               )}
               <LayerCard className="overflow-hidden bg-kumo-control p-0">
                 {candidates.map((candidate, index) => {
                   const nameError = isValidSkillName(skillNameFromTitle(candidate.title))
                     ? undefined
-                    : "Enter a name using letters, numbers, spaces, or hyphens.";
+                    : "请输入由字母、数字、空格或连字符组成的名称。";
                   const descriptionError = isValidSkillDescription(candidate.description)
                     ? undefined
-                    : "Add a description of up to 1024 characters.";
+                    : "请填写不超过 1024 个字符的描述。";
                   return (
                     <Collapsible.Root
                       key={candidate.id}
@@ -289,7 +289,7 @@ export const UploadSkillsDialog = ({
                           {candidate.title.trim() || candidate.label}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-sm text-kumo-subtle">
-                          {candidate.description.trim() || "Description needed"}
+                          {candidate.description.trim() || "需要填写描述"}
                         </span>
                         <CaretRight
                           aria-hidden
@@ -300,8 +300,8 @@ export const UploadSkillsDialog = ({
                       <Collapsible.Panel className="h-[var(--collapsible-panel-height)] overflow-hidden transition-[height,opacity] duration-100 ease-out data-ending-style:h-0 data-ending-style:opacity-0 data-starting-style:h-0 data-starting-style:opacity-0 [&[hidden]:not([hidden='until-found'])]:hidden">
                         <div className="flex flex-col gap-3 p-4">
                           <Input
-                            label={<span className="text-sm">Title</span>}
-                            description="Up to 64 letters, numbers, spaces, or hyphens."
+                            label={<span className="text-sm">标题</span>}
+                            description="最多 64 个字母、数字、空格或连字符。"
                             value={candidate.title}
                             onChange={(event) => updateCandidate(candidate.id, {
                               title: sanitizeSkillTitle(event.target.value),
@@ -310,7 +310,7 @@ export const UploadSkillsDialog = ({
                             maxLength={64}
                           />
                           <InputArea
-                            label={<span className="text-sm">Description</span>}
+                            label={<span className="text-sm">描述</span>}
                             value={candidate.description}
                             onChange={(event) => updateCandidate(candidate.id, {
                               description: event.target.value,
@@ -333,7 +333,7 @@ export const UploadSkillsDialog = ({
               variant="error"
               size="sm"
               icon={<WarningCircle weight="fill" />}
-              title="Some skills were not fully uploaded"
+              title="部分技能未完整上传"
               description={<span className="whitespace-pre-line">{failures.join("\n")}</span>}
             />
           )}
@@ -362,7 +362,7 @@ export const UploadSkillsDialog = ({
           >
             <UploadSimple aria-hidden size={22} className="text-kumo-subtle" />
             <div>
-              <Text size="sm" DANGEROUS_className="font-medium">Drop Markdown skills here</Text>
+              <Text size="sm" DANGEROUS_className="font-medium">将 Markdown 技能拖放到此处</Text>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               <Button
@@ -373,7 +373,7 @@ export const UploadSkillsDialog = ({
                 loading={reading}
                 disabled={uploading}
               >
-                Choose files
+                选择文件
               </Button>
               <Button
                 variant="outline"
@@ -382,7 +382,7 @@ export const UploadSkillsDialog = ({
                 onClick={() => folderInputRef.current?.click()}
                 disabled={reading || uploading}
               >
-                Choose folder
+                选择文件夹
               </Button>
             </div>
           </div>}
@@ -390,10 +390,10 @@ export const UploadSkillsDialog = ({
 
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-kumo-line px-4 py-3 sm:px-6">
           {finished ? (
-            <Button onClick={dialog.requestClose}>Close</Button>
+            <Button onClick={dialog.requestClose}>关闭</Button>
           ) : (
             <>
-              <Button variant="secondary" onClick={dialog.requestClose} disabled={reading || uploading}>Cancel</Button>
+              <Button variant="secondary" onClick={dialog.requestClose} disabled={reading || uploading}>取消</Button>
               <Button
                 variant="primary"
                 icon={<UploadSimple size={16} />}
@@ -401,7 +401,7 @@ export const UploadSkillsDialog = ({
                 loading={uploading}
                 disabled={!valid || reading}
               >
-                Upload
+                上传
               </Button>
             </>
           )}

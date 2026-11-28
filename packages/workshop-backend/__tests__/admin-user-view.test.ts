@@ -51,8 +51,12 @@ const RETENTION = 90;
 // A view that outlives its open by a margin a slow runner keeps, then expires within the test.
 const SHORT_LIFETIME_MS = 1000;
 const PASSWORD_HASH = new Uint8Array([1, 2, 3]);
-// The view's methods, in the order answersOf() calls them.
-const READS = ADMIN_USER_METHODS.filter(method => method !== "inspectUser");
+// The view's methods, in the order answersOf() calls them. exportUserGatekeeperContent and
+// deleteUserGatekeeperContent are on AdminApi directly, not on the view.
+const READS = ADMIN_USER_METHODS.filter(method =>
+    method !== "inspectUser" && method !== "exportUserGatekeeperContent"
+        && method !== "deleteUserGatekeeperContent");
+const CALLED_METHODS = ["inspectUser", ...READS];
 
 // One test's account: its id, which names its Durable Object, and the deployment's stored
 // settings as the fake KV serves them to it.
@@ -497,8 +501,7 @@ describe("opening an admin user view", () => {
     // Called inside the object, the open returns the view itself and not a stub.
     let view = await open(user);
     expect(view).toBeInstanceOf(RpcTarget);
-    expect(rpcSurface(view)).toStrictEqual(
-        new Set(ADMIN_USER_METHODS.filter(method => method !== "inspectUser")));
+    expect(rpcSurface(view)).toStrictEqual(new Set(READS));
   }));
 });
 
@@ -518,7 +521,7 @@ describe("a view's answers", () => {
       ["listBlueprints", {}, "metadata", undefined],
       ["getDiagnostics", {}, "metadata", undefined],
     ]);
-    expect(records.map(record => record.method)).toStrictEqual([...ADMIN_USER_METHODS]);
+    expect(records.map(record => record.method)).toStrictEqual(CALLED_METHODS);
     for (let record of records) {
       expect(record).toMatchObject({ kind: "user", userId: user.id, reason: REASON });
       expect(record).not.toHaveProperty("exposed");
@@ -535,7 +538,7 @@ describe("a view's answers", () => {
              WHERE json_extract(record, '$.userId') = ? ORDER BY seq`, user.id).toArray());
     // The open and one call of each of the seven methods, in the audit's order.
     expect(rows).toHaveLength(8);
-    expect(rows).toStrictEqual(ADMIN_USER_METHODS.map(
+    expect(rows).toStrictEqual(CALLED_METHODS.map(
         method => ({ kind: "user", method, exposed: "metadata" })));
   }));
 
@@ -736,7 +739,10 @@ describe("a view's answers", () => {
   it("says a user is an admin only while ADMINS names them", () => withAccount(async user => {
     await createAccount(user);
     expect((await (await open(user)).describe()).isAdmin).toBe(false);
-    setEnv(user, { ADMINS: [ADMIN, user.id] });
+    // Admin recognition goes through verified emails: a bare username in ADMINS only counts in
+    // local deployments, so give the account a verified address and name that.
+    user.storage.verifiedEmails.put(["verified-admin@example.com"]);
+    setEnv(user, { ADMINS: [ADMIN, "verified-admin@example.com"] });
     expect((await (await open(user)).describe()).isAdmin).toBe(true);
   }));
 

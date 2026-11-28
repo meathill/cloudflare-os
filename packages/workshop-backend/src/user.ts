@@ -1,8 +1,8 @@
 import { RpcStub } from "capnweb";
 import type { ChatReadState, ChatTimelineHead, UnreadStateScope, UnreadStateSubscriber, UserUnreadState, UnreadThread, UserUnreadSummary, WorkspaceUnreadSummary } from "@gadgets/workshop-shared/api";
-import { ADMIN_ACCESS_ERROR_CODES, createAdminAccessError, type AdminUserView } from "@gadgets/workshop-shared/api";
-import { WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type WebPushSubscription } from '@gadgets/workshop-shared/api';
-import { ActionDescription, Gatekeeper, GatekeeperUser, GatekeeperUserVerifier, GatekeeperVendor, AccountDescription, VendorDescription, GatekeeperConnectCallback, ConnectHandoff, SupportedResource, ResourceConfiguratorFrame, AppUiContext, GatekeeperUiFrame, GatekeeperUserSelection, GatekeeperUserSelectionExchange, RedeemedGatekeeperUserSelection, getResourceTypeId, findResourceType } from "@gadgets/workshop-shared/gatekeeper";
+import { ADMIN_ACCESS_ERROR_CODES, createAdminAccessError, type AdminGatekeeperDeletion, type AdminGatekeeperExport, type AdminUserView } from "@gadgets/workshop-shared/api";
+import { WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, type OwnEmails, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type WebPushSubscription } from '@gadgets/workshop-shared/api';
+import { ActionDescription, Gatekeeper, GatekeeperUser, GatekeeperUserVerifier, GatekeeperVendor, AccountDescription, VendorDescription, GatekeeperConnectCallback, ConnectHandoff, SupportedResource, ResourceConfiguratorFrame, AppUiContext, GatekeeperUiFrame, GatekeeperUserSelection, GatekeeperUserSelectionExchange, RedeemedGatekeeperUserSelection, getResourceTypeId, findResourceType, type GatekeeperExportFile } from "@gadgets/workshop-shared/gatekeeper";
 import { shouldAutoProvisionAccount, ambientGatekeeperMode } from "./provisioning-policy.js";
 import { CloudflareGatekeeperUser } from "@gadgets/workshop-shared/cloudflare-gatekeeper";
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
@@ -25,6 +25,8 @@ import { deleteBlueprintContent } from "./blueprint-archive.js";
 import { isReservedBlueprintKey, readBlueprintKvRecord } from "./storage-schema/blueprints-kv.js";
 import { filterEnabledResources, isResourceDisabled, readAdminConfig } from "./admin-config.js";
 import { buildGatekeeperVendorMap } from "./auth/auth-vendors.js";
+import { EMAIL_CLAIMED_MESSAGE } from "./email-otp.js";
+import { getDoOptions } from "./do-location.js";
 import { CONNECT_FLOW_LIFETIME_MS, handoffTargetOrigin, hashPresentedSecret, hashSecret, newSecretToken, PENDING_HANDOFF_LIFETIME_MS } from "./connect-handoff.js";
 import {
   authorizeDevice, deliver, deliverBadge, registerAuthorizedDevice, registerDevice,
@@ -189,6 +191,18 @@ type ResourceCreatorStub = Required<Pick<GatekeeperVendor, "createResource">>;
 type SingletonAccountStub = Required<Pick<GatekeeperUser, "getSingletonGatekeeperClass" | "startAppUi">>;
 type CreationConfiguratorStub = Required<Pick<GatekeeperUser, "startCreationConfigurator">>;
 type FileSaverStub = Required<Pick<GatekeeperUser, "saveFile">>;
+type ObserverAccountStub = Required<Pick<GatekeeperUser, "observeUserMessage">>;
+type ExportableAccountStub = Required<Pick<GatekeeperUser, "exportForAdmin">>;
+type DeletableAccountStub = Required<Pick<GatekeeperUser, "deleteForAdmin">>;
+
+// An RPC stub cannot be probed for an optional method: every property reads back callable, and a
+// missing one fails only when invoked ("The RPC receiver does not implement the method" / "is not
+// a function"). The vendor of an account without exportForAdmin()/deleteForAdmin() is reported as
+// not supporting the operation — anything else the call throws is a real failure and passes through.
+const UNSUPPORTED_METHOD = /not a function|does not implement|not implemented|unimplemented|no such method/i;
+function isMethodUnsupported(error: unknown): boolean {
+  return error instanceof Error && UNSUPPORTED_METHOD.test(error.message);
+}
 
 function areCredentialsValid(record: ConnectedAccountRecord): boolean {
   if (record.credentialsExpired) return false;
@@ -340,6 +354,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     super(ctx, env);
 
     this.storage = makeUserStorage(ctx.storage);
+    this.#adoptLegacyCommitEmail();
     for (let cursor of this.storage.chatReadCursors.list()) {
       this.#readCursors.set(`${cursor.workspaceId}:${cursor.chatId}`, cursor);
     }
@@ -465,6 +480,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       if (!allowCreate) {
         throw new Error("New sign-ups are currently disabled on this deployment.");
       }
+      await this.#claimLoginEmail(email);
       // Create on first use.
       this.storage.created.put(true);
       this.storage.createdAt.put(new Date());
@@ -473,6 +489,8 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
         name: email.split("@")[0],
         id: email,
       });
+    } else {
+      await this.#claimLoginEmail(email);
     }
     this.#syncDirectory(true);
     return isNew;
@@ -635,8 +653,23 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
    * returns null instead of creating one — existing users can still sign in.
    */
   async loginOrCreateViaGatekeeper(email: string, allowCreate: boolean): Promise<string | null> {
+    return this.#loginOrCreateEmailAccount(email, allowCreate, "gatekeeper");
+  }
+
+  /**
+   * A verified email-code sign-in: like a gatekeeper sign-in, the address is the account. The code
+   * itself was verified by the EmailOtp DO before this is called.
+   */
+  async loginOrCreateViaEmailOtp(email: string, allowCreate: boolean): Promise<string | null> {
+    return this.#loginOrCreateEmailAccount(email, allowCreate, "email_otp");
+  }
+
+  async #loginOrCreateEmailAccount(
+      email: string, allowCreate: boolean,
+      source: "gatekeeper" | "email_otp"): Promise<string | null> {
     if (!this.storage.created.get()) {
       if (!allowCreate) return null;
+      await this.#claimLoginEmail(email);
       this.storage.created.put(true);
       this.storage.createdAt.put(new Date());
       this.storage.profile.put({
@@ -647,13 +680,15 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       recordAnalytics(this.ctx, this.env, {
         event_name: "account_created",
         user_id: this.ctx.id.toString(),
-        source: "gatekeeper",
+        source,
       });
+    } else {
+      await this.#claimLoginEmail(email);
     }
     recordAnalytics(this.ctx, this.env, {
       event_name: "user_authenticated",
       user_id: this.ctx.id.toString(),
-      source: "gatekeeper",
+      source,
     });
     return this.#newSessionToken();
   }
@@ -1464,13 +1499,118 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     this.#syncDirectory(false);
   }
 
+  /** The address an email account is named after, lowercase; null for a password account. */
+  #loginEmail(): string | null {
+    if (!this.storage.created.get()) return null;
+    let id = this.storage.profile.get().id;
+    return id.includes("@") ? id.toLowerCase() : null;
+  }
+
+  #heldEmails(): string[] {
+    let login = this.#loginEmail();
+    return [...(login ? [login] : []), ...this.storage.verifiedEmails.get()];
+  }
+
+  /** The registry entry for an address: the EmailOtp instance that also holds its login code. */
+  #emailRegistry(address: string) {
+    let namespace = this.ctx.exports.EmailOtp;
+    return namespace.get(namespace.idFromName(address), getDoOptions(this.env));
+  }
+
+  /** Record an email account's login address as its own, once; refuses one another account holds. */
+  async #claimLoginEmail(email: string): Promise<void> {
+    if (this.storage.loginEmailClaimed.get()) return;
+    await this.#emailRegistry(email.toLowerCase()).claim(email);
+    this.storage.loginEmailClaimed.put(true);
+  }
+
+  // A commit email written before addresses had to be verified counts as verified: the account binds
+  // it as it would a confirmed address, which gives it to whichever account wakes first. One that
+  // another account holds, or that names another account, is dropped. A failure of another kind
+  // leaves it for the next wake.
+  #adoptLegacyCommitEmail(): void {
+    if (!this.storage.created.get()) return;
+    let commitEmail = this.storage.profile.get().commitEmail;
+    if (commitEmail === undefined || this.#heldEmails().includes(commitEmail.toLowerCase())) return;
+    this.ctx.blockConcurrencyWhile(async () => {
+      try {
+        await this.addVerifiedEmail(commitEmail);
+      } catch (error) {
+        logger.warn("legacy commit email not adopted", {
+          event: "user.commit-email.adopt.failed", error,
+        });
+        if (error instanceof Error && error.message === EMAIL_CLAIMED_MESSAGE) {
+          this.#clearCommitEmailUnlessHeld();
+        }
+      }
+    });
+  }
+
+  #clearCommitEmailUnlessHeld(): void {
+    let profile = this.storage.profile.get();
+    if (profile.commitEmail === undefined ||
+        this.#heldEmails().includes(profile.commitEmail.toLowerCase())) return;
+    delete profile.commitEmail;
+    this.storage.profile.put(profile);
+  }
+
+  async getOwnEmails(): Promise<OwnEmails> {
+    return { loginEmail: this.#loginEmail(), emails: this.#heldEmails() };
+  }
+
+  /**
+   * Throws unless this account could bind `email` now, and returns it normalized. An address is
+   * unavailable while another account holds it, and while an email account is named by it, even one
+   * that signed up before addresses were recorded.
+   */
+  async checkEmailAvailable(email: string): Promise<string> {
+    let address = email.trim().toLowerCase();
+    validateCommitEmail(address);
+    if (this.#heldEmails().includes(address)) throw new Error("该邮箱已经绑定在你的账号上。");
+    let owner = await this.#emailRegistry(address).getOwner();
+    if (owner !== null && owner !== this.storage.profile.get().id) {
+      throw new Error(EMAIL_CLAIMED_MESSAGE);
+    }
+    if (owner === null &&
+        await this.ctx.exports.UserDurableObject.getByName(address).whoamiIfExists() !== null) {
+      throw new Error(EMAIL_CLAIMED_MESSAGE);
+    }
+    return address;
+  }
+
+  /**
+   * Bind `email` to this account. The caller has verified that the owner of the address's inbox
+   * asked for it (a code from EmailOtp); this records the claim, which wins against any other
+   * account that verified the same address at the same time.
+   */
+  async addVerifiedEmail(email: string): Promise<void> {
+    let address = await this.checkEmailAvailable(email);
+    await this.#emailRegistry(address).claim(this.storage.profile.get().id);
+    let emails = this.storage.verifiedEmails.get();
+    if (!emails.includes(address)) this.storage.verifiedEmails.put([...emails, address]);
+  }
+
+  async removeOwnEmail(email: string): Promise<void> {
+    let address = email.trim().toLowerCase();
+    if (address === this.#loginEmail()) throw new Error("登录邮箱不能移除。");
+    let emails = this.storage.verifiedEmails.get();
+    if (!emails.includes(address)) return;
+    await this.#emailRegistry(address).release(this.storage.profile.get().id);
+    this.storage.verifiedEmails.put(emails.filter(held => held !== address));
+    this.#clearCommitEmailUnlessHeld();
+  }
+
   async setOwnCommitEmail(email: string | null): Promise<void> {
     let profile = this.storage.profile.get();
     if (email === null) {
       delete profile.commitEmail;
     } else {
       validateCommitEmail(email);
-      profile.commitEmail = email;
+      let address = email.trim().toLowerCase();
+      if (!this.#heldEmails().includes(address)) {
+        throw new Error("先验证这个邮箱，才能用作提交邮箱。");
+      }
+      profile.commitEmail = address;
     }
     this.storage.profile.put(profile);
   }
@@ -1703,8 +1843,6 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       result.aiModel = this.#resolveModel(modelId, models);
       if (!result.aiModel) {
         models?.refuseDisabled(modelId);
-        // No gateway model has the ID, so a stored model with it is one the deployment keeps
-        // users from running.
         let stored = this.storage.aiModels.get(modelId);
         if (stored) models?.refuseUserModel(stored.profile.name);
         throw new Error(`No such model: ${modelId}`);
@@ -2277,6 +2415,40 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     });
   }
 
+  // An auto-provisioned account is never reconnected, so without this the description stored when it
+  // was minted would never pick up a gatekeeper upgrade (e.g. a newly declared management UI).
+  // Best-effort: a failing describe() keeps the stored description.
+  // Returns false when the account reported itself superseded and was removed, so the caller
+  // provisions a replacement.
+  async #refreshAccountDescription(record: ConnectedAccountRecord): Promise<boolean> {
+    try {
+      let description = await record.account.describe();
+      if (description.superseded) {
+        try {
+          await record.account.revoke();
+        } catch (err) {
+          logger.warn("revoke() failed for a superseded account", {
+            event: "account.auto.superseded.revoke.failed", vendorId: record.vendorId, error: err,
+          });
+        }
+        this.storage.connectedAccounts.delete(record.id);
+        logger.info("replacing a superseded auto-provisioned account", {
+          event: "account.auto.superseded", vendorId: record.vendorId, accountId: record.id,
+        });
+        return false;
+      }
+      if (JSON.stringify(description) === JSON.stringify(record.description)) return true;
+      let current = this.storage.connectedAccounts.get(record.id);
+      if (current) this.storage.connectedAccounts.put({ ...current, description });
+    } catch (err) {
+      logger.warn("failed to refresh an auto-provisioned account description", {
+        event: "account.auto.describe.refresh.failed",
+        vendorId: record.vendorId, accountId: record.id, error: err,
+      });
+    }
+    return true;
+  }
+
   // Dedup concurrent #ensureAutoProvisionedAccounts() calls. The provisioning loop awaits cross-worker
   // RPCs (describe/createAccount), which releases the DO input gate; without this, two overlapping
   // calls (e.g. the nav listing apps while a gadget opens) could both see "not provisioned" and
@@ -2296,9 +2468,15 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   async #provisionMissingAccounts(): Promise<void> {
     // Which vendors already have an auto-provisioned account?
     let provisioned = new Set<string>();
+    let refreshes: Promise<void>[] = [];
     for (let rec of this.#connectedAccountRecords()) {
-      if (rec.autoProvisioned) provisioned.add(rec.vendorId);
+      if (!rec.autoProvisioned) continue;
+      provisioned.add(rec.vendorId);
+      refreshes.push(this.#refreshAccountDescription(rec).then(kept => {
+        if (!kept) provisioned.delete(rec.vendorId);
+      }));
     }
+    await Promise.all(refreshes);
 
     let config = await readAdminConfig(this.env);
     for (let {vendorId, vendor} of await this.#ambientVendors()) {
@@ -2354,11 +2532,108 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   /**
+   * 有缘心之助：forward one chat message the user just sent to every connected account that
+   * declared AccountDescription.observesUserMessages. The overseer calls this fire-and-forget
+   * (ctx.waitUntil); each account's failure is logged and swallowed so a broken gatekeeper can
+   * never make the send path look failed. Message text and user identity are never logged.
+   */
+  async forwardOwnChatMessage(text: string, sentAt: number): Promise<void> {
+    for (let record of this.#connectedAccountRecords()) {
+      if (!record.description.observesUserMessages) continue;
+      try {
+        await (record.account as unknown as ObserverAccountStub).observeUserMessage({ text, sentAt });
+      } catch (err) {
+        logger.warn("failed to forward a user message to an observing account", {
+          event: "user.message.observe.failed",
+          vendorId: record.vendorId, accountId: record.id, error: err,
+        });
+      }
+    }
+  }
+
+  /**
+   * 有缘心之助：export every file the connected accounts of `vendorId` hold, for
+   * AdminApiImpl.exportUserGatekeeperContent(). Reachable only over the Workshop's Durable
+   * Object binding — never through a capability a user holds — and only after the caller has
+   * recorded the export in the deployment-wide audit log, which is what compensates for the
+   * gatekeeper's own sharing authorization being bypassed here.
+   *
+   * Refuses (`userNotFound`) an account never created, before anything else and writing nothing.
+   * An account whose gatekeeper does not implement exportForAdmin() fails the whole call;
+   * anything a supporting gatekeeper throws passes through. One entry per matching account,
+   * `[]` when the user has none.
+   */
+  async exportGatekeeperContentForAdmin(vendorId: string): Promise<AdminGatekeeperExport[]> {
+    if (!this.storage.created.get()) {
+      throw createAdminAccessError(ADMIN_ACCESS_ERROR_CODES.userNotFound);
+    }
+    let exports: AdminGatekeeperExport[] = [];
+    for (let record of this.#connectedAccountRecords()) {
+      if (record.vendorId !== vendorId) continue;
+      let account = record.account as unknown as ExportableAccountStub;
+      let files: GatekeeperExportFile[];
+      try {
+        files = await account.exportForAdmin();
+      } catch (error) {
+        if (isMethodUnsupported(error)) {
+          throw new Error(`该账号不支持导出（vendor: ${record.vendorId}）`, { cause: error });
+        }
+        throw error;
+      }
+      exports.push({ accountId: record.id, files });
+    }
+    logger.info("admin exported a user's gatekeeper content", {
+      event: "admin.user.export",
+      vendorId, size: exports.reduce((count, entry) => count + entry.files.length, 0),
+    });
+    return exports;
+  }
+
+  /**
+   * 有缘心之助：delete the named top-level items of this user's connected accounts of vendor
+   * `vendorId` (see GatekeeperUser.deleteForAdmin), for
+   * AdminApiImpl.deleteUserGatekeeperContent(). Reachable only over the Workshop's Durable
+   * Object binding — never through a capability a user holds — and only after the caller has
+   * recorded the deletion in the deployment-wide audit log.
+   *
+   * The account deletes each item with its own authority, so nothing it may not delete is forced:
+   * such an id is skipped and absent from the entry's `deleted`. Refuses (`userNotFound`) an
+   * account never created, before anything else and writing nothing. An account whose gatekeeper
+   * does not implement deleteForAdmin() fails the whole call; anything a supporting gatekeeper
+   * throws passes through. One entry per matching account, `[]` when the user has none.
+   */
+  async deleteGatekeeperContentForAdmin(vendorId: string, ids: string[]): Promise<AdminGatekeeperDeletion[]> {
+    if (!this.storage.created.get()) {
+      throw createAdminAccessError(ADMIN_ACCESS_ERROR_CODES.userNotFound);
+    }
+    let deletions: AdminGatekeeperDeletion[] = [];
+    for (let record of this.#connectedAccountRecords()) {
+      if (record.vendorId !== vendorId) continue;
+      let account = record.account as unknown as DeletableAccountStub;
+      let deleted: string[];
+      try {
+        deleted = await account.deleteForAdmin(ids);
+      } catch (error) {
+        if (isMethodUnsupported(error)) {
+          throw new Error(`该账号不支持删除（vendor: ${record.vendorId}）`, { cause: error });
+        }
+        throw error;
+      }
+      deletions.push({ accountId: record.id, deleted });
+    }
+    logger.info("admin deleted a user's gatekeeper content", {
+      event: "admin.user.delete",
+      vendorId, size: deletions.reduce((count, entry) => count + entry.deleted.length, 0),
+    });
+    return deletions;
+  }
+
+  /**
    * Open the full-page management UI for an account that declares one. `context.isAdmin` is supplied
    * fresh by the caller so admin-gated features reflect the user's current status.
    */
   async startAccountAppUi(
-      accountId: number, options: Pick<AppUiContext, "isAdmin">,
+      accountId: number, options: Pick<AppUiContext, "isAdmin" | "surface">,
   ): Promise<GatekeeperUiFrame> {
     let record = this.storage.connectedAccounts.get(accountId);
     if (!record?.description.providesUi) throw new Error("No such app.");
@@ -2366,7 +2641,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       props: { selectorUserId: this.ctx.id.toString(), appAccountId: accountId },
     });
     return (record.account as unknown as SingletonAccountStub)
-        .startAppUi({ isAdmin: options.isAdmin, userSelectionExchange });
+        .startAppUi({ isAdmin: options.isAdmin, surface: options.surface ?? "app", userSelectionExchange });
   }
 
   // The account record behind one of this user's gatekeeper apps, or undefined

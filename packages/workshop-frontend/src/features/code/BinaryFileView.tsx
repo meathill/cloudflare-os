@@ -45,7 +45,7 @@ export const BinaryFileView = ({ filename, blob, readBlob }: BinaryFileViewProps
   if (imageType === undefined) {
     return (
       <div className="flex h-full items-center justify-center bg-kumo-base px-6 text-center text-sm text-kumo-subtle">
-        Binary file ({formatAttachmentSize(blob.byteLength)}). Download it to open it.
+        二进制文件（{formatAttachmentSize(blob.byteLength)}），请下载后打开。
       </div>
     )
   }
@@ -53,14 +53,14 @@ export const BinaryFileView = ({ filename, blob, readBlob }: BinaryFileViewProps
   if (loaded === undefined) {
     return (
       <div className="flex h-full items-center justify-center bg-kumo-base text-kumo-subtle">
-        Loading image...
+        正在加载图片…
       </div>
     )
   }
   if (loaded.url === null) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 bg-kumo-base px-6 text-center">
-        <p className="m-0 text-sm text-kumo-danger">Failed to load this image.</p>
+        <p className="m-0 text-sm text-kumo-danger">加载图片失败。</p>
         <WorkshopButton
           tone="secondary"
           className="!h-8"
@@ -69,7 +69,7 @@ export const BinaryFileView = ({ filename, blob, readBlob }: BinaryFileViewProps
             setRetryToken(token => token + 1)
           }}
         >
-          Try again
+          重试
         </WorkshopButton>
       </div>
     )

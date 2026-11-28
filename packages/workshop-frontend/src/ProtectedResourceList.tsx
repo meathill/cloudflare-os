@@ -39,15 +39,15 @@ const buildTree = (requirements: ObserverBindingNeed[]): Branches => {
 const describeStep = (step: ObserverBindingPathStep, owner: string) => {
   switch (step.type) {
     case 'agentSpawner':
-      return { title: step.title, detail: `Agent spawner used by ${owner}` }
+      return { title: step.title, detail: `${owner} 使用的智能体生成器` }
     case 'gadget':
-      return { title: step.title, detail: `Gadget used by ${owner}` }
+      return { title: step.title, detail: `${owner} 使用的应用` }
     case 'hook':
-      return { title: step.title, detail: `Enabled hook on ${owner}` }
+      return { title: step.title, detail: `${owner} 上启用的钩子` }
     case 'historicalRequirement':
       return {
-        title: 'Historical requirements',
-        detail: `Data previously read from these resources may still be stored in ${owner}`,
+        title: '历史需求',
+        detail: `之前从这些资源读取的数据可能仍存储在${owner}中`,
       }
   }
 }
@@ -70,7 +70,7 @@ export const ProtectedResourceList = ({
   if (failed) {
     return (
       <p className="text-[13px] leading-5 tracking-[-0.15px] text-kumo-subtle">
-        Couldn’t check which resources recipients will be asked to verify.
+        无法检查接收者需要验证哪些资源。
       </p>
     )
   }
@@ -86,7 +86,7 @@ export const ProtectedResourceList = ({
         ORDER[a.kind === 'step' ? a.step.type : a.kind] - ORDER[b.kind === 'step' ? b.step.type : b.kind],
       ).map(([key, branch]) => {
         if (branch.kind === 'step') {
-          const { title, detail } = describeStep(branch.step, owner ?? 'this gadget')
+          const { title, detail } = describeStep(branch.step, owner ?? '此应用')
           return (
             <li key={key}>
               <div className="px-2 py-2 [overflow-wrap:anywhere]">

@@ -39,23 +39,23 @@ interface ActivityProps {
 }
 
 /** Pending-status copy while the pending set is still being gathered (also in the popover). */
-export const PENDING_CHECKING_COPY = 'Checking for requests…'
+export const PENDING_CHECKING_COPY = '正在检查请求…'
 /** Pending-status copy when gathering the pending set failed (also in the popover). */
-export const PENDING_ERROR_COPY = 'Could not check for requests — reload the page to try again.'
+export const PENDING_ERROR_COPY = '无法检查请求，请刷新页面重试。'
 
 const HISTORY_FILTERS: { value: HistoryViewFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'action', label: 'Actions' },
-  { value: 'observation', label: 'Observations' },
-  { value: 'bindHook', label: 'Hooks' },
+  { value: 'all', label: '全部' },
+  { value: 'action', label: '操作' },
+  { value: 'observation', label: '观察' },
+  { value: 'bindHook', label: '钩子' },
 ]
 
 function formatClockTime(date: Date): string {
-  return new Date(date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return new Date(date).toLocaleTimeString('zh-CN', { hour: 'numeric', minute: '2-digit' })
 }
 
 function formatFullDate(date: Date): string {
-  return new Date(date).toLocaleString([], {
+  return new Date(date).toLocaleString('zh-CN', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -70,32 +70,32 @@ function startOfDay(date: Date): number {
 function dayLabel(date: Date): string {
   const value = new Date(date)
   const days = Math.round((startOfDay(new Date()) - startOfDay(value)) / 86_400_000)
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  return value.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })
+  if (days === 0) return '今天'
+  if (days === 1) return '昨天'
+  return value.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function activityStatus(
   record: ActionLogEntry,
 ): { label: string; dotClass: string; textClass: string } {
   if (record.type === 'observation') {
-    return { label: 'Observed', dotClass: 'bg-kumo-inactive', textClass: 'text-kumo-subtle' }
+    return { label: '已观察', dotClass: 'bg-kumo-inactive', textClass: 'text-kumo-subtle' }
   }
   if (record.type === 'bindHook') {
     if (record.hookId === undefined) {
-      return { label: 'Deleted', dotClass: 'bg-kumo-inactive', textClass: 'text-kumo-subtle' }
+      return { label: '已删除', dotClass: 'bg-kumo-inactive', textClass: 'text-kumo-subtle' }
     }
     return record.enabled
-      ? { label: 'Enabled', dotClass: 'bg-kumo-success', textClass: 'text-kumo-subtle' }
-      : { label: 'Disabled', dotClass: 'bg-kumo-inactive', textClass: 'text-kumo-subtle' }
+      ? { label: '已启用', dotClass: 'bg-kumo-success', textClass: 'text-kumo-subtle' }
+      : { label: '已禁用', dotClass: 'bg-kumo-inactive', textClass: 'text-kumo-subtle' }
   }
   if (record.state === 'pending') {
-    return { label: 'Pending', dotClass: 'bg-kumo-brand', textClass: 'text-kumo-strong' }
+    return { label: '待处理', dotClass: 'bg-kumo-brand', textClass: 'text-kumo-strong' }
   }
   if (record.state === 'rejected') {
-    return { label: 'Denied', dotClass: 'bg-kumo-danger', textClass: 'text-kumo-danger' }
+    return { label: '已拒绝', dotClass: 'bg-kumo-danger', textClass: 'text-kumo-danger' }
   }
-  return { label: 'Approved', dotClass: 'bg-kumo-success', textClass: 'text-kumo-subtle' }
+  return { label: '已批准', dotClass: 'bg-kumo-success', textClass: 'text-kumo-subtle' }
 }
 
 function TypeIcon({ record, className }: { record: ActionLogEntry; className?: string }) {
@@ -105,7 +105,7 @@ function TypeIcon({ record, className }: { record: ActionLogEntry; className?: s
   return <ShieldCheck {...props} />
 }
 
-function LoadOlderButton({ history, className, label = 'Load older' }: {
+function LoadOlderButton({ history, className, label = '加载更早的活动' }: {
   history: { loadMore: () => void; isLoadingMore: boolean }
   className?: string
   label?: string
@@ -113,7 +113,7 @@ function LoadOlderButton({ history, className, label = 'Load older' }: {
   return (
     <WorkshopButton className={className} onClick={history.loadMore}
         disabled={history.isLoadingMore}>
-      {history.isLoadingMore ? 'Loading…' : label}
+      {history.isLoadingMore ? '正在加载…' : label}
     </WorkshopButton>
   )
 }
@@ -214,9 +214,9 @@ export default function Activity({
         <>
           <div className={`${PANE_BAR} gap-2 px-5`}>
             <span className="text-[12.5px] font-medium leading-[17px] tracking-[-0.15px] text-kumo-default">
-              {pendingActions.length} {pendingActions.length === 1 ? 'request' : 'requests'} waiting
+              {pendingActions.length} 个请求等待处理
             </span>
-            <span className="ml-auto text-[11.5px] leading-[17px] text-kumo-inactive">Oldest first</span>
+            <span className="ml-auto text-[11.5px] leading-[17px] text-kumo-inactive">最早优先</span>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {pendingActions.map(record => {
@@ -256,12 +256,12 @@ export default function Activity({
             })}
             {pendingStatus === 'checking' && (
               <p className="m-0 px-5 py-3 text-center text-[12px] leading-4 text-kumo-inactive">
-                Still checking older activity…
+                正在检查更早的活动…
               </p>
             )}
             {pendingStatus === 'error' && (
               <p className="m-0 px-5 py-3 text-center text-[12px] leading-4 text-kumo-inactive">
-                Could not finish checking for requests — reload the page to try again.
+                无法完成请求检查，请刷新页面重试。
               </p>
             )}
           </div>
@@ -280,8 +280,8 @@ export default function Activity({
     if (pendingStatus === 'error') {
       return (
         <ActivityNotice
-          title="Could not check for requests"
-          description="Reload the page to try again."
+          title="无法检查请求"
+          description="请刷新页面重试。"
         />
       )
     }
@@ -289,11 +289,11 @@ export default function Activity({
     return (
       <ActivityNotice
         icon={<Check size={17} weight="bold" />}
-        title="Nothing to review"
-        description="Requests that need your approval show up here and in the workspace header."
+        title="没有待审核的内容"
+        description="需要你批准的请求会显示在这里和工作区顶部。"
       >
         <WorkshopButton className="mt-4" onClick={() => onViewChange('history')}>
-          View history
+          查看历史
         </WorkshopButton>
       </ActivityNotice>
     )
@@ -304,9 +304,9 @@ export default function Activity({
       return (
         <div className="min-h-0 flex-1 overflow-auto">
           <div className="grid grid-cols-[54px_minmax(0,1fr)_auto_16px] items-center gap-3 border-b border-kumo-line bg-kumo-elevated/50 px-5 py-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-kumo-inactive">
-            <span>Time</span>
-            <span>Event</span>
-            <span>Status</span>
+            <span>时间</span>
+            <span>事件</span>
+            <span>状态</span>
             <span />
           </div>
           {historyGroups.map(group => (
@@ -334,9 +334,9 @@ export default function Activity({
           {history.loadMoreFailed ? (
             <div className="flex items-center justify-center gap-3 py-3">
               <span className="text-[12px] leading-4 text-kumo-inactive">
-                Couldn't load older activity
+                无法加载更早的活动
               </span>
-              <LoadOlderButton history={history} label="Retry" />
+              <LoadOlderButton history={history} label="重试" />
             </div>
           ) : history.hasMore && (
             <div className="flex justify-center py-3">
@@ -349,8 +349,8 @@ export default function Activity({
 
     if (history.status === 'error') {
       return (
-        <ActivityNotice title="Could not load activity">
-          <LoadOlderButton className="mt-4" history={history} label="Retry" />
+        <ActivityNotice title="无法加载活动">
+          <LoadOlderButton className="mt-4" history={history} label="重试" />
         </ActivityNotice>
       )
     }
@@ -358,14 +358,14 @@ export default function Activity({
     if (history.status === 'loading') {
       return (
         <div className="flex flex-1 items-center justify-center text-[13px] text-kumo-subtle">
-          Loading activity…
+          正在加载活动…
         </div>
       )
     }
 
     if (history.hasMore) {
       return (
-        <ActivityNotice title="Nothing in the most recent activity">
+        <ActivityNotice title="最近没有活动">
           <LoadOlderButton className="mt-4" history={history} />
         </ActivityNotice>
       )
@@ -374,20 +374,20 @@ export default function Activity({
     if (historyFilter === 'all') {
       return (
         <ActivityNotice
-          title="No activity yet"
-          description="Every resource an agent reads or changes is recorded here."
+          title="暂无活动"
+          description="智能体读取或更改的每个资源都会记录在这里。"
         />
       )
     }
 
     return (
-      <ActivityNotice title="No matching events">
+      <ActivityNotice title="没有匹配的事件">
         <button
           type="button"
           onClick={() => setHistoryFilter('all')}
           className="mt-1.5 cursor-pointer text-[12px] font-medium text-kumo-subtle hover:text-kumo-default"
         >
-          Show all activity
+          显示全部活动
         </button>
       </ActivityNotice>
     )
@@ -416,7 +416,7 @@ export default function Activity({
                 </button>
               ))}
               <span className="ml-auto pr-2 text-[11.5px] leading-[17px] tabular-nums text-kumo-inactive">
-                {history.entries.length} loaded
+                {history.entries.length} 已加载
               </span>
             </div>
             {renderHistoryBody()}
@@ -525,7 +525,7 @@ function AutoApprovalPanel({
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center text-[13px] text-kumo-subtle">
-        Loading auto-approval…
+        正在加载自动审批…
       </div>
     )
   }
@@ -534,16 +534,16 @@ function AutoApprovalPanel({
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
         <p className="m-0 text-[13px] font-medium leading-[18px] tracking-[-0.25px] text-kumo-default">
-          {loadError ? 'Could not load auto-approval' : 'Nothing can run automatically'}
+          {loadError ? '无法加载自动审批' : '没有可自动执行的操作'}
         </p>
         <p className="mt-1 max-w-xs text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-subtle">
           {loadError
-            ? 'The current rules may be incomplete. Try loading them again.'
-            : 'Action types appear here once a connected resource offers one its author marked safe to apply without review.'}
+            ? '当前规则可能不完整，请重新加载。'
+            : '连接的资源提供其作者标记为无需审核即可安全执行的操作时，将显示在这里。'}
         </p>
         {loadError && (
           <WorkshopButton className="mt-4" onClick={() => void refresh()}>
-            Retry
+            重试
           </WorkshopButton>
         )}
       </div>
@@ -555,8 +555,8 @@ function AutoApprovalPanel({
       <div className={`${PANE_BAR} gap-3 px-5`}>
         <p className="m-0 min-w-0 flex-1 truncate text-[12.5px] leading-[17px] tracking-[-0.2px] text-kumo-subtle">
           {loadError
-            ? 'Some auto-approval options could not be loaded.'
-            : 'Actions agents may take without asking. Everything else waits for your review.'}
+            ? '部分自动审批选项无法加载。'
+            : '智能体可以无需询问直接执行的操作。其他操作需要等待你审核。'}
         </p>
         {loadError && (
           <button
@@ -564,7 +564,7 @@ function AutoApprovalPanel({
             onClick={() => void refresh()}
             className="cursor-pointer text-[12px] font-medium text-kumo-default hover:text-kumo-default-hover"
           >
-            Retry
+            重试
           </button>
         )}
       </div>
@@ -598,12 +598,12 @@ function AutoApprovalPanel({
                     <span className="mt-0.5 block text-[12px] leading-4 tracking-[-0.2px] text-kumo-inactive">
                       {restricted
                         // Rules don't apply while restricted; say so, but keep them revocable.
-                        ? "Won't apply: this workspace has read sensitive data, so actions always require manual approval."
+                        ? "不会生效：此工作区读取过敏感数据，所有操作都需要手动批准。"
                         : entry.orphaned
-                          ? 'This connection no longer offers this action; the rule still applies.'
+                          ? '此连接不再提供该操作，但规则仍然生效。'
                           : entry.enabled
-                            ? 'Applied without asking'
-                            : 'Waits for your approval'}
+                            ? '无需询问直接执行'
+                            : '等待你的批准'}
                     </span>
                   </span>
                   <Switch
@@ -612,7 +612,7 @@ function AutoApprovalPanel({
                     // A rule never fires while restricted, so enabling one is pointless; disabling
                     // must stay possible.
                     disabled={busy || (restricted === true && !entry.enabled)}
-                    aria-label={`${entry.enabled ? 'Disable' : 'Enable'} auto-approval for ${entry.actionKind.label}`}
+                    aria-label={`${entry.enabled ? '禁用' : '启用'} ${entry.actionKind.label} 的自动审批`}
                     // Toggling here is the only way to turn a rule off, and the chat tray
                     // labels its requests from this same list, so it has to be told.
                     onCheckedChange={enabled =>
@@ -693,7 +693,7 @@ function HistoryRow({
             <span className="text-kumo-subtle">{record.resourceTitle}</span>
             {resolvedBy && (
               <ResolverBadge profileId={resolvedBy.id}>
-                {autoApproved ? `Auto-approved (${resolvedBy.name}'s rule)` : `By ${resolvedBy.name}`}
+                {autoApproved ? `自动批准（${resolvedBy.name} 的规则）` : `By ${resolvedBy.name}`}
               </ResolverBadge>
             )}
             {resourceUrl && (
@@ -703,7 +703,7 @@ function HistoryRow({
                 rel="noopener noreferrer"
                 className="text-kumo-subtle hover:text-kumo-default hover:underline"
               >
-                Open resource
+                打开资源
               </a>
             )}
             {record.type === 'bindHook' && record.hookId !== undefined && (

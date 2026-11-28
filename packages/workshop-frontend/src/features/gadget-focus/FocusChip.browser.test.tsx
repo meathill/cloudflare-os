@@ -73,13 +73,13 @@ it('shows the context from the keyboard, with dismissing a separate stop', async
   await userEvent.keyboard('{Enter}')
   await expect.element(context()).toBeVisible()
   await expect.element(page.getByRole('dialog', {
-    name: "The agent will be told you're viewing Budget › Q3 › cell B7",
+    name: "智能体将被告知你正在查看 Budget › Q3 › cell B7",
   })).toBeInTheDocument()
 
   await userEvent.keyboard('{Escape}')
   await expect.element(context()).not.toBeInTheDocument()
   await userEvent.tab()
-  await expect.element(page.getByRole('button', { name: "Don't send Budget › Q3 › cell B7 with this message" }))
+  await expect.element(page.getByRole('button', { name: "此消息不发送 Budget › Q3 › cell B7" }))
     .toHaveFocus()
 })
 

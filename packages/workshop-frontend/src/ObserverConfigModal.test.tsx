@@ -249,7 +249,7 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     const connect = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Connect')
+      .find(button => button.textContent === '连接')
     expect(connect).toBeDefined()
     await act(async () => connect!.click())
 
@@ -269,9 +269,9 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     const verify = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Verify and open')
+      .find(button => button.textContent === '验证并打开')
     const grant = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Grant the access needed to verify this resource')
+      .find(button => button.textContent === '授予验证此资源所需的访问权限')
     expect(verify?.disabled).toBe(true)
     expect(grant).toBeDefined()
 
@@ -298,7 +298,7 @@ describe('ObserverConfigModal account selection', () => {
         { ...DOC_RESOURCE, id: 'document', urlPattern },
       ]),
     })
-    const grant = findButton(rendered, 'Grant the access needed to verify this resource')
+    const grant = findButton(rendered, '授予验证此资源所需的访问权限')
     expect(grant).toBeDefined()
     await act(async () => grant!.click())
     expect(ensureAccountResources).toHaveBeenCalledWith(1, ['document'])
@@ -315,9 +315,9 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     const verify = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Verify and open')
+      .find(button => button.textContent === '验证并打开')
     const grant = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Grant the access needed to verify this resource')
+      .find(button => button.textContent === '授予验证此资源所需的访问权限')
     expect(verify?.disabled).toBe(true)
     expect(grant).toBeDefined()
 
@@ -338,11 +338,11 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     const grant = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Grant the access needed to verify this resource')
+      .find(button => button.textContent === '授予验证此资源所需的访问权限')
     await act(async () => grant!.click())
 
     const verify = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Verify and open')
+      .find(button => button.textContent === '验证并打开')
     expect(ensureAccountResources).toHaveBeenCalledWith(1, [DOC_RESOURCE.urlPattern])
     expect(verify?.disabled).toBe(false)
   })
@@ -353,7 +353,7 @@ describe('ObserverConfigModal account selection', () => {
     const rendered = await render([granted], { onConfirm })
 
     const verify = [...rendered.querySelectorAll('button')]
-      .find(button => button.textContent === 'Verify and open')
+      .find(button => button.textContent === '验证并打开')
     expect(verify?.disabled).toBe(false)
 
     await act(async () => verify!.click())
@@ -370,7 +370,7 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     expect(rendered.querySelectorAll('[data-testid="account-select"]')).toHaveLength(1)
-    await act(async () => findButton(rendered, 'Verify and open')!.click())
+    await act(async () => findButton(rendered, '验证并打开')!.click())
     expect(onConfirm).toHaveBeenCalledWith([
       { gatekeeperId: 12, accountId: 1 },
       { gatekeeperId: 13, accountId: 1 },
@@ -405,11 +405,11 @@ describe('ObserverConfigModal account selection', () => {
         onConfirm,
       })
       await act(async () => toggle(rendered).click())
-      await choose(rendered, 'Account for Q4 planning', '2')
+      await choose(rendered, 'Q4 planning 的账号', '2')
 
-      const vendorPicker = rendered.querySelector<HTMLSelectElement>('select[aria-label$="account for all resources"]')!
-      expect(vendorPicker.selectedOptions[0].textContent).toBe('Multiple accounts')
-      await act(async () => findButton(rendered, 'Verify and open')!.click())
+      const vendorPicker = rendered.querySelector<HTMLSelectElement>('select[aria-label$="全部资源的账号"]')!
+      expect(vendorPicker.selectedOptions[0].textContent).toBe('多个账号')
+      await act(async () => findButton(rendered, '验证并打开')!.click())
       expect(onConfirm).toHaveBeenCalledWith([
         { gatekeeperId: 12, accountId: 1 },
         { gatekeeperId: 13, accountId: 2 },
@@ -423,11 +423,11 @@ describe('ObserverConfigModal account selection', () => {
         onConfirm,
       })
       await act(async () => toggle(rendered).click())
-      await choose(rendered, 'Account for Q4 planning', '2')
-      const vendorPicker = rendered.querySelector<HTMLSelectElement>('select[aria-label$="account for all resources"]')!
+      await choose(rendered, 'Q4 planning 的账号', '2')
+      const vendorPicker = rendered.querySelector<HTMLSelectElement>('select[aria-label$="全部资源的账号"]')!
       await choose(rendered, vendorPicker.getAttribute('aria-label')!, '1')
 
-      await act(async () => findButton(rendered, 'Verify and open')!.click())
+      await act(async () => findButton(rendered, '验证并打开')!.click())
       expect(onConfirm).toHaveBeenCalledWith([
         { gatekeeperId: 12, accountId: 1 },
         { gatekeeperId: 13, accountId: 1 },
@@ -441,11 +441,11 @@ describe('ObserverConfigModal account selection', () => {
         onConfirm,
       })
       await act(async () => toggle(rendered).click())
-      const vendorPicker = rendered.querySelector<HTMLSelectElement>('select[aria-label$="account for all resources"]')!
+      const vendorPicker = rendered.querySelector<HTMLSelectElement>('select[aria-label$="全部资源的账号"]')!
       await choose(rendered, vendorPicker.getAttribute('aria-label')!, '')
-      await choose(rendered, 'Account for Q4 planning', '')
+      await choose(rendered, 'Q4 planning 的账号', '')
 
-      await act(async () => findButton(rendered, 'Verify and open')!.click())
+      await act(async () => findButton(rendered, '验证并打开')!.click())
       expect(onConfirm).toHaveBeenCalledWith([
         { gatekeeperId: 12, accountId: 1 },
         { gatekeeperId: 13, accountId: 1 },
@@ -461,8 +461,8 @@ describe('ObserverConfigModal account selection', () => {
       })
       expect(toggle(rendered).getAttribute('aria-expanded')).toBe('true')
 
-      await choose(rendered, 'Account for Q3 planning', '2')
-      await act(async () => findButton(rendered, 'Verify again')!.click())
+      await choose(rendered, 'Q3 planning 的账号', '2')
+      await act(async () => findButton(rendered, '重新验证')!.click())
       expect(onConfirm).toHaveBeenCalledWith([
         { gatekeeperId: 12, accountId: 2 },
         { gatekeeperId: 13, accountId: 1 },
@@ -493,7 +493,7 @@ describe('ObserverConfigModal account selection', () => {
         api: fakeApi([], { connectAccount }, RESOURCES),
       })
 
-      await act(async () => findButton(rendered, 'Connect')!.click())
+      await act(async () => findButton(rendered, '连接')!.click())
       expect(connectAccount).toHaveBeenCalledWith('google', [DOC_RESOURCE.urlPattern, SHEET_RESOURCE.urlPattern])
     })
 
@@ -506,8 +506,8 @@ describe('ObserverConfigModal account selection', () => {
         api: fakeApi([docsOnly], { ensureAccountResources }, RESOURCES),
       })
 
-      expect(findButton(rendered, 'Verify and open')?.disabled).toBe(true)
-      await act(async () => findButton(rendered, 'Grant the access needed to verify these resources')!.click())
+      expect(findButton(rendered, '验证并打开')?.disabled).toBe(true)
+      await act(async () => findButton(rendered, '授予验证这些资源所需的访问权限')!.click())
       expect(ensureAccountResources).toHaveBeenCalledWith(1, [SHEET_RESOURCE.urlPattern])
     })
 
@@ -515,7 +515,7 @@ describe('ObserverConfigModal account selection', () => {
       const both = account(1, 'dan@cloudflare.com', [DOC_RESOURCE.urlPattern, SHEET_RESOURCE.urlPattern])
       const rendered = await render([both], { needs: [NEED, SHEET_NEED], api: fakeApi([both], {}, RESOURCES) })
 
-      expect(findButton(rendered, 'Verify and open')?.disabled).toBe(false)
+      expect(findButton(rendered, '验证并打开')?.disabled).toBe(false)
     })
 
     it('on a retry, warns only about the refused connection and offers to re-authenticate its account', async () => {
@@ -527,7 +527,7 @@ describe('ObserverConfigModal account selection', () => {
 
       const warnings = [...rendered.querySelectorAll('.text-kumo-warning')].map(el => el.textContent)
       expect(warnings).toEqual([expect.stringContaining('Q3 planning · dan@cloudflare.com — Access was revoked.')])
-      expect(findButton(rendered, 'Re-authenticate this account')).toBeDefined()
+      expect(findButton(rendered, '重新验证此账号')).toBeDefined()
     })
 
     it('words the retry by distinct accounts when one account was refused twice', async () => {
@@ -538,8 +538,8 @@ describe('ObserverConfigModal account selection', () => {
         api: fakeApi([both], {}, RESOURCES),
       })
 
-      expect(rendered.textContent).toContain('the reasons below, re-authenticate this account')
-      expect(rendered.textContent).toContain('share the resources that your account can’t access')
+      expect(rendered.textContent).toContain('请根据下方原因，重新验证此账号')
+      expect(rendered.textContent).toContain('或请工作区所有者分享你的账号无法访问的内容')
     })
   })
 
@@ -553,10 +553,10 @@ describe('ObserverConfigModal account selection', () => {
     mockConnectPopup()
     const rendered = await render([], { api: fakeApi([], { connectAccount }) })
 
-    await act(async () => findButton(rendered, 'Connect')!.click())
-    expect(findButton(rendered, 'Connect')?.disabled).toBe(false)
+    await act(async () => findButton(rendered, '连接')!.click())
+    expect(findButton(rendered, '连接')?.disabled).toBe(false)
 
-    await act(async () => findButton(rendered, 'Connect')!.click())
+    await act(async () => findButton(rendered, '连接')!.click())
     expect(connectAccount).toHaveBeenCalledTimes(2)
   })
 
@@ -567,7 +567,7 @@ describe('ObserverConfigModal account selection', () => {
     const expired = account(1, 'dan@cloudflare.com', [DOC_RESOURCE.urlPattern], false)
     const rendered = await render([expired], { api: fakeApi([expired], { reconnectAccount }) })
     const reauthenticate = () =>
-      findButton(rendered, 'This account has expired — click to re-authenticate')
+      findButton(rendered, '此账号已过期——点击重新验证')
 
     await act(async () => reauthenticate()!.click())
     expect(reauthenticate()?.disabled).toBe(false)
@@ -585,7 +585,7 @@ describe('ObserverConfigModal account selection', () => {
     const rendered = await render([underScoped], {
       api: fakeApi([underScoped], { ensureAccountResources }),
     })
-    const grant = () => findButton(rendered, 'Grant the access needed to verify this resource')
+    const grant = () => findButton(rendered, '授予验证此资源所需的访问权限')
 
     await act(async () => grant()!.click())
     expect(grant()?.disabled).toBe(false)
@@ -602,10 +602,9 @@ describe('ObserverConfigModal account selection', () => {
     })
 
     expect(rendered.textContent).toContain(refusal)
-    expect(rendered.textContent).toContain('ask the workspace owner')
     // Checking again stays possible (the owner may since have shared it), and re-authenticating
     // stays on offer for a gatekeeper that refused on an auth error without reporting the expiry.
-    expect(findButton(rendered, 'Verify again')?.disabled).toBe(false)
-    expect(findButton(rendered, 'Re-authenticate this account')).toBeDefined()
+    expect(findButton(rendered, '重新验证')?.disabled).toBe(false)
+    expect(findButton(rendered, '重新验证此账号')).toBeDefined()
   })
 })

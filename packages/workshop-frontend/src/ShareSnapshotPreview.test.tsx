@@ -108,7 +108,7 @@ it('leaves full screen on Escape without letting the dialog close too', async ()
   document.addEventListener('keydown', dialogEscape)
   try {
     act(() => {
-      container!.querySelector('[aria-label="Exit full screen"]')!
+      container!.querySelector('[aria-label="退出全屏"]')!
         .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     })
   } finally {

@@ -44,7 +44,7 @@ export const CreationAccountModal = ({ overseer, gatekeeperId, onChoose, onCance
     load().catch(err => {
       if (cancelled) return
       console.error('Failed to load the creation:', err)
-      toasts.add({ title: 'Failed to load the creation', variant: 'error' })
+      toasts.add({ title: '加载创建信息失败', variant: 'error' })
       onCancel()
     })
     return () => { cancelled = true }
@@ -57,7 +57,7 @@ export const CreationAccountModal = ({ overseer, gatekeeperId, onChoose, onCance
         : 'Choose an account to create it in'}
       target={target}
       purpose="create"
-      submitLabel="Approve"
+      submitLabel="批准"
       onSubmit={onChoose}
       onCancel={onCancel}
     />

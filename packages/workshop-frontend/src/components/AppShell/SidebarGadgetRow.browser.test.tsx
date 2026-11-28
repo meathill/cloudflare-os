@@ -56,22 +56,22 @@ it("gives workspace rows the nav width without reserving separate badge/action c
   const [nav, workspace] = host.querySelectorAll<HTMLAnchorElement>("a");
   const rect = (element: Element) => element.getBoundingClientRect();
   expect(rect(workspace).width).toBe(rect(nav).width);
-  const navBadge = nav.querySelector('[aria-label="1 unread message"]')!;
-  const workspaceBadge = workspace.querySelector('[aria-label="1 unread message"]')!;
+  const navBadge = nav.querySelector('[aria-label="1 条未读消息"]')!;
+  const workspaceBadge = workspace.querySelector('[aria-label="1 条未读消息"]')!;
   expect(Math.abs(rect(navBadge).right - rect(workspaceBadge).right)).toBeLessThanOrEqual(2);
   expect(rect(workspace.querySelector(".truncate")!).width).toBeGreaterThanOrEqual(160);
   await expect.element(page.getByRole("link", {name: /Compact workspace/})
-    .getByRole("img", {name: "1 unread message"})).toBeVisible();
+    .getByRole("img", {name: "1 条未读消息"})).toBeVisible();
 
-  await act(async () => userEvent.click(page.getByRole("button", { name: "Workspace actions" })));
+  await act(async () => userEvent.click(page.getByRole("button", { name: "工作区操作" })));
   await expect.element(page.getByRole("menuitem", { name: "Mark workspace read" })).toBeVisible();
   expect(router.state.location.pathname).toBe("/");
   await act(async () => userEvent.click(page.getByRole("menuitem", { name: "Mark workspace read" })));
   expect(mock.markWorkspaceRead).toHaveBeenCalledExactlyOnceWith("workspace");
 
-  await act(async () => userEvent.click(page.getByRole("button", { name: "Workspace actions" })));
-  await act(async () => userEvent.click(page.getByRole("menuitem", { name: "Mute notifications" })));
-  await act(async () => userEvent.click(page.getByRole("menuitem", { name: "For 1 hour", exact: true })));
+  await act(async () => userEvent.click(page.getByRole("button", { name: "工作区操作" })));
+  await act(async () => userEvent.click(page.getByRole("menuitem", { name: "静音通知" })));
+  await act(async () => userEvent.click(page.getByRole("menuitem", { name: "1 小时", exact: true })));
   expect(mock.setMute).toHaveBeenCalledExactlyOnceWith("workspace", { until: expect.any(Date) });
   expect(mock.onMuteChange).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ id: "workspace" }), { until: expect.any(Date) });

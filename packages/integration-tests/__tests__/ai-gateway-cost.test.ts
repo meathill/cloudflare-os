@@ -100,6 +100,8 @@ const languageIds = (models: readonly AdminModel[]) => ids(models.filter(candida
     candidate.mode === "enabled" && modelKind(candidate.provider, candidate.id) === "language"));
 // A provider the gateway serves, as the admin is shown it while it is off.
 const offProvider = (provider: string) => ({ provider });
+const OPENCODE_GO_OFF = { provider: "opencode-go" };
+const VERTEX_OFF = { provider: "google-vertex" };
 
 // The cases below share one deployment, whose admin signs up once and logs in after that.
 let adminSignedUp = false;
@@ -395,6 +397,7 @@ it("an admin turns on a provider beside the environment's, and tests what one an
     offProvider("cloudflare-auto-router"),
     { provider: "cloudflare", enabledBy: "environment" },
     offProvider("anthropic"), offProvider("openai"), offProvider("google"),
+    VERTEX_OFF, OPENCODE_GO_OFF,
   ]);
   expect(await api.getAiConfig()).toMatchObject({ enabledProviders: ["cloudflare"] });
   await expect(api.addModel(mine, mineConfig))
@@ -412,6 +415,7 @@ it("an admin turns on a provider beside the environment's, and tests what one an
         offProvider("cloudflare-auto-router"), before.providerSettings[1],
         { provider: "anthropic", enabledBy: "admin" },
         offProvider("openai"), offProvider("google"),
+        VERTEX_OFF, OPENCODE_GO_OFF,
       ],
       models: on.models,
     });

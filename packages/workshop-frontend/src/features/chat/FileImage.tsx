@@ -62,6 +62,6 @@ export const FileImage = ({ oid, alt = '', title, readBlob, layout }: {
     onError={() => setState({ error: 'This image could not be decoded.' })}
   /> : <span role="img" aria-label={alt || 'Image'} aria-busy={!error}
     title={state && 'error' in state ? state.error : title} className="text-kumo-subtle">
-    {error ? `Image unavailable${alt ? `: ${alt}` : ''}` : alt || 'Loading image…'}
+    {error ? `图片不可用${alt ? `：${alt}` : ''}` : alt || '正在加载图片…'}
   </span>}</span>
 }

@@ -24,12 +24,12 @@ function formatRelativeTime(date: Date): string {
   const now = Date.now()
   const diff = now - date.getTime()
   const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes} 分钟前`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
+  if (hours < 24) return `${hours} 小时前`
   const days = Math.floor(hours / 24)
-  return `${days}d ago`
+  return `${days} 天前`
 }
 
 function AppRow({ gadget }: { gadget: WorkspaceMetadataWithTimestamps }) {
@@ -49,11 +49,11 @@ function AppRow({ gadget }: { gadget: WorkspaceMetadataWithTimestamps }) {
       {/* Info */}
       <div className="flex-1 min-w-0">
         <h3 className="text-sm font-medium text-kumo-default truncate">
-          {gadget.title || 'Untitled Workspace'}
+          {gadget.title || '未命名工作区'}
         </h3>
         {gadget.owner && (
           <p className="text-xs text-kumo-subtle truncate mt-0.5">
-            Shared by {gadget.owner.name}
+            分享者 {gadget.owner.name}
           </p>
         )}
       </div>
@@ -94,7 +94,7 @@ export default function RecentApps() {
     return (
       <section className="w-full max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-medium text-kumo-default">Recent workspaces</h2>
+          <h2 className="text-sm font-medium text-kumo-default">最近的工作区</h2>
         </div>
         <div className="flex flex-col gap-2">
           {[1, 2].map((i) => (
@@ -109,7 +109,7 @@ export default function RecentApps() {
     return (
       <section className="w-full max-w-2xl mx-auto">
         <div className="text-center py-8 text-sm text-kumo-danger">
-          Unable to load your workspaces. Check your connection and try refreshing.
+          无法加载工作区。请检查网络连接并刷新页面。
         </div>
       </section>
     )
@@ -119,7 +119,7 @@ export default function RecentApps() {
     return (
       <section className="w-full max-w-2xl mx-auto">
         <div className="text-center py-8 text-kumo-inactive text-sm">
-          No workspaces yet. Create your first one above!
+          暂无工作区，在上方创建第一个吧！
         </div>
       </section>
     )
@@ -129,13 +129,13 @@ export default function RecentApps() {
     <section className="w-full max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-medium text-kumo-default">
-          Recent workspaces
+          最近的工作区
         </h2>
         <Link
           to="/"
           className="flex items-center gap-1 text-xs text-kumo-subtle hover:text-kumo-brand transition-colors"
         >
-          View all
+          查看全部
           <ArrowRight size={12} />
         </Link>
       </div>

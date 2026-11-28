@@ -9,7 +9,7 @@ export const prepareChatAttachment = async (
 ): Promise<{ blob: Blob; mimeType: string }> => {
   if (file.size > MAX_CHAT_ATTACHMENT_BYTES) {
     throw new Error(
-      `Attachments must be ${formatAttachmentSize(MAX_CHAT_ATTACHMENT_BYTES)} or smaller.`,
+      `单个附件不能超过 ${formatAttachmentSize(MAX_CHAT_ATTACHMENT_BYTES)}。`,
     );
   }
   // The workspace receives the original file, not a resized/re-encoded model input.

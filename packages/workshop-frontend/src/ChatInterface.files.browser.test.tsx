@@ -212,7 +212,7 @@ it.each(['failed', 'interrupted'])('retries after a %s image read on reconnect w
   const markdown = `![Result](${source})`, oids = { [source]: oid }
   await show(markdown, { oids, readBlob })
   await expect.poll(() => readBlob.mock.calls.length).toBe(1)
-  await expect.poll(() => host!.textContent!.includes('Image unavailable')).toBe(status === 'failed')
+  await expect.poll(() => host!.textContent!.includes('图片不可用')).toBe(status === 'failed')
   const reconnected = vi.fn<Overseer['readBlob']>(async () => stream(png('cyan')))
   await show(markdown, { oids, readBlob: reconnected })
   await expect.poll(() => pixel(image('Result'))).toEqual([0, 255, 255, 255])
@@ -255,7 +255,7 @@ it('never looks up an unavailable path and keeps raw HTML, other schemes and uns
     '[Local link](worktree://REPO/result.png)\n\n<img src="file:///secret">', {
     oids: { 'worktree://REPO/missing.png': null }, readBlob,
   })
-  expect(host!.textContent).toContain('Image unavailable: Unavailable')
+  expect(host!.textContent).toContain('图片不可用：Unavailable')
   expect(readBlob).not.toHaveBeenCalled()
   expect(host!.querySelector('img[src], a[href]')).toBeNull()
   await show('![No capability](worktree://REPO/result.png)')

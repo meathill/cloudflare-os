@@ -33,7 +33,7 @@ export const BulkResolveButtons = ({
       disabled={disabled}
       className={`${buttonClass} text-kumo-inactive enabled:hover:bg-kumo-tint enabled:hover:text-kumo-danger`}
     >
-      Discard all
+      全部放弃
     </button>
     <button
       type="button"
@@ -41,7 +41,7 @@ export const BulkResolveButtons = ({
       disabled={disabled}
       className={`${buttonClass} text-kumo-default enabled:hover:bg-kumo-tint`}
     >
-      Apply all {count}
+      全部应用 {count}
     </button>
   </>
 )

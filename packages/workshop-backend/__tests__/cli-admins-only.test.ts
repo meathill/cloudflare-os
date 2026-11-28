@@ -61,6 +61,7 @@ async function connect(deploymentEnv: Cloudflare.Env, userAgent: string | undefi
   Object.defineProperty(ctx, "exports", { value: Object.create(ctx.exports, {
     AdminSettings: { value: { getByName: () => ({
       ensureBundledBlueprintsInstalled: async () => true,
+      recordUserActivity: async () => {},
       updateAdminConfig: async (patch: object, actor: AdminSettingActor) => {
         configChanges.push({ patch, actor });
       },
@@ -82,11 +83,18 @@ async function account(username: string): Promise<string> {
   return `${username}:${secret}`;
 }
 
+/** A password account that has verified `email`, which is how one becomes a deployment admin. */
+async function accountWithEmail(username: string, email: string): Promise<string> {
+  const token = await account(username);
+  await env.TEST_USER.getByName(username).addVerifiedEmail(email);
+  return token;
+}
+
 describe("cf-os api on a deployment", () => {
   it("signs in as a deployment admin, with a token or a password", async () => {
     const admin = unique("admin");
-    const token = await account(admin);
-    using api = await connect(deployment([admin]), CLI);
+    const token = await accountWithEmail(admin, `${admin}@example.com`);
+    using api = await connect(deployment([`${admin}@example.com`]), CLI);
     using session = api.authenticate(token);
     expect(await session.amIAdmin()).toBe(true);
 
@@ -96,10 +104,24 @@ describe("cf-os api on a deployment", () => {
     expect(await again.amIAdmin()).toBe(true);
   });
 
+  it("names no admin by a username, which anyone could register", async () => {
+    const name = unique("admin");
+    const token = await account(name);
+    using api = await connect(deployment([name]), CLI);
+    await expect(api.authenticate(token).amIAdmin()).rejects.toThrow(REFUSED);
+  });
+
+  it("refuses a password account whose address is not the admin's", async () => {
+    const name = unique("user");
+    const token = await accountWithEmail(name, `${name}@example.com`);
+    using api = await connect(deployment([`${unique("admin")}@example.com`]), CLI);
+    await expect(api.authenticate(token).amIAdmin()).rejects.toThrow(REFUSED);
+  });
+
   it("refuses a sign-in as anyone else, by token or password", async () => {
     const user = unique("user");
     const token = await account(user);
-    using api = await connect(deployment([unique("admin")]), CLI);
+    using api = await connect(deployment([`${unique("admin")}@example.com`]), CLI);
     await expect(api.authenticate(token).amIAdmin()).rejects.toThrow(REFUSED);
 
     // The password still checks out; the session token it yields is refused like any other.
@@ -179,8 +201,8 @@ describe("the label on an admin's changes", () => {
   ] as const) {
     it(`is "${via}" for ${what}`, async () => {
       const admin = unique("admin");
-      const token = await account(admin);
-      using api = await connect(deployment([admin], options), userAgent);
+      const token = await accountWithEmail(admin, `${admin}@example.com`);
+      using api = await connect(deployment([`${admin}@example.com`], options), userAgent);
       using session = api.authenticate(token);
       using adminApi = await session.getAdminApi();
       if (adminApi === null) throw new Error("The admin was refused the admin API.");

@@ -45,10 +45,12 @@ vi.mock('@cloudflare/kumo', async (importOriginal) => {
   }
 })
 
+const authState = vi.hoisted(() => ({ currentUser: null as { type: 'user'; id: string; name: string } | null }))
+
 vi.mock('./AuthContext', () => {
   const context = {
     authenticatedApi: { listGatekeeperVendors: async () => [] },
-    currentUser: null,
+    get currentUser() { return authState.currentUser },
   }
   return {
     useAuthenticatedApi: () => context,
@@ -63,6 +65,7 @@ const testRoot = makeTestRoot()
 
 afterEach(() => {
   testRoot.cleanup()
+  authState.currentUser = null
   vi.restoreAllMocks()
 })
 
@@ -208,6 +211,22 @@ const proposal = (over: Partial<BlueprintMerge> = {}, baseCommit = 'merge') => c
   pins: [{ gadgetId: GADGET_ID, baseCommit, mergedCommit: 'head' }],
 })
 
+it('将自己的编辑显示为你，并保留其他用户的名称', async () => {
+  authState.currentUser = USER
+  await renderProposalChat({
+    history: [
+      changes(0, { change: { [GADGET_ID]: [['a.ts', { set: 'one' }]] } }),
+      changes(1, {
+        author: { type: 'user', id: 'other', name: 'You' },
+        change: { [GADGET_ID]: [['b.ts', { set: 'two' }]] },
+      }),
+    ],
+  })
+
+  expect(text()).toContain('你 保存了编辑')
+  expect(text()).toContain('You 保存了编辑')
+})
+
 describe('blueprint proposal notice', () => {
   it('describes a merge from its record, in place of a saved-edits row', async () => {
     await renderProposalChat({
@@ -215,16 +234,16 @@ describe('blueprint proposal notice', () => {
       history: [proposal({ conflictPaths: ['client.js'] })],
     })
 
-    expect(text()).toContain('Trip planner, version 3')
-    expect(text()).toContain('You’ve customized this gadget')
+    expect(text()).toContain('Trip planner，版本 3')
+    expect(text()).toContain('你对应用所做的自定义')
     // No agent is taking part, so the clash is left to the user.
-    expect(text()).toContain('Ask in this chat to have them sorted out')
-    expect(text()).toContain('Try this version in the preview first.')
-    expect(text()).not.toContain('saved edits')
+    expect(text()).toContain('请在接受前通过此对话请求解决')
+    expect(text()).toContain('请先在预览中试用此版本。')
+    expect(text()).not.toContain('保存了编辑')
     expect(text()).not.toContain('client.js')
 
-    await click('Advanced details')
-    expect(text()).toContain('Three-way merge')
+    await click('高级详情')
+    expect(text()).toContain('三方合并')
     expect(text()).toContain('client.js')
   })
 
@@ -241,8 +260,8 @@ describe('blueprint proposal notice', () => {
       ],
     })
 
-    expect(text()).toContain('An agent is now making sure your customizations are compatible')
-    expect(text()).not.toContain('Ask in this chat to have them sorted out')
+    expect(text()).toContain('智能体正在确认你的自定义内容与新版本兼容')
+    expect(text()).not.toContain('请在接受前通过此对话请求解决')
   })
 
   // What the proposal does is its kind, since no message of it carries a change.
@@ -251,16 +270,16 @@ describe('blueprint proposal notice', () => {
       metadata: chatMetadata({ proposedChangeWorkpieces: [GADGET_ID] }),
       history: [proposal({ kind: 'fastForward' })],
     })
-    expect(text()).toContain('it simply becomes this version')
-    expect(text()).toContain('Try this version in the preview first.')
+    expect(text()).toContain('将直接更新到此版本')
+    expect(text()).toContain('请先在预览中试用此版本。')
     testRoot.cleanup()
 
     await renderProposalChat({
       metadata: chatMetadata({ proposedChangeWorkpieces: [GADGET_ID] }),
       history: [proposal({ kind: 'follow' })],
     })
-    expect(text()).toContain('nothing in it changes')
-    expect(text()).not.toContain('Try this version in the preview first.')
+    expect(text()).toContain('不会更改文件')
+    expect(text()).not.toContain('请先在预览中试用此版本。')
   })
 
   // The release deleted a file the gadget changed. The gadget's version is kept, so no file
@@ -271,24 +290,24 @@ describe('blueprint proposal notice', () => {
       history: [proposal({ conflictPaths: ['legacy.js'] })],
     })
 
-    expect(text()).toContain('You’ve customized this gadget')
-    expect(text()).not.toContain('nothing in it changes')
+    expect(text()).toContain('你对应用所做的自定义')
+    expect(text()).not.toContain('不会更改文件')
   })
 
   it('keeps the notice once the proposal is decided, marked with which way', async () => {
     const chat = await renderProposalChat({
       history: [changes(0, { blueprintMerges: [merge({ kind: 'follow', baseCommit: undefined })] })],
     })
-    expect(text()).toContain('Nothing changes until you accept.')
+    expect(text()).toContain('接受之前不会更改任何内容。')
 
     chat.emitMessage({
       chatId: CHAT_ID, sequence: 1, timestamp: new Date(), author: USER, type: 'revert', revertFrom: 0,
     })
 
-    expect(text()).toContain('Trip planner, version 3')
-    expect(text()).toContain('Discarded')
-    expect(text()).toContain('future updates from this blueprint')
-    expect(text()).not.toContain('Nothing changes until you accept.')
+    expect(text()).toContain('Trip planner，版本 3')
+    expect(text()).toContain('已放弃')
+    expect(text()).toContain('今后将从此蓝图获取更新')
+    expect(text()).not.toContain('接受之前不会更改任何内容。')
   })
 })
 
@@ -300,8 +319,8 @@ describe('accepting a proposal that the chat’s metadata does not announce', ()
   it('offers accept and discard while the proposal is still to be decided', async () => {
     const chat = await renderProposalChat({ history: [follow] })
 
-    expect(text()).toContain('Pending changes')
-    await click('Accept changes')
+    expect(text()).toContain('待处理更改')
+    await click('接受更改')
     expect(chat.mergeChanges).toHaveBeenCalledExactlyOnceWith(CHAT_ID)
   })
 
@@ -313,9 +332,9 @@ describe('accepting a proposal that the chat’s metadata does not announce', ()
       type: 'merge', mergeThrough: 0, commits: [],
     })
 
-    expect(button('Accept changes')).toBeUndefined()
-    expect(text()).toContain('Trip planner, version 3')
-    expect(text()).toContain('Accepted')
+    expect(button('接受更改')).toBeUndefined()
+    expect(text()).toContain('Trip planner，版本 3')
+    expect(text()).toContain('已接受')
   })
 })
 
@@ -342,18 +361,18 @@ describe('accepting changes with unresolved merge conflicts', () => {
       content: () => content,
     })
 
-    await click('Accept changes')
+    await click('接受更改')
     expect(chat.mergeChanges).not.toHaveBeenCalled()
-    expect(text()).toContain('This draft still has merge conflicts')
-    expect(text()).toContain('line 1')
+    expect(text()).toContain('此草稿仍有合并冲突')
+    expect(text()).toContain('行 1')
 
-    await click('Keep resolving')
-    expect(text()).not.toContain('This draft still has merge conflicts')
+    await click('继续解决')
+    expect(text()).not.toContain('此草稿仍有合并冲突')
     expect(chat.mergeChanges).not.toHaveBeenCalled()
 
     content = contentOf('const days = 7\n')
-    await click('Accept changes')
-    expect(text()).not.toContain('This draft still has merge conflicts')
+    await click('接受更改')
+    expect(text()).not.toContain('此草稿仍有合并冲突')
     expect(chat.mergeChanges).toHaveBeenCalledExactlyOnceWith(CHAT_ID)
   })
 
@@ -367,10 +386,10 @@ describe('accepting changes with unresolved merge conflicts', () => {
       commits: { 'merge-untouched': { 'client.js': CONFLICTED } },
     })
 
-    await click('Accept changes')
+    await click('接受更改')
     expect(chat.mergeChanges).not.toHaveBeenCalled()
-    expect(text()).toContain('This draft still has merge conflicts')
-    expect(text()).toContain('line 1')
+    expect(text()).toContain('此草稿仍有合并冲突')
+    expect(text()).toContain('行 1')
   })
 
   it('finds none in a conflicted file resolved at the commit the chat is pinned at', async () => {
@@ -381,8 +400,8 @@ describe('accepting changes with unresolved merge conflicts', () => {
       commits: { 'merge-resolved': { 'client.js': 'const days = 7\n' } },
     })
 
-    await click('Accept changes')
-    expect(text()).not.toContain('This draft still has merge conflicts')
+    await click('接受更改')
+    expect(text()).not.toContain('此草稿仍有合并冲突')
     expect(chat.mergeChanges).toHaveBeenCalledExactlyOnceWith(CHAT_ID)
   })
 
@@ -393,10 +412,10 @@ describe('accepting changes with unresolved merge conflicts', () => {
       content: () => contentOf(CONFLICTED),
     })
 
-    await click('Accept changes')
-    await click('Accept anyway')
+    await click('接受更改')
+    await click('仍然接受')
     expect(chat.mergeChanges).toHaveBeenCalledExactlyOnceWith(CHAT_ID)
-    expect(text()).not.toContain('This draft still has merge conflicts')
+    expect(text()).not.toContain('此草稿仍有合并冲突')
   })
 
   it('checks the files of a mainline merge too', async () => {
@@ -418,9 +437,9 @@ describe('accepting changes with unresolved merge conflicts', () => {
       commits: { 'mainline-merge': { 'client.js': CONFLICTED } },
     })
 
-    await click('Accept changes')
+    await click('接受更改')
     expect(chat.mergeChanges).not.toHaveBeenCalled()
-    expect(text()).toContain('This draft still has merge conflicts')
+    expect(text()).toContain('此草稿仍有合并冲突')
   })
 
   // A mainline merge recorded before merges were commits wrote its markers as a change.
@@ -436,9 +455,9 @@ describe('accepting changes with unresolved merge conflicts', () => {
       content: () => contentOf(CONFLICTED),
     })
 
-    await click('Accept changes')
+    await click('接受更改')
     expect(chat.mergeChanges).not.toHaveBeenCalled()
-    expect(text()).toContain('This draft still has merge conflicts')
+    expect(text()).toContain('此草稿仍有合并冲突')
   })
 
   // The server merges what it has been sent. An edit still on its way there may be the one
@@ -452,11 +471,11 @@ describe('accepting changes with unresolved merge conflicts', () => {
       hasLocalEdits: () => unsent,
     })
 
-    await click('Accept changes')
+    await click('接受更改')
     expect(chat.mergeChanges).not.toHaveBeenCalled()
 
     unsent = false
-    await click('Accept changes')
+    await click('接受更改')
     expect(chat.mergeChanges).toHaveBeenCalledExactlyOnceWith(CHAT_ID)
   })
 
@@ -473,7 +492,7 @@ describe('accepting changes with unresolved merge conflicts', () => {
       hasLocalEdits: () => true,
     })
 
-    await click('Accept changes')
+    await click('接受更改')
     expect(chat.mergeChanges).toHaveBeenCalledExactlyOnceWith(CHAT_ID)
   })
 
@@ -485,7 +504,7 @@ describe('accepting changes with unresolved merge conflicts', () => {
       content: () => undefined,
     })
 
-    await click('Accept changes')
+    await click('接受更改')
     expect(chat.mergeChanges).toHaveBeenCalledExactlyOnceWith(CHAT_ID)
   })
 })
@@ -505,7 +524,7 @@ describe('an update from mainline', () => {
     pins: [{ gadgetId: GADGET_ID, baseCommit: 'merge', mergedCommit: 'head' }],
   })
   const discardButton = () =>
-    document.querySelector<HTMLButtonElement>('button[aria-label^="Discard this update"]')
+    document.querySelector<HTMLButtonElement>('button[aria-label^="放弃此次更新"]')
 
   // The update records where the pins were before it, so a revert can put them back.
   it('can be discarded', async () => {
@@ -514,7 +533,7 @@ describe('an update from mainline', () => {
       history: [update(true)],
     })
 
-    expect(text()).toContain("brought the gadget's latest changes into this draft")
+    expect(text()).toContain("将应用的最新更改引入了此草稿")
     const discard = discardButton()
     expect(discard?.disabled).toBe(false)
     await act(async () => { discard!.click() })
@@ -529,7 +548,7 @@ describe('an update from mainline', () => {
 
     expect(discardButton()).toBeNull()
     const refused =
-      document.querySelector<HTMLButtonElement>(`button[aria-label^="This update can't"]`)
+      document.querySelector<HTMLButtonElement>(`button[aria-label^="无法放弃此更新"]`)
     expect(refused?.disabled).toBe(true)
   })
 
@@ -549,8 +568,8 @@ describe('an update from mainline', () => {
     const { useKumoToastManager } = await import('@cloudflare/kumo')
     const toasts = useKumoToastManager()
 
-    await click('Accept changes')
-    await click('Bring in latest changes')
+    await click('接受更改')
+    await click('引入最新更改')
     expect(toasts.add).toHaveBeenCalledWith({ title: refusal, variant: 'error' })
   })
 })

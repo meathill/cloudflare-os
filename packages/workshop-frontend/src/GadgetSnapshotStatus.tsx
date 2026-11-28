@@ -19,9 +19,9 @@ export const GadgetSnapshotStatus = ({ refreshedAt, onRefresh }: Props) => {
   return (
     <div className="flex min-w-0 items-center gap-1.5">
       {/* Badge forwards no ref, so a focusable span carries the tooltip. */}
-      <Tooltip content={`Updated ${formatRelativeTime(refreshedAt)}`} asChild>
+      <Tooltip content={`${formatRelativeTime(refreshedAt)}更新`} asChild>
         <span tabIndex={0} className="inline-flex rounded-full">
-          <Badge variant="secondary" icon={<Camera size={12} />}>Snapshot</Badge>
+          <Badge variant="secondary" icon={<Camera size={12} />}>快照</Badge>
         </span>
       </Tooltip>
       <SnapshotRefreshButton onRefresh={onRefresh} />

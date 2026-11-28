@@ -109,6 +109,8 @@ export function cacheModels(userId: string | undefined, models: AiChatAuthorInfo
   if (userId !== undefined) cachedModels = { userId, models };
 }
 
+const DEFAULT_MODEL_ID = "gemini-3.8-flash";
+
 /** Sentinel used for UI values and localStorage so an explicit null choice can persist. */
 export const NO_AGENT_OPTION_VALUE = "__gadgets_no_agent__";
 
@@ -127,8 +129,8 @@ export function getStoredSelectedModel(
     return storedModel;
   }
 
-  // Default: Return the first configured model, or null if none are configured.
-  return models[0]?.id ?? null;
+  // Default: the deployment's default model if offered, else the first, or null if none are.
+  return models.find((model) => model.id === DEFAULT_MODEL_ID)?.id ?? models[0]?.id ?? null;
 }
 
 /**

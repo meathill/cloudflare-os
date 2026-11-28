@@ -116,7 +116,7 @@ const pressEscape = (target: Element) => act(async () => target.dispatchEvent(
 
 const addConnectionOption = () =>
   Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'))
-    .find((option) => option.textContent?.includes("Add a new connection"));
+    .find((option) => option.textContent?.includes("添加新连接"));
 
 describe("ChatComposer", () => {
   let container: HTMLDivElement | undefined;
@@ -158,10 +158,10 @@ describe("ChatComposer", () => {
   };
 
   const voiceButton = (action: "Start" | "Stop") =>
-    container?.querySelector<HTMLButtonElement>(`button[aria-label="${action} voice typing"]`);
-  const strip = () => container?.querySelector<HTMLElement>('[role="group"][aria-label="Voice typing"]');
+    container?.querySelector<HTMLButtonElement>(`button[aria-label="${action === "Start" ? "开始" : "停止"}语音输入"]`);
+  const strip = () => container?.querySelector<HTMLElement>('[role="group"][aria-label="语音输入"]');
   const stripText = () => strip()?.querySelector("p")?.textContent;
-  const stripButton = (label: "Add to message" | "Discard what you said") =>
+  const stripButton = (label: "加入消息" | "丢弃所说的内容") =>
     strip()?.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
   // The strip dims the guess the recognizer may still revise.
   const guess = () => strip()?.querySelector("p .text-kumo-subtle")?.textContent;
@@ -179,7 +179,7 @@ describe("ChatComposer", () => {
     const speech = TestSpeechRecognition.current;
     expect(speech.startedLocally).toBe(true);
     expect(speech.interimResults).toBe(true);
-    expect(stripText()).toBe("Listening…");
+    expect(stripText()).toBe("正在聆听…");
 
     await act(async () => speech.report(0, { text: "a dash", final: false }));
     expect(textarea.value).toBe("Build");
@@ -212,7 +212,7 @@ describe("ChatComposer", () => {
     const textarea = await renderDictationComposer();
     await typeText(textarea, "Keep this");
     for (const discard of [
-      () => act(async () => stripButton("Discard what you said")!.click()),
+      () => act(async () => stripButton("丢弃所说的内容")!.click()),
       () => pressEscape(textarea),
       () => pressEscape(voiceButton("Stop")!),
     ]) {
@@ -231,7 +231,7 @@ describe("ChatComposer", () => {
 
     await act(async () => voiceButton("Start")!.click());
     await act(async () => TestSpeechRecognition.current.report(0, { text: "for later", final: true }));
-    await act(async () => stripButton("Add to message")!.click());
+    await act(async () => stripButton("加入消息")!.click());
     expect(textarea.value).toBe("Keep this for later");
     expect(strip()).toBeNull();
   });
@@ -262,7 +262,7 @@ describe("ChatComposer", () => {
     await act(async () => voiceButton("Start")!.click());
     const speech = TestSpeechRecognition.current;
     await act(async () => container!
-      .querySelector<HTMLButtonElement>('[aria-label="Add to conversation"]')!.click());
+      .querySelector<HTMLButtonElement>('[aria-label="添加到对话"]')!.click());
     await act(async () => vi.waitFor(() => expect(addConnectionOption()).toBeDefined()));
     await act(async () => addConnectionOption()!.click());
     expect(testState.gatekeeperModalProps?.open).toBe(true);
@@ -293,7 +293,7 @@ describe("ChatComposer", () => {
     const sentence = { text: "Show me the", final: true };
     await act(async () => first.report(0, sentence, { text: " forecast", final: false }));
     expect(textarea.value).toBe("");
-    expect(container!.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.disabled)
+    expect(container!.querySelector<HTMLButtonElement>('[aria-label="发送消息"]')!.disabled)
       .toBe(false);
     const lateResult = { text: " Late", final: true };
     await act(async () => {
@@ -356,7 +356,7 @@ describe("ChatComposer", () => {
     const first = TestSpeechRecognition.current;
     await act(async () => first.report(0, { text: "Quick note", final: true }));
     await act(async () => voiceButton("Stop")!.click());
-    await act(async () => stripButton("Add to message")!.click());
+    await act(async () => stripButton("加入消息")!.click());
     expect(first.abort).toHaveBeenCalledOnce();
     expect(textarea.value).toBe("Quick note");
     await act(async () => first.dispatchEvent(new Event("end")));
@@ -382,7 +382,7 @@ describe("ChatComposer", () => {
       { text: "dashboard", final: false },
     ));
     expect(stripText()).toBe("Open the dashboard");
-    await act(async () => stripButton("Add to message")!.click());
+    await act(async () => stripButton("加入消息")!.click());
     expect(textarea.value).toBe("Open the dashboard");
   });
 
@@ -391,7 +391,7 @@ describe("ChatComposer", () => {
     const textarea = await renderDictationComposer();
     await act(async () => voiceButton("Start")!.click());
     await act(async () => TestSpeechRecognition.current.report(0, { text: "scratch that", final: true }));
-    const discard = stripButton("Discard what you said")!;
+    const discard = stripButton("丢弃所说的内容")!;
     discard.focus();
     await act(async () => discard.click());
     expect(strip()).toBeNull();
@@ -491,14 +491,14 @@ describe("ChatComposer", () => {
     expect(DownloadableRecognition.available).toHaveBeenCalledWith(options);
     expect(DownloadableRecognition.install).toHaveBeenCalledWith(options);
     expect(container!.querySelector('[role="status"].sr-only')?.textContent)
-      .toBe("Downloading the voice typing language pack…");
+      .toBe("正在下载语音输入语言包…");
 
     if (switched) await renderDictationComposer({ chatKey: 2 });
     await act(async () => download.resolve(true));
     expect(started).not.toHaveBeenCalled();
     expect(voiceButton("Start")).not.toBeNull();
     expect(testState.addToast.mock.calls.map(([toast]) => toast.title))
-      .toEqual(switched ? [] : ["Voice typing is ready"]);
+      .toEqual(switched ? [] : ["语音输入已就绪"]);
 
     await act(async () => voiceButton("Start")!.click());
     expect(started).toHaveBeenCalledOnce();
@@ -620,7 +620,7 @@ describe("ChatComposer", () => {
     });
 
     expect(textarea.value).toBe("Keep this draft");
-    expect(container.textContent?.includes("Connection hiccup")).toBe(transient);
+    expect(container.textContent?.includes("连接出现问题")).toBe(transient);
     expect(consoleError).toHaveBeenCalledTimes(transient ? 0 : 1);
     consoleError.mockRestore();
   });
@@ -666,10 +666,10 @@ describe("ChatComposer", () => {
       await typeText(textarea(), "Make it dark.");
       await pressEnter();
       expect(onSend).toHaveBeenCalledWith("Make it dark.", "model-a", {});
-      expect(button("Stop agent")!.disabled).toBe(true);
+      expect(button("停止智能体")!.disabled).toBe(true);
       await act(async () => finishSend!());
       expect(textarea().value).toBe("");
-      expect(button("Stop agent")!.disabled).toBe(false);
+      expect(button("停止智能体")!.disabled).toBe(false);
     });
 
     it("puts the dropped steers after the draft, and steers nothing until the agent is idle",
@@ -680,12 +680,12 @@ describe("ChatComposer", () => {
       await render({ onSend, onStop, queuedSteers: ["A"] });
 
       await typeText(textarea(), "Half a thought  ");
-      expect(button("Send message")).not.toBeNull();
-      await act(async () => button("Stop agent")!.click());
+      expect(button("发送消息")).not.toBeNull();
+      await act(async () => button("停止智能体")!.click());
       expect(onStop).toHaveBeenCalledOnce();
       expect(textarea().value).toBe("Half a thought\n\nA");
-      expect(button("Stop agent")!.disabled).toBe(true);
-      expect(button("Send message")).toBeNull();
+      expect(button("停止智能体")!.disabled).toBe(true);
+      expect(button("发送消息")).toBeNull();
       await pressEnter();
       expect(onSend).not.toHaveBeenCalled();
 
@@ -703,11 +703,11 @@ describe("ChatComposer", () => {
       await render({ onStop, queuedSteers: ["A"] });
       await typeText(textarea(), "Draft");
 
-      await act(async () => button("Stop agent")!.click());
-      expect(button("Stop agent")!.disabled).toBe(true);
+      await act(async () => button("停止智能体")!.click());
+      expect(button("停止智能体")!.disabled).toBe(true);
       await act(async () => failStop!(new Error("Peer closed WebSocket")));
       expect(textarea().value).toBe("Draft\n\nA");
-      expect(button("Stop agent")!.disabled).toBe(false);
+      expect(button("停止智能体")!.disabled).toBe(false);
     });
   });
 
@@ -745,7 +745,7 @@ describe("ChatComposer", () => {
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
     });
     textarea.setSelectionRange(7, 7);
-    const add = container.querySelector<HTMLButtonElement>('[aria-label="Add to conversation"]')!;
+    const add = container.querySelector<HTMLButtonElement>('[aria-label="添加到对话"]')!;
     await act(async () => add.click());
     await act(async () => vi.waitFor(() => expect(
       Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'))
@@ -760,17 +760,17 @@ describe("ChatComposer", () => {
 
     expect(textarea.value).toBe("before /review after");
     expect(document.body.textContent)
-      .toContain("Slash command /review from Projects is ready to send");
+      .toContain("来自 Projects 的斜杠命令 /review 已准备发送");
     expect(document.activeElement).toBe(textarea);
 
     await act(async () => add.click());
     const actions = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'));
     expect(actions).toHaveLength(2);
     expect(actions.every((action) => !action.disabled)).toBe(true);
-    expect(document.querySelector('[aria-label="Search skills"]')).toBeNull();
+    expect(document.querySelector('[aria-label="搜索技能"]')).toBeNull();
     expect(container.textContent).not.toContain("Add resource");
     expect(container.textContent).not.toContain("Legacy resource");
-    const connection = actions.find((action) => action.textContent?.includes("Add a new connection"))!;
+    const connection = actions.find((action) => action.textContent?.includes("添加新连接"))!;
     await act(async () => connection.click());
     expect(testState.gatekeeperModalProps?.open).toBe(true);
     expect(listSlashCommands).toHaveBeenCalledTimes(1);
@@ -890,11 +890,11 @@ describe("ChatComposer", () => {
       />,
     ));
 
-    const add = container.querySelector<HTMLButtonElement>('[aria-label="Add to conversation"]')!;
+    const add = container.querySelector<HTMLButtonElement>('[aria-label="添加到对话"]')!;
     await act(async () => add.click());
     await act(async () => vi.waitFor(() => expect(document.body.textContent).toContain("first skill")));
     const connect = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'))
-      .find((option) => option.textContent?.includes("Add a new connection"))!;
+      .find((option) => option.textContent?.includes("添加新连接"))!;
     await act(async () => connect.click());
     expect(testState.gatekeeperModalProps?.open).toBe(true);
 
@@ -974,12 +974,12 @@ describe("ChatComposer", () => {
     const { textarea, toast } = await pasteFailingUrl();
 
     expect(toast).toMatchObject({
-      title: "Failed to add resource",
+      title: "添加资源失败",
       description: reason,
       variant: "error",
       timeout: 0,
     });
-    expect(toast.actions?.map((action) => action.children)).toEqual(["Configure…"]);
+    expect(toast.actions?.map((action) => action.children)).toEqual(["配置…"]);
     expect(testState.gatekeeperModalProps?.open).toBe(false);
 
     act(() => toast.actions![0].onClick());
@@ -1011,9 +1011,9 @@ describe("ChatComposer", () => {
     expect(testState.gatekeeperModalProps?.initialResourceUrl).toBeUndefined();
   });
 
-  it("closes its Configure… toast when the composer unmounts", async () => {
+  it("closes its 配置… toast when the composer unmounts", async () => {
     const { toast } = await pasteFailingUrl();
-    expect(toast.actions?.map((action) => action.children)).toEqual(["Configure…"]);
+    expect(toast.actions?.map((action) => action.children)).toEqual(["配置…"]);
     expect(testState.closeToast).not.toHaveBeenCalled();
 
     act(() => root!.unmount());
@@ -1032,7 +1032,7 @@ describe("ChatComposer", () => {
     expect(testState.addToast).toHaveBeenCalledTimes(2);
     const changed = testState.addToast.mock.calls[1][0];
     expect(changed).toMatchObject({
-      title: "The prompt changed before the resource could be added",
+      title: "添加资源前提示内容已更改",
       variant: "error",
     });
     expect(changed.timeout).toBeUndefined();
@@ -1069,7 +1069,7 @@ describe("ChatComposer", () => {
     });
     const textarea = () => container!.querySelector<HTMLTextAreaElement>('[role="combobox"]')!;
     const dismissButton = () => container!.querySelector<HTMLButtonElement>(
-      '[aria-label^="Don\'t send"]');
+      '[aria-label^="此消息不发送"]');
     const send = async (text: string) => {
       await typeText(textarea(), text);
       await act(async () => {
@@ -1149,7 +1149,7 @@ describe("ChatComposer", () => {
       const onSend = vi.fn<ComposerProps["onSend"]>();
       await render({ onSend, focusOffer: budget, getOverseer: () => overseer });
 
-      const add = container!.querySelector<HTMLButtonElement>('[aria-label="Add to conversation"]')!;
+      const add = container!.querySelector<HTMLButtonElement>('[aria-label="添加到对话"]')!;
       await act(async () => add.click());
       await act(async () => vi.waitFor(() => expect(
         Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'))

@@ -125,14 +125,14 @@ describe("GatekeeperUserPickerDialog", () => {
     await act(async () => vi.advanceTimersByTimeAsync(200));
   }
 
-  const added = () => container!.querySelector('[aria-label="Added people"]')?.textContent ?? "";
+  const added = () => container!.querySelector('[aria-label="已添加的用户"]')?.textContent ?? "";
   const notice = () => container!.querySelector('p[role="status"]:not([aria-live])')?.textContent;
   const announcement = () => container!.querySelector('[role="status"][aria-live="polite"]')?.textContent;
   const options = () => Array.from(container!.querySelectorAll<HTMLElement>('[role="option"]'));
 
-  const closeButton = () => container!.querySelector<HTMLButtonElement>('[aria-label="Close person picker"]')!;
+  const closeButton = () => container!.querySelector<HTMLButtonElement>('[aria-label="关闭人员选择器"]')!;
   const doneButton = () => Array.from(container!.querySelectorAll('button'))
-    .find(button => button.textContent === 'Done')!;
+    .find(button => button.textContent === '完成')!;
 
   it("mints a ticket for each pick and delivers it to the app before the picker closes", async () => {
     const { searchUsers, createSelection, onSelected, onClose, props } = await mount(
@@ -178,7 +178,7 @@ describe("GatekeeperUserPickerDialog", () => {
 
     await act(async () => props().onSelect(ALICE));
     expect(added()).toBe("Alice Renamed");
-    expect(announcement()).toBe("Added Alice Renamed");
+    expect(announcement()).toBe("已添加 Alice Renamed");
   });
 
   it("keeps the current search when a pick settles, hiding picked people from its results", async () => {
@@ -279,7 +279,7 @@ describe("GatekeeperUserPickerDialog", () => {
       () => minting.promise, () => delivery.promise);
 
     await act(async () => props().onSelect(ALICE));
-    expect(container!.querySelector('li[role="status"]')?.textContent).toBe("Adding…");
+    expect(container!.querySelector('li[role="status"]')?.textContent).toBe("正在添加…");
     await act(async () => doneButton().click());
     expect(doneButton().disabled).toBe(true);
     expect(onClose).not.toHaveBeenCalled();
@@ -344,7 +344,7 @@ describe("GatekeeperUserPickerDialog", () => {
     expect(container!.querySelectorAll('li[role="status"]')).toHaveLength(2);
 
     await act(async () => { deliveries.get(selectionFor(CAROL).ticket)!.resolve(); });
-    expect(added()).toBe("CarolAdding…");
+    expect(added()).toBe("Carol正在添加…");
     await act(async () => { deliveries.get(selectionFor(ALICE).ticket)!.resolve(); });
     expect(added()).toBe("CarolAlice");
   });
@@ -355,7 +355,7 @@ describe("GatekeeperUserPickerDialog", () => {
     expect(added()).toBe("Alice");
     await act(async () => props().onValueChange("missing@example.com"));
     await act(async () => props().onSubmit());
-    expect(notice()).toContain("can no longer be selected");
+    expect(notice()).toContain("无法再选择 missing@example.com");
     expect(added()).toBe("Alice");
   });
 
@@ -388,7 +388,7 @@ describe("GatekeeperUserPickerDialog", () => {
       if (action === "cancel") {
         await act(async () => closeButton().click());
         const stop = Array.from(container!.querySelectorAll("button"))
-          .find(button => button.textContent === "Stop waiting and close")!;
+          .find(button => button.textContent === "停止等待并关闭")!;
         await act(async () => stop.click());
       } else {
         await act(async () => root!.unmount());
@@ -466,7 +466,7 @@ describe("GatekeeperUserPickerDialog", () => {
     });
     expect(createSelection).toHaveBeenCalledTimes(999);
     expect(container!.querySelectorAll('li[role="status"]')).toHaveLength(999);
-    expect(container!.textContent).toContain("Close and reopen the picker to continue");
+    expect(container!.textContent).toContain("关闭后重新打开选择器即可继续");
     await act(async () => { minting.resolve(null); await minting.promise; });
     await act(async () => props().onSelect(ALICE));
     expect(createSelection).toHaveBeenLastCalledWith("context", ALICE.id);

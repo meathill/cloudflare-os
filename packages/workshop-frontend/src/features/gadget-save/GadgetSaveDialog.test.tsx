@@ -136,9 +136,9 @@ describe('GadgetSaveDialog saving a new file', () => {
     saveFile.mockResolvedValue({ url: 'javascript:alert(1)' })
     await render({ target, storageKey: KEY })
 
-    await act(async () => button('Save').click())
+    await act(async () => button('保存').click())
 
-    expect(toasts()).toMatchObject([{ title: 'Saved to Office Docs', variant: 'success' }])
+    expect(toasts()).toMatchObject([{ title: '已保存到 Office Docs', variant: 'success' }])
     expect(toasts()[0].actions).toBeUndefined()
   })
 
@@ -148,7 +148,7 @@ describe('GadgetSaveDialog saving a new file', () => {
     testState.authenticatedApi.connectAccount = connectAccount
     await render({ target, storageKey: KEY })
 
-    await act(async () => button('Use another Office account').click())
+    await act(async () => button('使用其他 Office 账号').click())
 
     expect(connectAccount).toHaveBeenCalledExactlyOnceWith('office', [])
   })
@@ -156,10 +156,10 @@ describe('GadgetSaveDialog saving a new file', () => {
   it('saves the export, unawaited, where the configurator chose under the trimmed name', async () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     await render({ target, storageKey: KEY })
-    expect(document.body.textContent).toContain('Save to Office Docs')
+    expect(document.body.textContent).toContain('保存到 Office Docs')
     expect(startCreationConfigurator).toHaveBeenCalledExactlyOnceWith(5, 'document', 'save')
 
-    await act(async () => button('Save').click())
+    await act(async () => button('保存').click())
 
     expect(exports).toEqual([['html', 7]])
     expect(saveFile).toHaveBeenCalledExactlyOnceWith(
@@ -170,18 +170,18 @@ describe('GadgetSaveDialog saving a new file', () => {
     expect(onClose).toHaveBeenCalledOnce()
     expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ accountId: 5, url: URL, name: 'Q3 report' })
 
-    expect(toasts()).toMatchObject([{ title: 'Saved to Office Docs', variant: 'success' }])
+    expect(toasts()).toMatchObject([{ title: '已保存到 Office Docs', variant: 'success' }])
     toasts()[0].actions![0].onClick()
     expect(open).toHaveBeenCalledExactlyOnceWith(URL, '_blank', 'noopener')
   })
 
   it('needs a name', async () => {
     await render({ target, storageKey: KEY })
-    expect(button('Save').disabled).toBe(false)
+    expect(button('保存').disabled).toBe(false)
     typeName('   ')
-    expect(button('Save').disabled).toBe(true)
+    expect(button('保存').disabled).toBe(true)
     typeName('Plan')
-    await act(async () => button('Save').click())
+    await act(async () => button('保存').click())
     expect(saveFile.mock.calls[0][3]).toBe('Plan')
   })
 
@@ -196,7 +196,7 @@ describe('GadgetSaveDialog saving a new file', () => {
     // From the click, before the configurator has even answered.
     let collected!: () => void
     testState.collecting = new Promise(resolve => { collected = resolve })
-    await act(async () => button('Save').click())
+    await act(async () => button('保存').click())
     expect(saveFile).not.toHaveBeenCalled()
     expect(settings()).not.toBeNull()
     testState.collecting = undefined
@@ -210,15 +210,15 @@ describe('GadgetSaveDialog saving a new file', () => {
     expect(toasts()).toEqual([{ title: 'That folder is read-only.', variant: 'error' }])
     expect(onClose).not.toHaveBeenCalled()
     expect(localStorage.getItem(KEY)).toBeNull()
-    expect(button('Save').disabled).toBe(false)
+    expect(button('保存').disabled).toBe(false)
   })
 
   it('saves without storage', async () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied') })
     await render({ target, storageKey: KEY })
-    await act(async () => button('Save').click())
+    await act(async () => button('保存').click())
     await render({ target, storageKey: null })
-    await act(async () => button('Save').click())
+    await act(async () => button('保存').click())
 
     expect(toasts()).toMatchObject([{ variant: 'success' }, { variant: 'success' }])
     expect(onClose).toHaveBeenCalledTimes(2)
@@ -232,23 +232,23 @@ describe('GadgetSaveDialog updating the saved file', () => {
   it('replaces the file only once confirmed, without asking where', async () => {
     saveFile.mockResolvedValue({ url: MOVED })
     await render({ target, storageKey: KEY, saved })
-    expect(document.body.textContent).toContain('Update “Q3 report”?')
-    expect(document.body.textContent).toContain('Suggestions that are pending in it are discarded')
+    expect(document.body.textContent).toContain('更新 “Q3 report”？')
+    expect(document.body.textContent).toContain('其中待处理的建议会被丢弃')
     expect(startCreationConfigurator).not.toHaveBeenCalled()
     expect(saveFile).not.toHaveBeenCalled()
 
-    await act(async () => button('Update').click())
+    await act(async () => button('更新').click())
 
     expect(saveFile).toHaveBeenCalledExactlyOnceWith(5, 'document', URL, 'Q3 report', 'text/html', exported)
     expect(then).not.toHaveBeenCalled()
     expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ ...saved, url: MOVED })
-    expect(toasts()).toMatchObject([{ title: 'Saved to Office Docs', variant: 'success' }])
+    expect(toasts()).toMatchObject([{ title: '已保存到 Office Docs', variant: 'success' }])
     expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('does nothing when cancelled', async () => {
     await render({ target, storageKey: KEY, saved })
-    await act(async () => button('Cancel').click())
+    await act(async () => button('取消').click())
     expect(saveFile).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
   })
@@ -259,11 +259,11 @@ describe('GadgetSaveDialog updating the saved file', () => {
     saveFile.mockRejectedValueOnce(new Error('The file was deleted.'))
     await render({ target, storageKey: KEY, saved })
 
-    await act(async () => button('Update').click())
+    await act(async () => button('更新').click())
 
     expect(toasts()).toEqual([{ title: 'The file was deleted.', variant: 'error' }])
     expect(onClose).not.toHaveBeenCalled()
     expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual(saved)
-    expect(button('Update').disabled).toBe(false)
+    expect(button('更新').disabled).toBe(false)
   })
 })

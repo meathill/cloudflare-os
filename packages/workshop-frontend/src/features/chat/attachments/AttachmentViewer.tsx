@@ -44,7 +44,7 @@ const NoPreview = ({ attachment, message, onDownload }: {
         </div>
         <WorkshopButton onClick={onDownload}>
           <DownloadSimpleIcon size={14} className="mr-1.5" />
-          Download
+          下载
         </WorkshopButton>
       </div>
     </div>
@@ -65,7 +65,7 @@ const AttachmentPreview = ({ attachment, loadContent, onDownload }: {
     return (
       <NoPreview
         attachment={attachment}
-        message="There’s no preview for this kind of file."
+        message="此类文件暂不支持预览。"
         onDownload={onDownload}
       />
     );
@@ -110,7 +110,7 @@ export const AttachmentViewer = ({
     // dialog: it moves to the button that goes back.
     const atEnd = index + offset === 0 || index + offset === attachments.length - 1;
     if (atEnd && navigationRef.current?.contains(document.activeElement)) {
-      refocusRef.current = `${offset > 0 ? "Previous" : "Next"} attachment`;
+      refocusRef.current = `${offset > 0 ? "上一个" : "下一个"}附件`;
     }
   };
   useEffect(() => {
@@ -148,7 +148,7 @@ export const AttachmentViewer = ({
         toasts.add({
           title: error instanceof Error && error.message
             ? error.message
-            : "Failed to download attachment",
+            : "下载附件失败",
           variant: "error",
         });
       });
@@ -176,17 +176,17 @@ export const AttachmentViewer = ({
             {attachments.length > 1 && (
               <div ref={navigationRef} className="flex shrink-0 items-center gap-0.5">
                 <WorkshopIconButton
-                  aria-label="Previous attachment"
+                  aria-label="上一个附件"
                   disabled={index === 0}
                   onClick={() => step(-1)}
                 >
                   <CaretLeftIcon size={16} />
                 </WorkshopIconButton>
                 <span className="min-w-9 text-center text-[12px] tabular-nums text-kumo-subtle">
-                  {index + 1} of {attachments.length}
+                  {index + 1} / {attachments.length}
                 </span>
                 <WorkshopIconButton
-                  aria-label="Next attachment"
+                  aria-label="下一个附件"
                   disabled={index === attachments.length - 1}
                   onClick={() => step(1)}
                 >
@@ -195,14 +195,14 @@ export const AttachmentViewer = ({
               </div>
             )}
             <div className="flex shrink-0 items-center gap-0.5">
-              <Tooltip content="Download" side="bottom" asChild>
-                <WorkshopIconButton aria-label="Download" onClick={download}>
+              <Tooltip content="下载" side="bottom" asChild>
+                <WorkshopIconButton aria-label="下载" onClick={download}>
                   <DownloadSimpleIcon size={16} />
                 </WorkshopIconButton>
               </Tooltip>
               <Dialog.Close
                 render={(props) => (
-                  <WorkshopIconButton {...props} aria-label="Close">
+                  <WorkshopIconButton {...props} aria-label="关闭">
                     <XIcon size={16} />
                   </WorkshopIconButton>
                 )}
@@ -219,7 +219,7 @@ export const AttachmentViewer = ({
             >
               <Suspense
                 fallback={(
-                  <div className="grid h-full place-items-center" role="status" aria-label="Loading preview">
+                  <div className="grid h-full place-items-center" role="status" aria-label="正在加载预览">
                     <Loader size="base" />
                   </div>
                 )}

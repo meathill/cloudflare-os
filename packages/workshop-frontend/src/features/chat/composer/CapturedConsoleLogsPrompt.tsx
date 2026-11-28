@@ -25,7 +25,7 @@ export const CapturedConsoleLogsPrompt = ({
     : severity === "warn"
       ? "bg-kumo-warning"
       : "bg-kumo-inactive";
-  const logKind = severity === "error" ? "error" : severity === "warn" ? "warning" : "log";
+  const logKind = severity === "error" ? "错误" : severity === "warn" ? "警告" : "日志";
 
   return (
     <div className="pointer-events-none absolute inset-x-4 -top-10 z-10 flex justify-center">
@@ -47,7 +47,7 @@ export const CapturedConsoleLogsPrompt = ({
           >
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} />
             <span className="truncate">
-              Send {count} captured {logKind}{count !== 1 ? "s" : ""} to chat
+              发送 {count} 条捕获的 {logKind} 到对话
             </span>
           </button>
         </Tooltip>
@@ -55,7 +55,7 @@ export const CapturedConsoleLogsPrompt = ({
           type="button"
           onClick={onDiscard}
           className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full opacity-60 transition-opacity hover:bg-kumo-tint hover:opacity-100"
-          aria-label="Discard captured logs"
+          aria-label="丢弃捕获的日志"
         >
           <X size={10} />
         </button>

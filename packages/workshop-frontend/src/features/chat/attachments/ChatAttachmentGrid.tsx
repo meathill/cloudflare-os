@@ -25,7 +25,7 @@ export const ChatAttachmentGrid = ({
   return (
     <>
       <ul
-        aria-label="Attachments"
+        aria-label="附件"
         className="m-0 mb-1.5 flex max-w-[min(680px,78%)] list-none flex-wrap justify-end gap-2 p-0"
       >
         {attachments.map((attachment) => (

@@ -317,7 +317,9 @@ it("records every call into an account, and withholds what its user can read", a
   const answers = await answersOf(view);
 
   const logged = await userRecords(user.id);
-  expect(logged.map(record => record.method)).toEqual(ADMIN_USER_METHODS.toReversed());
+  expect(logged.map(record => record.method)).toEqual(
+      ADMIN_USER_METHODS.filter(method => method !== "exportUserGatekeeperContent"
+          && method !== "deleteUserGatekeeperContent").toReversed());
   const { sessionId } = logged[0]!;
   for (const record of logged) {
     expect(record).toMatchObject({

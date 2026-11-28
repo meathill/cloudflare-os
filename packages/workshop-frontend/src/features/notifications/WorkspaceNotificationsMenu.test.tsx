@@ -54,7 +54,7 @@ const openMenu = async () => {
   await act(async () => byText('button', 'Workspace actions')!.click())
   return [...document.body.querySelectorAll('[role="menuitem"]')]
     .map(item => item.textContent?.trim())
-    .find(label => label && /mute notifications$/i.test(label))
+    .find(label => label && label.endsWith('静音通知'))
 }
 
 let root: Root | undefined
@@ -73,25 +73,25 @@ afterEach(() => {
 })
 
 it('mutes until local midnight, and unmutes once muted', async () => {
-  expect(await openMenu()).toBe('Mute notifications')
-  await act(async () => byText('[role="menuitem"]', 'Mute notifications')!.click())
-  await act(async () => byText('[role="menuitem"]', 'Until end of day')!.click())
+  expect(await openMenu()).toBe('静音通知')
+  await act(async () => byText('[role="menuitem"]', '静音通知')!.click())
+  await act(async () => byText('[role="menuitem"]', '到今天结束')!.click())
   expect(api.setWorkspaceNotificationMute)
     .toHaveBeenCalledWith('workspace-1', { until: new Date(2026, 9, 16) })
 
-  expect(await openMenu()).toBe('Unmute notifications')
-  await act(async () => byText('[role="menuitem"]', 'Unmute notifications')!.click())
+  expect(await openMenu()).toBe('取消静音通知')
+  await act(async () => byText('[role="menuitem"]', '取消静音通知')!.click())
   expect(api.setWorkspaceNotificationMute).toHaveBeenLastCalledWith('workspace-1', null)
-  expect(await openMenu()).toBe('Mute notifications')
+  expect(await openMenu()).toBe('静音通知')
 })
 
 it('stays unmuted when the mute fails to save', async () => {
   using _ = vi.spyOn(console, 'error').mockImplementation(() => {})
   api.setWorkspaceNotificationMute.mockRejectedValueOnce(new Error('offline'))
   await openMenu()
-  await act(async () => byText('[role="menuitem"]', 'Mute notifications')!.click())
-  await act(async () => byText('[role="menuitem"]', 'Until I turn it back on')!.click())
+  await act(async () => byText('[role="menuitem"]', '静音通知')!.click())
+  await act(async () => byText('[role="menuitem"]', '直到手动取消静音')!.click())
   expect(api.setWorkspaceNotificationMute).toHaveBeenLastCalledWith('workspace-1', { indefinite: true })
   expect(addToast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'error' }))
-  expect(await openMenu()).toBe('Mute notifications')
+  expect(await openMenu()).toBe('静音通知')
 })

@@ -1,8 +1,9 @@
 {
   "id": "/",
-  "name": "Cloudflare OS",
-  "short_name": "Cloudflare OS",
-  "description": "Your workspaces, AI agents, and personal apps.",
+  "name": "有缘心之助",
+  "short_name": "有缘心之助",
+  "description": "管理工作区、AI 智能体和个人应用。",
+  "lang": "zh-CN",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

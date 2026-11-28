@@ -38,6 +38,19 @@ declare global {
       // ADMIN_WORKSPACE_ACCESS_MAX does not limit.
       ADMIN_WORKSPACE_WRITES?: string;
 
+      // Durable Object regional proximity location hint (e.g. "apac-ne", "apac")
+      DO_LOCATION_HINT?: string;
+
+      // 事务邮件的发件地址。默认 no-reply@xiaoniaoshuo.com，其他部署可用它覆盖。
+      INVITE_EMAIL_FROM?: string;
+
+      // 注册白名单：逗号分隔或 JSON 数组的邮箱列表。非空时只有名单内邮箱能注册/首登开号，
+      // 密码注册整体关闭（密码账号没有邮箱，无法核验归属）。
+      SIGNUP_ALLOWLIST?: string | string[];
+
+      // 邮箱验证码（OTP）注册/登录总开关，默认关闭。实际可用还需 INVITE_EMAIL binding。
+      EMAIL_OTP_ENABLED?: string;
+
       // Workers AI binding (injected by generate-wrangler-prod / run-dev-server; not in base wrangler.jsonc).
       WORKERS_AI: Ai;
 
@@ -105,10 +118,22 @@ declare global {
       // no gatekeeper sign-in (password / CF Access only).
       AUTH_GATEKEEPERS?: string;
 
-      // Set to "true" to disable username/password login + signup (gatekeeper sign-in only). Only
-      // takes effect when at least one auth gatekeeper is allowlisted (otherwise password auth stays
-      // on to avoid locking everyone out).
+      // Set to "true" to disable username/password login + signup. Only takes effect when at least
+      // one auth gatekeeper is allowlisted or email codes are on (otherwise password auth stays on
+      // to avoid locking everyone out).
       DISABLE_PASSWORD_AUTH?: string;
+
+      // 有缘心之助：OpenCode Go 的 API key。配了才提供 opencode-go 服务商的模型（见 ai-models.ts）。
+      OPENCODE_API_KEY?: string;
+
+      // 有缘心之助：Vertex 请求 URL 的 project/location（google-vertex 服务商，见 ai-gateway.ts）。
+      // Google 凭据本身在 AI Gateway 的 BYOK（Provider Keys → Google Vertex AI）里；location
+      // 缺省 global——2026-11 实测 Gemini 只在 global 提供，us-central1 全部 404。
+      GCP_VERTEX_PROJECT?: string;
+      GCP_VERTEX_LOCATION?: string;
+
+      // 有缘心之助：预付费计费 Worker（主仓库 packages/billing）。缺省时不拦不扣，见 billing.ts。
+      BILLING?: Service<import("@gadgets/workshop-shared/billing").BillingService>;
 
       // Enables the Cloudflare free-tier limits + top-up flow when set to "true".
       ENABLE_CLOUDFLARE_LIMITS?: string;

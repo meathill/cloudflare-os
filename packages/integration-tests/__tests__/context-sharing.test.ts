@@ -14,8 +14,6 @@ const CONTEXT_DIR = fileURLToPath(new URL("../../gatekeeper-context/", import.me
 const VENDOR_ID = "context";
 const DOCUMENT_PATH = "plan.md";
 const DOCUMENT = { description: "Owner-only launch plan", body: "Launch code: private-context." };
-/** The Workshop's refusal of an account that cannot read a subresource a read reported. */
-const DENIED = "Your account can't access some of the data read from this resource.";
 let harness: Harness;
 
 type ContextUser = Disposable & {
@@ -87,7 +85,7 @@ it.concurrent("top-level private collection metadata does not prevent a collabor
   expect(await observer.context.getContextCollectionMetadata(collection.id)).toBeNull();
   expect(await session.list()).toEqual({ entries: [{
     type: "collection", id: collection.id, title: collection.title,
-    description: collection.description, documentCount: 1,
+    description: collection.description, documentCount: 1, writable: true,
   }] });
 
   await workspace.addCollaborator(observer.username, "workspace");
@@ -96,7 +94,7 @@ it.concurrent("top-level private collection metadata does not prevent a collabor
 });
 
 it.concurrent.each(["list", "read"] as const)(
-  "a private collection's %s admits only collaborators who can read the collection",
+  "a private collection's %s is auto-shared so a collaborator's first open succeeds",
   async reveal => {
     using owner = await newAccount("contextcontentowner");
     using observer = await newAccount("contextcontentobserver");
@@ -118,17 +116,31 @@ it.concurrent.each(["list", "read"] as const)(
     const recorder = new ObserverConfigRecorder()
       .alwaysChoose(observer.account.id, MAX_OBSERVER_PROMPTS);
     using callback = stubFor(recorder);
-    // The Workshop refuses, checking the collection the read reported against the collaborator's
-    // own account, without naming it.
-    await expect(observer.api.openWorkspace(workspaceId, undefined, callback)).rejects.toThrow(DENIED);
-    const failure = recorder.needAt(0).failure;
-    expect(failure).toMatchObject({ accountId: observer.account.id, reason: expect.stringContaining(DENIED) });
-    expect(failure?.reason).not.toContain(collection.id);
-    expect(failure?.reason).not.toContain(collection.title);
-
-    // The check is live, so once the collection is theirs to read they may open.
-    await owner.context.setContextCollectionEveryoneCanView(collection.id, true);
+    // The owner's account shares the collections its reads reported with the collaborator, so
+    // their first open is admitted and the collection lands in their own library.
     using opened = await observer.api.openWorkspace(workspaceId, undefined, callback);
     expect(await opened.getMetadata()).toMatchObject({ id: workspaceId, role: "build" });
+    expect(await observer.context.getContextCollectionMetadata(collection.id)).not.toBeNull();
   },
 );
+
+it.concurrent("an agent-saved skill reaches the owner's library once they approve it", async () => {
+  using owner = await newAccount("contextskillowner");
+  using state = await privateWorkspace(owner);
+  const { workspace, session } = state;
+
+  await session.createSkill({
+    name: "saved-skill", description: "Use when testing saved skills.", body: "# Saved\n",
+  });
+  const pending = await waitFor("the save to await approval", async () =>
+    (await workspace.listActions({ filter: "pending" })).entries
+      .find(entry => entry.description.title === "保存技能：saved-skill") ?? null);
+  expect(pending.description).toMatchObject({ autoApprovable: true, descriptionIsComplete: true });
+  await workspace.approveAction(pending.id);
+
+  const saved = await waitFor("the default skill collection", async () =>
+    (await owner.context.listEnabledContextCollections()).find(entry => entry.title === "我的技能") ?? null);
+  expect(await owner.context.listContextDocuments(saved.id)).toEqual([
+    expect.objectContaining({ path: "saved-skill/SKILL.md", skillName: "saved-skill" }),
+  ]);
+});

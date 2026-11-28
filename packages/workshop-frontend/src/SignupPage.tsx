@@ -8,6 +8,7 @@ import { hashPassword } from "./passwordHash";
 import { useServerConfig, useServerConfigError, useSiteName } from "./ServerConfigContext";
 import { useDocumentTitle } from "./useDocumentTitle";
 import OAuthButtons from "./components/auth/OAuthButtons";
+import EmailOtpForm from "./components/auth/EmailOtpForm";
 import SiteLogo from "./components/SiteLogo";
 import { useConnectionLost } from "./RpcContext";
 import {
@@ -24,7 +25,7 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
   const serverConfigError = useServerConfigError();
   const siteName = useSiteName();
   const connectionLost = useConnectionLost();
-  useDocumentTitle("Create account");
+  useDocumentTitle("创建账号");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,17 +38,17 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
 
   const usernameError =
     username && !/^[a-z0-9_-]+$/i.test(username)
-      ? "Letters, numbers, underscores, and hyphens only"
+      ? "只能使用字母、数字、下划线和连字符"
       : undefined;
 
   const passwordError =
     password && password.length < 8
-      ? "Must be at least 8 characters"
+      ? "至少需要 8 个字符"
       : undefined;
 
   const confirmError =
     confirmPassword && confirmPassword !== password
-      ? "Passwords do not match"
+      ? "两次输入的密码不一致"
       : undefined;
 
   const canSubmit =
@@ -76,10 +77,10 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
         localStorage.setItem("authToken", token);
         handleSignupSuccess();
       } else {
-        setError("Username already exists");
+        setError("用户名已存在");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Account creation failed");
+      setError(err instanceof Error ? err.message : "创建账号失败");
     } finally {
       setLoading(false);
     }
@@ -93,9 +94,9 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
           className="flex h-full min-h-0 flex-col items-center justify-center gap-4 overflow-y-auto bg-kumo-base px-4 py-8"
         >
           <p className="text-sm text-kumo-danger text-center">
-            Couldn&apos;t load deployment settings.
+            无法加载部署设置。
           </p>
-          <Button variant="secondary" onClick={() => window.location.reload()}>Reload</Button>
+          <Button variant="secondary" onClick={() => window.location.reload()}>刷新</Button>
         </div>
       );
     }
@@ -103,7 +104,7 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
       <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 overflow-y-auto bg-kumo-base px-4 py-8">
         <Loader size="lg" />
         <p className="text-sm text-kumo-subtle text-center">
-          {connectionLost ? "Can't reach the server. Retrying…" : "Loading…"}
+          {connectionLost ? "无法连接服务器，正在重试…" : "正在加载…"}
         </p>
       </div>
     );
@@ -111,8 +112,13 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
 
   const authVendors = serverConfig.authVendors ?? [];
   const signupsEnabled = serverConfig.signupsEnabled;
-  // The password create-account form requires both password auth AND open signups.
-  const passwordAuthEnabled = serverConfig.passwordAuthEnabled && signupsEnabled;
+  const signupAllowlistEnabled = serverConfig.signupAllowlistEnabled;
+  // A code sign-in creates the account on first use, so the same form registers new users.
+  const emailOtpEnabled = serverConfig.emailOtpEnabled && signupsEnabled;
+  // The password create-account form requires password auth, open signups, and no allowlist, which
+  // decides by email address (see isPasswordSignupEnabled on the server).
+  const passwordAuthEnabled =
+    serverConfig.passwordAuthEnabled && signupsEnabled && !signupAllowlistEnabled;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col items-center justify-start overflow-y-auto bg-kumo-base px-4 py-8">
@@ -141,17 +147,46 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
           <h1 className="text-xl font-semibold text-kumo-default">
             {siteName}
           </h1>
-          <p className="text-sm text-kumo-subtle mt-1">Create your account</p>
+          <p className="text-sm text-kumo-subtle mt-1">创建账号</p>
         </div>
 
         {!signupsEnabled && (
           <Banner
             variant="default"
-            title="Signups are closed"
+            title="注册已关闭"
             className="mb-4"
           >
-            New account registration is currently disabled on this deployment.
+            此部署目前已关闭新账号注册。
           </Banner>
+        )}
+
+        {signupsEnabled && signupAllowlistEnabled && !emailOtpEnabled && (
+          <Banner
+            variant="default"
+            title="仅限受邀注册"
+            className="mb-4"
+          >
+            此部署只允许名单内的邮箱注册。请回到登录页，使用邮箱验证码登录或注册。
+          </Banner>
+        )}
+
+        {emailOtpEnabled && (
+          <EmailOtpForm
+            rpcStub={rpcStub}
+            submitLabel="邮箱注册"
+            onSignedIn={(token) => {
+              localStorage.setItem("authToken", token);
+              handleSignupSuccess();
+            }}
+          />
+        )}
+
+        {emailOtpEnabled && passwordAuthEnabled && (
+          <div className="flex items-center gap-3 my-6">
+            <div className="h-px flex-1 bg-kumo-line" />
+            <span className="text-xs text-kumo-subtle">或</span>
+            <div className="h-px flex-1 bg-kumo-line" />
+          </div>
         )}
 
         {passwordAuthEnabled && (
@@ -160,20 +195,20 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
                 className="w-full"
-                label="Username"
+                label="用户名"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                autoFocus
+                autoFocus={!emailOtpEnabled}
                 autoComplete="username"
                 disabled={loading}
-                placeholder="your-username"
+                placeholder="例如：writer"
                 error={usernameError}
               />
 
               <Input
                 className="w-full"
                 type="password"
-                label="Password"
+                label="密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
@@ -185,7 +220,7 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
               <Input
                 className="w-full"
                 type="password"
-                label="Confirm Password"
+                label="确认密码"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
@@ -203,7 +238,7 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
                 loading={loading}
                 className="w-full justify-center"
               >
-                Create account
+                创建账号
               </Button>
             </form>
           </>
@@ -215,7 +250,7 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
             {passwordAuthEnabled && (
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-px flex-1 bg-kumo-line" />
-                <span className="text-xs text-kumo-subtle">or</span>
+                <span className="text-xs text-kumo-subtle">或</span>
                 <div className="h-px flex-1 bg-kumo-line" />
               </div>
             )}
@@ -227,15 +262,15 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
           </div>
         )}
 
-        {passwordAuthEnabled && (
+        {(passwordAuthEnabled || emailOtpEnabled) && (
           <p className="text-center text-sm text-kumo-subtle mt-6">
-            Already have an account?{" "}
+            已有账号？{" "}
             <Link
               to="/"
               search={deviceSessionSearch(window.location.search)}
               className="text-kumo-brand hover:underline font-medium"
             >
-              Sign in
+              登录
             </Link>
           </p>
         )}

@@ -114,10 +114,10 @@ describe('PendingChangesTray', () => {
   it('counts the requests waiting and offers to resolve them together', async () => {
     await render({ groups: [group([request(1), request(2)])] })
 
-    expect(document.body.textContent).toContain('2 requests waiting')
-    expect(document.body.textContent).toContain('nothing applied yet')
-    expect(button('Apply all 2')).toBeDefined()
-    expect(button('Discard all')).toBeDefined()
+    expect(document.body.textContent).toContain('2 个请求等待处理')
+    expect(document.body.textContent).toContain('尚未应用任何更改')
+    expect(button('全部应用 2')).toBeDefined()
+    expect(button('全部放弃')).toBeDefined()
   })
 
   it('offers no bulk resolve while the workspace is restricted', async () => {
@@ -125,9 +125,9 @@ describe('PendingChangesTray', () => {
 
     // RESTRICTED_APPROVAL_COPY asks the approver to read every request in full, and the latch
     // already refuses every auto-approval rule; bulk apply would be the first path around both.
-    expect(button('Apply all 2')).toBeUndefined()
-    expect(button('Discard all')).toBeUndefined()
-    expect(document.body.textContent).toContain('every request is reviewed on its own')
+    expect(button('全部应用 2')).toBeUndefined()
+    expect(button('全部放弃')).toBeUndefined()
+    expect(document.body.textContent).toContain('每个请求都需要单独审批')
   })
 
   it('leaves a connection with a pending creation out of bulk resolve', async () => {
@@ -138,15 +138,15 @@ describe('PendingChangesTray', () => {
 
     // Nothing queued behind a creation can apply until an account is chosen for it, so only the
     // other connection's requests are counted.
-    expect(document.body.textContent).toContain('4 requests waiting')
-    expect(button('Apply all 2')).toBeDefined()
+    expect(document.body.textContent).toContain('4 个请求等待处理')
+    expect(button('全部应用 2')).toBeDefined()
   })
 
   it('explains a creation inside its group rather than silently refusing', async () => {
     await render({ groups: [group([request(1, { creation: true }), request(2)])] })
     await openGroup()
 
-    expect(document.body.textContent).toContain('Approve its creation first')
+    expect(document.body.textContent).toContain('请先批准创建')
   })
 
   it('offers "Always approve" only where a rule would apply the request', async () => {
@@ -156,7 +156,7 @@ describe('PendingChangesTray', () => {
     ])] })
     await openGroup()
 
-    expect(buttons().filter(b => b.textContent === 'Always approve')).toHaveLength(1)
+    expect(buttons().filter(b => b.textContent === '始终批准')).toHaveLength(1)
   })
 
   it('stops offering "Always approve" once a rule covers the kind', async () => {
@@ -168,8 +168,8 @@ describe('PendingChangesTray', () => {
 
     // Still pending does not mean no rule: the drain stops at the first manual gate and leaves
     // covered requests queued behind it.
-    expect(button('Always approve')).toBeUndefined()
-    expect(document.body.textContent).toContain('Standing rule enabled')
+    expect(button('始终批准')).toBeUndefined()
+    expect(document.body.textContent).toContain('已设自动批准')
   })
 
   it('keeps a covered request decidable, since the drain can give up on it', async () => {
@@ -182,7 +182,7 @@ describe('PendingChangesTray', () => {
     })
     await openGroup()
 
-    await click(button('Approve'))
+    await click(button('批准'))
     expect(calls).toEqual(['approve:1'])
   })
 
@@ -192,7 +192,7 @@ describe('PendingChangesTray', () => {
     await render({ groups: [group([gate, covered])], enabledTags: ['append'] })
     await openGroup()
 
-    expect(document.body.textContent).toContain('waiting on "Needs a person" above it')
+    expect(document.body.textContent).toContain('正在等待上方的“Needs a person”')
   })
 
   it('links to where a standing rule is turned off', async () => {
@@ -201,7 +201,7 @@ describe('PendingChangesTray', () => {
       enabledTags: ['append'],
     })
     await openGroup()
-    await click(button('Manage rule'))
+    await click(button('管理规则'))
 
     expect(calls).toEqual(['manage'])
   })
@@ -218,7 +218,7 @@ describe('PendingChangesTray', () => {
     })
 
     const alert = document.querySelector('[role="alert"]')
-    expect(alert?.textContent).toContain('Applied 1 of 3')
+    expect(alert?.textContent).toContain('已应用 1/3')
     expect(alert?.textContent).toContain('The provider failed.')
   })
 
@@ -240,8 +240,8 @@ describe('PendingChangesTray', () => {
       .toContain('"Write 1" was applied before it could be discarded')
     // Only the message: no count, no bulk controls, nothing to open.
     expect(document.body.textContent).not.toContain('waiting')
-    expect(buttons().map(b => (b.textContent ?? '').trim())).toEqual(['Dismiss'])
-    await click(button('Dismiss'))
+    expect(buttons().map(b => (b.textContent ?? '').trim())).toEqual(['关闭'])
+    await click(button('关闭'))
     expect(dismissed).toBe(1)
   })
 
@@ -249,10 +249,10 @@ describe('PendingChangesTray', () => {
     // A hook, a scheduled task or another chat queued it; nothing on screen explains it.
     await render({ groups: [group([request(1), request(2, { origin: 'elsewhere' })])] })
 
-    expect(document.body.textContent).toContain('1 from elsewhere')
+    expect(document.body.textContent).toContain('1 个来自其他对话')
     await openGroup()
     expect([...document.querySelectorAll('p')]
-      .filter(p => p.textContent?.trim() === 'Asked elsewhere in this workspace'))
+      .filter(p => p.textContent?.trim() === '来自此工作区的其他对话'))
       .toHaveLength(1)
   })
 
@@ -262,13 +262,13 @@ describe('PendingChangesTray', () => {
       request(2, { origin: 'elsewhere' }),
     ])] })
 
-    expect(document.body.textContent).toContain('asked elsewhere in this workspace')
+    expect(document.body.textContent).toContain('来自此工作区的其他对话')
     // Once on the group's row, rather than the same sentence under every request inside it.
     expect(buttons().find(b => b.hasAttribute('aria-expanded'))?.textContent)
-      .toContain('Asked elsewhere')
+      .toContain('来自其他对话')
     await openGroup()
     expect([...document.querySelectorAll('p')]
-      .filter(p => p.textContent?.trim() === 'Asked elsewhere in this workspace'))
+      .filter(p => p.textContent?.trim() === '来自此工作区的其他对话'))
       .toHaveLength(0)
   })
 
@@ -277,9 +277,9 @@ describe('PendingChangesTray', () => {
     // would apply a later request over ones nobody has seen yet.
     await render({ groups: [group([request(1), request(2)])], ready: false })
 
-    expect(button('Apply all 2')).toBeUndefined()
+    expect(button('全部应用 2')).toBeUndefined()
     await openGroup()
-    expect(button('Apply all 2')).toBeUndefined()
+    expect(button('全部应用 2')).toBeUndefined()
   })
 
   it('disables a single request\'s decisions while a bulk run is in flight', async () => {
@@ -291,14 +291,14 @@ describe('PendingChangesTray', () => {
 
     // A decision taken mid-run would interleave with it, which is the out-of-order apply the
     // run is sequential to avoid.
-    expect(buttons().filter(b => b.textContent === 'Approve').every(b => b.disabled)).toBe(true)
-    expect(buttons().filter(b => b.textContent === 'Deny').every(b => b.disabled)).toBe(true)
+    expect(buttons().filter(b => b.textContent === '批准').every(b => b.disabled)).toBe(true)
+    expect(buttons().filter(b => b.textContent === '拒绝').every(b => b.disabled)).toBe(true)
   })
 
   it('warns when one connection is close to filling its queue', async () => {
     const many = Array.from({ length: 40 }, (_, i) => request(i + 1))
     await render({ groups: [group(many)] })
 
-    expect(document.body.textContent).toContain('holding 40 unresolved requests')
+    expect(document.body.textContent).toContain('有 40 个待处理请求')
   })
 })

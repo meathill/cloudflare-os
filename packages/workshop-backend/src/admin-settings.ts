@@ -1,7 +1,11 @@
-import { ADMIN_ACCESS_ERROR_CODES, AdminApi, AdminAuditPage, AdminAuditQuery, AdminAuditStats, AdminAuditStatsQuery, AdminFormat, AdminFormatPatch, AdminInspectOptions, AdminModel, AdminResourceVendor, AdminSettingChange, AdminSettingMethod, AdminSettingsView, AdminUserPage, AdminUserQuery, AdminUserView, AdminVia, AdminWorkspaceAccess, AdminWorkspacePage, AdminWorkspaceQuery, AdminWorkspaceView, AdminWriteAction, AdminWriteArgs, AiModelConfig, AiModelProvider, AmbientGatekeeperMode, BannerColor, BlueprintPublicInfo, DeploymentUpdateStatus, GatewayModel, GatewayModelLevelTest, GatewayModelMode, GatewayModelSettings, GatewayModelTest, MAX_ADMIN_AUDIT_RETENTION_DAYS, MAX_ANNOUNCEMENT_LENGTH, MAX_INSTANCE_INSTRUCTIONS_LENGTH, MAX_SITE_NAME_LENGTH, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, ReasoningLevel, SUGGESTED_MODELS, createAdminAccessError, getAdminAccessErrorCode, isAdminWorkspaceAccess, isAmbientGatekeeperMode, isBannerColor, isHexColor } from '@gadgets/workshop-shared/api';
+import { ADMIN_ACCESS_ERROR_CODES, AdminApi, AdminAuditPage, AdminAuditQuery, AdminAuditStats, AdminAuditStatsQuery, AdminFormat, AdminFormatPatch, AdminGatekeeperDeletion, AdminGatekeeperExport, AdminInspectOptions, AdminModel, AdminResourceVendor, AdminSettingChange, AdminSettingMethod, AdminSettingsView, AdminUserPage, AdminUserQuery, AdminUserView, AdminVia, AdminWorkspaceAccess, AdminWorkspacePage, AdminWorkspaceQuery, AdminWorkspaceView, AdminWriteAction, AdminWriteArgs, AiModelConfig, AiModelProvider, AmbientGatekeeperMode, BannerColor, BlueprintPublicInfo, DeploymentUpdateStatus, GatewayModel, GatewayModelLevelTest, GatewayModelMode, GatewayModelSettings, GatewayModelTest, MAX_ADMIN_AUDIT_RETENTION_DAYS, MAX_ANNOUNCEMENT_LENGTH, MAX_INSTANCE_INSTRUCTIONS_LENGTH, MAX_SITE_NAME_LENGTH, MAX_UPDATE_CHECK_INTERVAL_MINUTES, MAX_UPDATE_HOURS, ReasoningLevel, SUGGESTED_MODELS, createAdminAccessError, getAdminAccessErrorCode, isAdminWorkspaceAccess, isAmbientGatekeeperMode, isBannerColor, isHexColor, UsageOverviewStats, UsageStatsResponse, type BillingAdminClient } from '@gadgets/workshop-shared/api';
+import type {
+  BillingAccountInfo, BillingLedgerEntry, BillingLedgerQuery, BillingPlan, BillingService,
+  BillingUsageEvent, BillingUsageEventQuery, BillingUsageReport, BillingUsageReportQuery,
+} from '@gadgets/workshop-shared/billing';
 import { GatekeeperVendor, getResourceTypeId, findResourceType } from '@gadgets/workshop-shared/gatekeeper';
 import { DurableObject } from 'cloudflare:workers';
-import { RpcTarget, type RpcStub } from 'capnweb';
+import { RpcStub, RpcTarget } from 'capnweb';
 import { validateRpc } from 'capnweb-validate';
 import { createWorkshopLogger } from "./observability";
 import { sanitizeBlueprintOutput } from './blueprint-archive.js';
@@ -24,6 +28,7 @@ import { isDeploymentAdmin } from './auth/config.js';
 import { bundledBlueprintsManifestVersion, installBundledBlueprints } from './bundled-blueprints.js';
 import { BUNDLED_BLUEPRINTS } from './generated/bundled-blueprints.js';
 import { type DeployServiceInstall, NO_ANSWER, type VersionAnswer, deployServiceInstall, deploymentUpdateStatus, fetchLatestRelease, updateCheckDue } from './deployment-updates.js';
+import { estimateTokenCost } from './gemini-pricing.js';
 
 const logger = createWorkshopLogger("workshop.admin.settings");
 
@@ -31,6 +36,9 @@ const logger = createWorkshopLogger("workshop.admin.settings");
 // how long a gatekeeper's answer is served before it is asked again.
 const VERSION_TAG_TIMEOUT_MS = 2_000;
 const VERSION_TAGS_TTL_MS = 60_000;
+
+// 有缘心之助：the most ids one deleteUserGatekeeperContent() call may carry.
+const MAX_ADMIN_DELETE_IDS = 100;
 
 // The entries of a record keyed by model ID (a model's mode, or its settings) other than
 // `modelId`'s. Callers rebuild the record with Object.fromEntries, which defines own properties:
@@ -1283,6 +1291,88 @@ export class AdminSettings extends DurableObject<Cloudflare.Env> {
     vendors.sort((a, b) => Number(b.autoProvisions) - Number(a.autoProvisions));
     return vendors;
   }
+
+  /**
+   * 记录用户活跃、新建工作区以及 Token / 成本消耗用量
+   */
+  async recordUserActivity(
+    username: string,
+    displayName: string,
+    tokensDelta: number = 0,
+    estimatedCostDelta: number = 0,
+    isNewWorkspace: boolean = false,
+    isAiInteraction: boolean = false
+  ): Promise<void> {
+    if (!username) return;
+    let existing = this.storage.userUsage.get(username);
+    let now = new Date().toISOString();
+
+    // 兜底防 0 机制：如果是 AI 对话交互且产生了 tokens，但外部传入的 costDelta 为 0，
+    // 则按 Gemini 3.8 Flash 当前有效优惠费率进行合理估算兜底，防止漏记
+    let effectiveCostDelta = estimatedCostDelta;
+    if (effectiveCostDelta <= 0 && tokensDelta > 0 && isAiInteraction) {
+      effectiveCostDelta = estimateTokenCost(tokensDelta);
+    }
+
+    if (!existing) {
+      this.storage.userUsage.put({
+        username,
+        displayName: displayName || username,
+        createdAt: now,
+        lastActive: now,
+        totalTokens: Math.max(0, tokensDelta),
+        estimatedCost: Math.max(0, effectiveCostDelta),
+        callCount: isAiInteraction ? 1 : 0,
+        workspaceCount: isNewWorkspace ? 1 : 0,
+      });
+    } else {
+      this.storage.userUsage.put({
+        ...existing,
+        displayName: displayName || existing.displayName || username,
+        lastActive: now,
+        totalTokens: existing.totalTokens + Math.max(0, tokensDelta),
+        estimatedCost: existing.estimatedCost + Math.max(0, effectiveCostDelta),
+        callCount: existing.callCount + (isAiInteraction ? 1 : 0),
+        workspaceCount: existing.workspaceCount + (isNewWorkspace ? 1 : 0),
+      });
+    }
+  }
+
+  /**
+   * 汇总全平台用量概览及用户明细列表
+   */
+  async getUsageStats(): Promise<UsageStatsResponse> {
+    let users = [...this.storage.userUsage.list()];
+    // 按最后活跃时间倒序排序
+    users.sort((a, b) => new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime());
+
+    let overview: UsageOverviewStats = {
+      totalUsers: users.length,
+      totalWorkspaces: 0,
+      totalTokens: 0,
+      totalCost: 0,
+      totalCalls: 0,
+    };
+
+    for (let u of users) {
+      // 历史零成本平滑校准：如果用户历史消耗了 Tokens，但因旧版本未适配 Gemini 计费导致 estimatedCost 为 0，
+      // 则按当前官方有效优惠费率进行补正估算，并回写持久化存储，解决管理后台显示 $0.0000 的问题
+      if (u.estimatedCost === 0 && u.totalTokens > 0) {
+        u.estimatedCost = estimateTokenCost(u.totalTokens);
+        this.storage.userUsage.put(u);
+      }
+
+      overview.totalWorkspaces += u.workspaceCount;
+      overview.totalTokens += u.totalTokens;
+      overview.totalCost += u.estimatedCost;
+      overview.totalCalls += u.callCount;
+    }
+
+    return {
+      overview,
+      users,
+    };
+  }
 }
 
 // Capability for managing and investigating the deployment, obtained via
@@ -1659,6 +1749,57 @@ export class AdminApiImpl extends RpcTarget implements AdminApi {
         this.adminUserId, trimmedReason, this.#sessionId, { via: this.via, expiresAt });
   }
 
+  /**
+   * 有缘心之助：export a user's connected-account content for an admin (see
+   * AdminApi.exportUserGatekeeperContent). Unlike inspectUser(), this is not refused by the
+   * deployment's access level — the level bounds admin views, not an operational export — but it
+   * is recorded in the deployment-wide log *before* the account is reached, so a call whose
+   * record cannot be written exports nothing, and the export itself, which bypasses the
+   * gatekeeper's sharing authorization, always leaves a record.
+   */
+  async exportUserGatekeeperContent(userId: string, vendorId: string, reason: string)
+      : Promise<AdminGatekeeperExport[]> {
+    let { reason: trimmedReason, access } =
+        await this.#openTerms(reason, {}, () => {
+          if (userId === "") throw createAdminAccessError(ADMIN_ACCESS_ERROR_CODES.userNotFound);
+        });
+    // The record holds the level only to say what the deployment's was when the export ran.
+    await this.audits.getByName("").append({
+      kind: "user", at: new Date(), admin: this.adminUserId, sessionId: this.#sessionId,
+      via: this.via, userId, method: "exportUserGatekeeperContent", args: { vendorId },
+      reason: trimmedReason, access,
+    });
+    return this.users.getByName(userId).exportGatekeeperContentForAdmin(vendorId);
+  }
+
+  /**
+   * 有缘心之助：delete a user's connected-account content for an admin (see
+   * AdminApi.deleteUserGatekeeperContent). Unlike inspectUser(), this is not refused by the
+   * deployment's access level — the level bounds admin views, not an operational deletion — but
+   * it is recorded in the deployment-wide log *before* the account is reached, so a call whose
+   * record cannot be written deletes nothing.
+   */
+  async deleteUserGatekeeperContent(userId: string, vendorId: string, ids: string[], reason: string)
+      : Promise<AdminGatekeeperDeletion[]> {
+    let { reason: trimmedReason, access } =
+        await this.#openTerms(reason, {}, () => {
+          if (userId === "") throw createAdminAccessError(ADMIN_ACCESS_ERROR_CODES.userNotFound);
+          if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_ADMIN_DELETE_IDS
+              || ids.some(id => typeof id !== "string" || id === "")) {
+            throw new Error(
+              `ids must be a non-empty array of non-empty ids, at most ${MAX_ADMIN_DELETE_IDS}.`);
+          }
+        });
+    // The record holds the level only to say what the deployment's was when the deletion ran.
+    await this.audits.getByName("").append({
+      kind: "user", at: new Date(), admin: this.adminUserId, sessionId: this.#sessionId,
+      via: this.via, userId, method: "deleteUserGatekeeperContent",
+      args: { vendorId, ids: ids.join(",") },
+      reason: trimmedReason, access,
+    });
+    return this.users.getByName(userId).deleteGatekeeperContentForAdmin(vendorId, ids);
+  }
+
   async listAdminAudit(options: AdminAuditQuery = {}): Promise<AdminAuditPage> {
     let limit = adminListLimit(options.limit);
     let { kind, admin, method, workspace, owner, since, cursor } = options;
@@ -1715,5 +1856,64 @@ export class AdminApiImpl extends RpcTarget implements AdminApi {
       });
       throw error;
     }
+  }
+
+  getUsageStats(): Promise<UsageStatsResponse> {
+    return this.admin.getUsageStats();
+  }
+
+  async getBillingAdmin(): Promise<RpcStub<BillingAdminClient> | null> {
+    if (!this.env.BILLING) return null;
+    // @ts-expect-error Cap'n Web RPC stubs and native RPC targets are compatible but the type
+    //     system doesn't know this.
+    return new BillingAdminClientImpl(this.env.BILLING, this.adminUserId);
+  }
+}
+
+// 有缘心之助：管理员的计费能力。操作人固定为铸造时的管理员，浏览器无法冒用他人身份记流水。
+@validateRpc()
+class BillingAdminClientImpl extends RpcTarget implements BillingAdminClient {
+  constructor(private billing: Service<BillingService>, private adminUserId: string) {
+    super();
+  }
+
+  async getAccounts(userKeys: string[]): Promise<BillingAccountInfo[]> {
+    using admin = await this.billing.admin();
+    return admin.getAccounts(userKeys);
+  }
+
+  async setPlan(userKey: string, plan: BillingPlan): Promise<BillingAccountInfo> {
+    using admin = await this.billing.admin();
+    return admin.setPlan(userKey, plan, this.adminUserId);
+  }
+
+  async grant(userKey: string, amountUsd: number, note: string): Promise<BillingAccountInfo> {
+    using admin = await this.billing.admin();
+    return admin.grant(userKey, amountUsd, note, this.adminUserId);
+  }
+
+  async listLedger(userKey: string, limit?: number): Promise<BillingLedgerEntry[]> {
+    using admin = await this.billing.admin();
+    return admin.listLedger(userKey, limit);
+  }
+
+  async setMarkup(userKey: string, markup: number | null): Promise<BillingAccountInfo> {
+    using admin = await this.billing.admin();
+    return admin.setMarkup(userKey, markup, this.adminUserId);
+  }
+
+  async getUsageReport(query: BillingUsageReportQuery): Promise<BillingUsageReport> {
+    using admin = await this.billing.admin();
+    return admin.getUsageReport(query);
+  }
+
+  async listLedgerEntries(query: BillingLedgerQuery): Promise<BillingLedgerEntry[]> {
+    using admin = await this.billing.admin();
+    return admin.listLedgerEntries(query);
+  }
+
+  async listUsageEvents(query: BillingUsageEventQuery): Promise<BillingUsageEvent[]> {
+    using admin = await this.billing.admin();
+    return admin.listUsageEvents(query);
   }
 }

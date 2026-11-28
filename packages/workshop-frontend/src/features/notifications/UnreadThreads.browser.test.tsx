@@ -30,7 +30,7 @@ it("right-aligns the date above the unread badge at desktop and narrow widths", 
     host.style.width = `${width}px`;
     const row = host.querySelector("ul a")!;
     const date = rect(row.querySelector("time")!);
-    const badge = rect(row.querySelector('[aria-label="1 unread message"]')!);
+    const badge = rect(row.querySelector('[aria-label="1 条未读消息"]')!);
     const title = rect(row.querySelector("h2")!);
     const preview = rect(row.querySelector("p")!);
     expect(Math.abs(date.right - badge.right)).toBeLessThanOrEqual(1);

@@ -1,7 +1,7 @@
 import { RpcCompatible, RpcStub, RpcTarget } from "capnweb";
 import type { ChatTimelineHead, GadgetSnapshotClient } from "@gadgets/workshop-shared/api";
 import { skipRpcValidation, validateRpc } from "capnweb-validate";
-import { Overseer, WorkspaceMetadata, UiBundle, WorkpieceId, WorkpieceSummary, WorkpiecesSubscriber, GadgetClient, GadgetBindingInfo, GatekeeperClient, ActionLogEntry, ActionsSubscriber, ActionHistoryFilter, ActionHistoryPage, ChatGadgetPinRecord, MainlineMergeGadget, ChatCodeBase, ChatGadgetPinState, CodeChangeSubmission, CommitInfo, FileAtCommit, MAX_READ_FILES_PER_CALL, TreeNode, MergeChangesResult, AiChatMetadata, AiChatMessage, AiChatHistoryPage, AiChatSubscriber, AiChatAuthorInfo, AiModelConfig, AiToolCall, AiChatMessageBody, AgentSpawnerConfig, AGENT_SPAWNER_CONNECTION_ID, ConsoleLogSubscriber, ConsoleLogEvent, CapsuleSpecifier, CollaboratorInfo, CollaboratorRole, CollaboratorAccess, CollaboratorGrant, AffectedCollaborator, ShareLinkInfo, GatekeeperCreationSpec, ObserverConfigCallback, ObserverBindingNeed, ObserverBindingFailure, BlueprintBindingAnnotation, BlueprintBinding, BlueprintMetadata, BlueprintOutput, BlueprintMerge, ApplyBlueprintResult, GadgetUpstream, MessageFormatRef, isOutputIcon, SpawnerEnvTarget, BlueprintGadgetSummary, AiChatStreamEvent, BlueprintScreenshotUpload, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ChatAttachmentHandle, ChatAttachmentRef, ChatMessageOptions, MessageFocus, MAX_FOCUS_ANCHOR_LENGTH, MAX_FOCUS_LABEL_LENGTH, MAX_FOCUS_CONTEXT_LENGTH, BoundHookInfo, PreApprovableAction, PresenceParticipant, PresenceSubscriber, SlashCommandChoice, SlashCommandRequest, validateBindingName, createOpenWorkspaceError, OPEN_WORKSPACE_ERROR_CODES, createGatekeeperError, GATEKEEPER_ERROR_CODES, resolveSiteName, modelKind, WORKSPACE_FILE_QUOTA_BYTES, WORKSPACE_STORAGE_LIMIT_BYTES, WORKSPACE_STORAGE_WARNING_BYTES, WORKSPACE_TURN_QUOTA_BYTES } from '@gadgets/workshop-shared/api'
+import { Overseer, WorkspaceMetadata, UiBundle, WorkpieceId, WorkpieceSummary, WorkpiecesSubscriber, GadgetClient, GadgetBindingInfo, GatekeeperClient, ActionLogEntry, ActionsSubscriber, ActionHistoryFilter, ActionHistoryPage, ChatGadgetPinRecord, MainlineMergeGadget, ChatCodeBase, ChatGadgetPinState, CodeChangeSubmission, CommitInfo, FileAtCommit, MAX_READ_FILES_PER_CALL, TreeNode, MergeChangesResult, AiChatMetadata, AiChatMessage, AiChatHistoryPage, AiChatSubscriber, AiChatAuthorInfo, AiModelConfig, AiToolCall, AiChatMessageBody, AgentSpawnerConfig, AGENT_SPAWNER_CONNECTION_ID, ConsoleLogSubscriber, ConsoleLogEvent, CapsuleSpecifier, CollaboratorInfo, CollaboratorRole, CollaboratorAccess, CollaboratorGrant, AffectedCollaborator, ShareLinkInfo, GatekeeperCreationSpec, ObserverConfigCallback, ObserverBindingNeed, ObserverBindingFailure, BlueprintBindingAnnotation, BlueprintBinding, BlueprintMetadata, BlueprintOutput, BlueprintMerge, ApplyBlueprintResult, GadgetUpstream, MessageFormatRef, isOutputIcon, SpawnerEnvTarget, BlueprintGadgetSummary, AiChatStreamEvent, BlueprintScreenshotUpload, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ChatAttachmentHandle, ChatAttachmentRef, ChatMessageOptions, MessageFocus, MAX_FOCUS_ANCHOR_LENGTH, MAX_FOCUS_LABEL_LENGTH, MAX_FOCUS_CONTEXT_LENGTH, BoundHookInfo, PreApprovableAction, PresenceParticipant, PresenceSubscriber, SlashCommandChoice, SlashCommandRequest, validateBindingName, createOpenWorkspaceError, OPEN_WORKSPACE_ERROR_CODES, createGatekeeperError, GATEKEEPER_ERROR_CODES, resolveSiteName, modelKind, WORKSPACE_FILE_QUOTA_BYTES, WORKSPACE_STORAGE_LIMIT_BYTES, WORKSPACE_STORAGE_WARNING_BYTES, WORKSPACE_TURN_QUOTA_BYTES, SCRIPT_SKILLS } from '@gadgets/workshop-shared/api'
 import {
   ADMIN_ACCESS_ERROR_CODES, MAX_ADMIN_AUDIT_ARG_LENGTH, SNAPSHOT_SHARING_ERROR_CODES,
   createAdminAccessError, createSnapshotSharingError,
@@ -109,6 +109,10 @@ import { recordAnalytics } from "./analytics";
 import { reportIssue } from "@gadgets/observability/error-reporting";
 import type { ProductAnalyticsConnectionType, ProductAnalyticsGadgetInput } from "./analytics";
 import { checkUsageAndBalance } from "./ai-gateway-billing/limits/usage-checker";
+import {
+  authorizeBilling, balanceExhausted, BillingRefusedError, billingPayer, chargeBilling,
+  WEB_SEARCH_RAW_COST_USD,
+} from "./billing.js";
 import { normalizeAgentCatalog } from "./agent-catalog";
 import { refreshCachedBalance } from "./ai-gateway-billing/cloudflare/connection-service";
 import {
@@ -120,6 +124,7 @@ import {
 import { AutoApprovalDrainer, autoApprovalRule } from "./auto-approval";
 import { collectSlashCommands, invokeSlashCommand } from "./slash-commands";
 import { createWorkshopLogger, obsContext } from "./observability";
+import { sendWorkspaceInviteEmail } from "./invite-email";
 import { traceAgentTurn, traceToolApproval } from "./agent-tracing";
 import { isLoopLimitError, retryOnDoReset, shouldRetryAfterReset, wrapDoStubForTelemetry } from "./do-retry";
 import type { CreationApproval, GadgetExportFormat } from "@gadgets/workshop-shared/api";
@@ -1020,6 +1025,9 @@ class OverseerImpl implements AgentHooks {
 
   // Per-chat in-memory state for running agents.
   #liveChats = new Map<number, LiveChatContext>();
+  // 有缘心之助：每个 chat 最近一轮的计费人与模型，供之后的缓存保温 ping 与联网搜索计费。
+  // 只在内存里：DO 重启后下一轮会重新记下，期间的 ping 不计费。
+  #chatPayers = new Map<number, { payer: string; model: string }>();
   #chatSubscribers: Set<RpcStub<AiChatSubscriber>> = new Set();
   readonly cacheWarmer: ChatCacheWarmer;
 
@@ -2001,9 +2009,18 @@ class OverseerImpl implements AgentHooks {
         (record, resolvedBy, autoApproved) =>
             this.applyPendingAction(record, resolvedBy, autoApproved),
         id => this.#deciding.has(id));
-    this.cacheWarmer = new ChatCacheWarmer(ctx.id.toString(), (chatId, resent) =>
-        this.#addRequestCost(
-            chatId, resent.usage, resent.aiGatewayLogId, resent.aiGatewayLogRoute, false));
+    this.cacheWarmer = new ChatCacheWarmer(ctx.id.toString(), (chatId, resent) => {
+      this.#addRequestCost(
+          chatId, resent.usage, resent.aiGatewayLogId, resent.aiGatewayLogRoute, false);
+      // 有缘心之助：缓存保温的 ping 记到该 chat 最近一轮的发起人，按那一轮的模型计费。
+      let record = this.#chatPayers.get(chatId);
+      if (record) this.ctx.waitUntil(chargeBilling(this.env, record.payer, {
+        rawCostUsd: resent.usage.cost.total, source: "cache-warm", model: record.model,
+        inputTokens: resent.usage.input, outputTokens: resent.usage.output,
+        cacheReadTokens: resent.usage.cacheRead, cacheWriteTokens: resent.usage.cacheWrite,
+        workspaceId: this.ctx.id.toString(), chatId,
+      }));
+    });
 
     // Mirror every gadget-registry change into the owner's outputs index. Subscribing here makes
     // the registry the single chokepoint, so creation, acceptance, renaming, reverting and
@@ -6981,6 +6998,20 @@ class OverseerImpl implements AgentHooks {
     return false;
   }
 
+  getWebSearchApiKey(): string | undefined {
+    return (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GEMINI_API_KEY ||
+           (this.env as { GEMINI_API_KEY?: string; GOOGLE_API_KEY?: string }).GOOGLE_API_KEY;
+  }
+
+  chargeWebSearch(chatId: number): void {
+    let record = this.#chatPayers.get(chatId);
+    if (record) this.ctx.waitUntil(chargeBilling(this.env, record.payer, {
+      rawCostUsd: WEB_SEARCH_RAW_COST_USD, source: "web-search", model: "web-search",
+      inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0,
+      workspaceId: this.ctx.id.toString(), chatId,
+    }));
+  }
+
   // Record an observation made by the workspace itself on `caller`'s behalf (a fetch), not by a
   // gatekeeper. The `gatekeeperId` is set to the BUILTIN_TOOL_GATEKEEPER_ID sentinel so that
   // downstream code (which expects a gatekeeper to dereference for approve/reject) never touches
@@ -7007,6 +7038,15 @@ class OverseerImpl implements AgentHooks {
 
     this.storage.actions.put(record);
     this.#associateAction(caller, actionId);
+  }
+
+  // 有缘心之助：内置 agent 工具（webSearch）发起的 observation，agent 侧只拿得到 chatId。
+  async recordAgentObservation(
+      chatId: number,
+      resourceTitle: string,
+      resourceUrl: string | undefined,
+      description: ObservationDescription): Promise<void> {
+    this.#recordBuiltinObservation({from: "agent", chatId}, resourceTitle, resourceUrl, description);
   }
 
   async submitAction(gatekeeperId: number, action: number | "create",
@@ -7920,16 +7960,31 @@ class OverseerImpl implements AgentHooks {
       message: string | SlashCommandRequest,
       hasAttachments: boolean, chatId?: number): Promise<PreparedChatMessage> {
     if (typeof message !== "string") {
+      const req = message;
       // A built-in command is handled by the Workshop, not a Gatekeeper: there is nothing to invoke
       // here. Committing the event is what makes the turn a compaction turn (see isCompactionTurn).
       // The name is typed but arrives over RPC, and one we don't implement would commit an event and
       // then start a turn with no prompt for the model to answer, so reject it here.
-      if (message.id.builtin === true) {
-        if (message.id.commandId !== "compact") throw new Error("Unknown built-in slash command.");
-        return {slashCommand: message};
+      if (req.id.builtin === true) {
+        if (req.id.commandId === "compact") {
+          return {slashCommand: req};
+        }
+        const skill = SCRIPT_SKILLS.find(s => s.id === req.id.commandId);
+        if (skill) {
+          const userArgs = (req.args || "").trim();
+          const expandedMessage = userArgs
+            ? `【工业剧作专项指令：${skill.name}】\n\n${skill.systemInstruction}\n\n---\n【创作需求/输入背景】：\n${userArgs}`
+            : `【工业剧作专项指令：${skill.name}】\n\n${skill.systemInstruction}\n\n---\n请依据上述工业剧作标准，开启该专项剧作任务。`;
+          return {
+            slashCommand: req,
+            message: expandedMessage,
+            skillName: skill.name,
+          };
+        }
+        throw new Error(`Unknown built-in slash command: ${req.id.commandId}`);
       }
       // Held separately because reassigning `message` below widens `id` back to the union.
-      let {gatekeeperId} = message.id;
+      let {gatekeeperId} = req.id;
       let record = this.storage.gatekeepers.get(gatekeeperId);
       if (!record?.hasSlashCommands) throw new Error("Slash command provider is not available.");
       // The id is client-supplied, so a connection blocked pending a scope-widening restart must
@@ -8099,7 +8154,7 @@ class OverseerImpl implements AgentHooks {
     this.ctx.storage.transactionSync(() => {
       let meta: AiChatMetadata = {
         id: chatId,
-        title: "New Chat",   // filled in later by AI
+        title: "新对话",   // 后续由 AI 生成标题
         started: timestamp,
         lastActive: timestamp,
         chatToken: crypto.randomUUID(),
@@ -8228,6 +8283,17 @@ class OverseerImpl implements AgentHooks {
       this.invalidateChatContent(chatId);
       this.#liveWindowCache.delete(chatId);
       throw error;
+    }
+
+    // 有缘心之助：把编剧本人在对话里发的原话转给声明了 observesUserMessages 的账号（剧作引擎
+    // 拿来提取写作经验）。斜杠命令、AI/gadget 作者发的消息不转；原始 message
+    // 是用户输入本身，prepared.message 在 slash 分支里已被改写，不能用它。失败不影响发消息。
+    if (typeof message === "string" && userMeta.profile.type === "user" &&
+        message.trim()) {
+      this.ctx.waitUntil(clientUser.forwardOwnChatMessage(message, meta.lastActive.getTime())
+        .catch(err => logger.warn("failed to forward an own chat message", {
+          event: "user.message.forward.failed", chatId, error: err,
+        })));
     }
 
     if (runsAgentTurn && userMeta.aiModel) {
@@ -8636,6 +8702,24 @@ class OverseerImpl implements AgentHooks {
         // When the Cloudflare limits flow is disabled, checkUsageAndBalance() always allows.
         // (This runs inside the try so the `finally` below still clears the active-agent state and
         // emits a stream "clear" — otherwise the UI would spin forever on a block.)
+        // 有缘心之助：预付费计费按发起人拦截；部署没有 BILLING binding 时不生效（见 billing.ts）。
+        let payer = billingPayer(initiator);
+        if (payer) {
+          this.#chatPayers.set(chatId, {
+            payer, model: `${aiModel.config.provider}/${aiModel.config.model}`,
+          });
+          let billing = await authorizeBilling(this.env, payer);
+          if (billing && !billing.allowed) {
+            turn.setErrorType("usage_limit");
+            failure = {message: billing.reason ?? "余额不足，请先充值。", code: "usage_limit"};
+            turnLogger.debug("agent run finished", {
+              event: "agent.run.finished", outcome: "usage_limit",
+              durationMs: Date.now() - startedAt,
+            });
+            return;
+          }
+        }
+
         let byokRouting: UserGatewayRouting | undefined;
         if (this.ownerId) {
           let ownerStub = this.users.get(this.users.idFromString(this.ownerId));
@@ -8665,6 +8749,12 @@ class OverseerImpl implements AgentHooks {
               sessionAffinity,
               userGateway: byokRouting,
               metadata: { source: "chat", gadgetId: this.ctx.id.toString(), chatId },
+              // 有缘心之助：一步的扣费把余额花光时，停在这一步之后，而不是等整轮结束。
+              onCharge: charge => this.ctx.waitUntil(charge.then(result => {
+                if (balanceExhausted(result) && owns() && !liveChat.cancelController.signal.aborted) {
+                  liveChat.cancelController.abort(new BillingRefusedError("余额已用完，本轮已停止。请充值后继续。"));
+                }
+              })),
             });
         turn.setModel(chosenModel.model);
 
@@ -8682,6 +8772,15 @@ class OverseerImpl implements AgentHooks {
       });
     } catch (err: unknown) {
       if (!owns()) return;
+      // 有缘心之助：余额在这一轮里用完（见上面的 onCharge），按用量上限结束，而不是当成用户停止。
+      if (err === liveChat.cancelController.signal.reason && err instanceof BillingRefusedError) {
+        turnLogger.debug("agent run finished", {
+          event: "agent.run.finished", outcome: "usage_limit",
+          durationMs: Date.now() - startedAt,
+        });
+        failure = {message: err.message, code: "usage_limit"};
+        return;
+      }
       // The turn threw the user's stop (see cancelAgent): it ended as asked, so it is not reported
       // or logged as a failure, and the chat marks it as stopped. Any other error after Stop is a
       // real failure and is reported as one.
@@ -9591,6 +9690,7 @@ class OverseerImpl implements AgentHooks {
     // A connection blocked pending a scope-widening restart is silently omitted (its commands
     // reappear once the reset lands and clients reconnect) rather than failing the whole listing,
     // as is one removed before its facet is reached.
+    await this.#refreshDramaSlashCommands();
     let sources = (await Promise.all([...this.storage.gatekeepers.list()]
       .filter(record => record.hasSlashCommands && this.gatekeeperUsable(record.id))
       .map(record => this.getGatekeeperFacet(record.id).then(gatekeeper => ({
@@ -9598,12 +9698,41 @@ class OverseerImpl implements AgentHooks {
         providerLabel: record.resourceTitle || `Gatekeeper ${record.id}`,
         gatekeeper,
       }), () => null)))).filter(source => source !== null);
+    const scriptSkillChoices: SlashCommandChoice[] = SCRIPT_SKILLS.map(skill => ({
+      selection: {builtin: true, commandId: skill.id},
+      name: skill.id,
+      description: `${skill.name} · ${skill.description}`,
+      providerLabel: "有缘心之助剧作引擎",
+      resourceLabel: skill.name,
+    }));
     return [{
       selection: {builtin: true, commandId: "compact"},
       name: "compact",
       description: "Summarize older context while preserving recent messages.",
       providerLabel: resolveSiteName((await readAdminConfig(this.env)).siteName),
-    }, ...await collectSlashCommands(sources)];
+    }, ...scriptSkillChoices, ...await collectSlashCommands(sources)];
+  }
+
+  // 剧作引擎是后来才声明斜杠命令的。已有连接不会重跑 describe()，打开命令面板时补一次。
+  async #refreshDramaSlashCommands(): Promise<void> {
+    for (let record of this.storage.gatekeepers.list()) {
+      if (record.hasSlashCommands || gatekeeperVendorId(record) !== "custom") continue;
+      try {
+        let gatekeeper = await this.getGatekeeperFacet(record.id);
+        let description = await gatekeeper.describe();
+        if (!description.hasSlashCommands) continue;
+        record.hasSlashCommands = true;
+        record.resourceTitle = description.title;
+        record.resourceUrl = description.url;
+        this.storage.gatekeepers.put(record);
+      } catch (error) {
+        this.logger.warn("failed to refresh custom gatekeeper slash commands", {
+          event: "slash.custom.refresh.failed",
+          gatekeeperId: record.id,
+          error,
+        });
+      }
+    }
   }
 
   // =======================================================================================
@@ -10137,7 +10266,7 @@ class OverseerImpl implements AgentHooks {
       // Also rename the gadget if this is the first chat. Since the gadget likely doesn't have
       // any code yet, the user still sees it as just a chat, and therefore it makes sense to
       // apply the same title as the chat itself.
-      if (chatId === 0 && ["Untitled Gadget", "Untitled Workspace"].includes(this.storage.title.get()) && this.ownerId) {
+      if (chatId === 0 && ["Untitled Gadget", "Untitled Workspace", "未命名工作区"].includes(this.storage.title.get()) && this.ownerId) {
         this.storage.title.put(result);
         let owner = this.users.get(this.users.idFromString(this.ownerId));
         await owner.updateTitle(this.ctx.id.toString(), result);
@@ -10145,7 +10274,7 @@ class OverseerImpl implements AgentHooks {
 
       // TODO: Should we track costs for title generation? It's pretty negligible.
     } catch (err) {
-      // Oh well, just leave the title as "New Chat".
+      // 标题生成失败时保留默认标题。
       this.logger.warn("error generating chat title", {
         event: "chat.title.generate.failed", chatId, error: err,
       });
@@ -10290,6 +10419,29 @@ class OverseerImpl implements AgentHooks {
           (meta.promptTokens ?? 0) + usage.input + usage.cacheRead + usage.cacheWrite;
       meta.cacheReadTokens = (meta.cacheReadTokens ?? 0) + usage.cacheRead;
       meta.cacheWriteTokens = (meta.cacheWriteTokens ?? 0) + usage.cacheWrite;
+      if (this.ownerId) {
+        // 有缘心之助：把每次请求的 Token 消耗汇总到 AdminSettings 的用量看板。
+        this.ctx.waitUntil((async () => {
+          try {
+            let username = await this.getOwnerProfileId();
+            let admin = this.ctx.exports.AdminSettings.getByName("");
+            // 有缘心之助：成本与 Token 自 2026-11-18 起由计费 Worker 统计，这里只记轮次与活跃。
+            await admin.recordUserActivity(
+              username,
+              username,
+              0,
+              0,
+              false,
+              true
+            );
+          } catch (e) {
+            logger.warn("failed to record user usage in admin settings", {
+              event: "admin.usage.record.failed",
+              error: e,
+            });
+          }
+        })());
+      }
     }
 
     meta.lastActive = this.getChatTimestamp();
@@ -14289,7 +14441,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
   }
 
   async addCollaborator(username: string, grant: CollaboratorGrant, note?: string)
-      : Promise<CollaboratorInfo | null> {
+      : Promise<(CollaboratorInfo & {emailSent?: boolean}) | null> {
     if (grant !== "workspace" && grant.mode === "view") await this.impl.requireSnapshotSharing();
     // Look up the user DO to check if the account exists.
     let userDoId = this.impl.users.idFromName(username);
@@ -14299,12 +14451,36 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
       return null;
     }
 
-    return (await this.impl.getSharingManager()).addCollaborator({
+    let sharing = await this.impl.getSharingManager();
+    let firstInvite = !sharing.hasCollaborator(profile.id);
+    let info = sharing.addCollaborator({
       caller: this.#sharingCaller(),
       profile,
       grant,
       note,
     });
+
+    // Tell a first-time collaborator by email. Upstream sharing deliberately has no in-product
+    // notification (the sharer sends the link out of band); the email is our extension, and it
+    // must never decide the invitation: no email configured, a non-email account ID, or a refused
+    // send just leaves `emailSent` false.
+    let emailSent = false;
+    if (firstInvite && profile.id.includes("@")) {
+      let inviterName = "工作区所有者";
+      try {
+        inviterName = (await retryOnDoReset(
+            () => (this.isOwner ? this.#owner : this.#clientUser).whoami(), this.impl.logger)).name;
+      } catch {
+        // Keep the fallback name rather than failing the invitation.
+      }
+      emailSent = await sendWorkspaceInviteEmail(this.impl.env, {
+        to: profile.id,
+        inviterName,
+        workspaceTitle: this.impl.storage.title.get(),
+        workspaceId: this.impl.ctx.id.toString(),
+      });
+    }
+    return { ...info, emailSent };
   }
 
   async previewRemoveCollaborator(profileId: string, gadgetId?: WorkpieceId)

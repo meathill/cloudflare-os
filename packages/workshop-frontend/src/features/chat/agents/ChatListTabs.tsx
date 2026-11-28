@@ -20,16 +20,16 @@ export const ChatListTabs = ({ tab, onTabChange, attention }: {
     value={tab}
     onValueChange={value => onTabChange(value as ChatListTab)}
     tabs={[
-      { value: 'chats', label: 'Chats' },
+      { value: 'chats', label: '对话' },
       {
         value: 'agents',
         label: (
           <span className="flex items-center gap-1.5">
-            Agents
+            智能体
             {attention > 0 && (
               <span
                 className="flex h-4 min-w-4 items-center justify-center rounded-full bg-kumo-warning-tint px-1 text-[10.5px] leading-none font-semibold text-kumo-warning"
-                aria-label={`${attention} needing attention`}
+                aria-label={`${attention} 个需要处理`}
               >
                 {attention}
               </span>

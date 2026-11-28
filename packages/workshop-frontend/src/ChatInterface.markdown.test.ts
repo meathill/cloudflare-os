@@ -93,9 +93,9 @@ describe("MarkdownMessage line breaks", () => {
     await render("```ts\nconst answer = 42;\n```");
 
     const button = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Copy code"]',
+      'button[aria-label="复制代码"]',
     );
-    expect(button?.title).toBe("Copy code");
+    expect(button?.title).toBe("复制代码");
 
     await act(async () => button?.click());
 
@@ -123,7 +123,7 @@ describe("MarkdownMessage line breaks", () => {
     expect(parses()).toBe(1);
     await update("Next reply", { [source]: null });
     expect(parses()).toBe(2);
-    expect(container.textContent).toContain("Source (unavailable)");
+    expect(container.textContent).toContain("Source（不可用）");
     expect(readBlob).not.toHaveBeenCalled();
   });
 });

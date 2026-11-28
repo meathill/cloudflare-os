@@ -95,6 +95,7 @@ import { useFocusUrl, withWorkpiece } from './features/gadget-focus/useFocusUrl'
 import { usePaneFocus } from './features/gadget-focus/usePaneFocus'
 import { ChatTokenIndex } from './features/chat/agents/chatTokenIndex'
 import { FullscreenExitHint } from './components/FullscreenExitHint'
+import { useShowsModelCost } from './features/billing/BillingContext'
 
 const NO_GADGETS: ReadonlySet<WorkpieceId> = new Set()
 
@@ -197,11 +198,11 @@ function formatHeaderCost(cost: number) {
 // a document blueprint), falling back to "App" when it declares no format. A worktree has no app
 // and no bindings, so it gets only Code.
 function rightTabs(summary: WorkpieceSummary | undefined): { value: RightTab; label: string }[] {
-  if (summary?.type === 'worktree') return [{ value: 'code', label: 'Code' }]
+  if (summary?.type === 'worktree') return [{ value: 'code', label: '代码' }]
   return [
     { value: 'app', label: formatOf(summary?.output).noun },
-    { value: 'code', label: 'Code' },
-    { value: 'connections', label: 'Connections' },
+    { value: 'code', label: '代码' },
+    { value: 'connections', label: '连接' },
   ]
 }
 
@@ -214,9 +215,9 @@ function WorkpieceGlyph({ summary, className }: { summary: WorkpieceSummary; cla
 }
 
 const ACTIVITY_TABS: { value: ActivityView; label: string }[] = [
-  { value: 'review', label: 'Needs review' },
-  { value: 'auto', label: 'Auto-approval' },
-  { value: 'history', label: 'History' },
+  { value: 'review', label: '待审核' },
+  { value: 'auto', label: '自动批准' },
+  { value: 'history', label: '历史' },
 ]
 
 // Names what the pane is showing. `icon` is for the workspace-level views (Activity); a workpiece
@@ -335,7 +336,7 @@ function PaneWorkpieceTabs({
             <span className="truncate">{gadget.title}</span>
             {gadget.type === 'gadget' && gadget.chatId !== undefined && (
               <span className="flex-shrink-0 rounded-full bg-kumo-fill px-1.5 py-0.5 text-[10px] font-medium leading-none text-kumo-subtle">
-                Draft
+                草稿
               </span>
             )}
           </button>
@@ -426,10 +427,10 @@ function getInitialAppRailExpanded(): boolean {
 // The menu item that opens the "Update from blueprint" dialog, in the desktop and mobile menus.
 const UpdateFromBlueprintLabel = ({ updateAvailable }: { updateAvailable: boolean }) => (
   <>
-    <span className="min-w-0 flex-1">Update from blueprint…</span>
+    <span className="min-w-0 flex-1">从蓝图更新…</span>
     {updateAvailable && (
       <span className="ml-3 flex-shrink-0 text-[11px] leading-4 font-medium text-kumo-brand">
-        Update available
+        有可用更新
       </span>
     )}
   </>
@@ -440,10 +441,10 @@ function NoGadgetPlaceholder({ height }: { height: string }) {
     <div className="flex items-center justify-center px-6 text-center" style={{ height }}>
       <div className="max-w-[360px]">
         <p className="m-0 text-[15px] leading-[22px] font-semibold tracking-[-0.3px] text-kumo-default">
-          No gadgets yet
+          暂无应用
         </p>
         <p className="mt-1.5 mb-0 text-[13px] leading-[19px] tracking-[-0.25px] text-kumo-subtle">
-          Ask the agent in chat to build something, and it will appear here.
+          在对话中让智能体创建内容，完成后会显示在这里。
         </p>
       </div>
     </div>
@@ -453,6 +454,8 @@ function NoGadgetPlaceholder({ height }: { height: string }) {
 // ─── component ────────────────────────────────────────────────────────────────
 
 export default function GadgetEditor() {
+  // 有缘心之助：内部账号与未开计费时显示原始模型成本；普通付费用户看不到花费。
+  const showsModelCost = useShowsModelCost()
   const params = useParams({ strict: false }) as { id?: string }
   const id = params.id
   const navigate = useNavigate()
@@ -520,7 +523,7 @@ export default function GadgetEditor() {
       })
     },
     onInvalidShareKey: () => {
-      toasts.add({ title: 'Invalid or expired share link.', variant: 'error' })
+      toasts.add({ title: '分享链接无效或已过期。', variant: 'error' })
     },
   })
   const [userInfo, setUserInfo] = useState<AiChatAuthorInfo | null>(null)
@@ -1635,7 +1638,7 @@ export default function GadgetEditor() {
   // can't show, and then there is nothing to open.
   const handleOpenFocus = (focus: MessageFocus) => {
     if (!visibleGadgets.some(g => g.id === focus.gadgetId)) {
-      toasts.add({ title: 'That gadget is no longer available', variant: 'info' })
+      toasts.add({ title: '该应用已不再可用', variant: 'info' })
       return
     }
     if (isAgentActive) userPickedWorkpieceThisTurnRef.current = true
@@ -1658,7 +1661,7 @@ export default function GadgetEditor() {
     try {
       await target.setTitle(title)
     } catch {
-      toasts.add({ title: 'Failed to rename gadget', variant: 'error' })
+      toasts.add({ title: '重命名应用失败', variant: 'error' })
     } finally {
       target[Symbol.dispose]()
     }
@@ -1678,7 +1681,7 @@ export default function GadgetEditor() {
       return true
     } catch (err) {
       console.error('Failed to delete gadget:', err)
-      toasts.add({ title: 'Failed to delete gadget', variant: 'error' })
+      toasts.add({ title: '删除应用失败', variant: 'error' })
       return false
     } finally {
       target[Symbol.dispose]()
@@ -1744,7 +1747,7 @@ export default function GadgetEditor() {
       await overseer.stub.setTitle(titleInput.trim())
       updateTitle(titleInput.trim())
       setIsEditingTitle(false)
-    } catch { toasts.add({ title: 'Failed to update title', variant: 'error' }) }
+    } catch { toasts.add({ title: '更新标题失败', variant: 'error' }) }
     finally { titleSaveInFlight.current = false }
   }
   const handleCancelEdit = () => {
@@ -1768,7 +1771,7 @@ export default function GadgetEditor() {
       await overseer.stub.deleteSelf()
       navigate({ to: '/' })
     } catch {
-      toasts.add({ title: 'Failed to delete workspace', variant: 'error' })
+      toasts.add({ title: '删除工作区失败', variant: 'error' })
       setIsDeleting(false)
       setDeleteDialogOpen(false)
     }
@@ -1812,10 +1815,10 @@ export default function GadgetEditor() {
         </p>
         <div className="flex items-center gap-2">
           <WorkshopButton tone="secondary" onClick={handleGoToWorkspaces}>
-            Go to workspaces
+            前往工作区
           </WorkshopButton>
           <WorkshopButton tone="primary" onClick={retryOpen}>
-            Try again
+            重试
           </WorkshopButton>
         </div>
       </div>
@@ -1827,7 +1830,7 @@ export default function GadgetEditor() {
       <div className="flex min-h-full items-center justify-center bg-kumo-base">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-kumo-brand border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-kumo-subtle">Loading workspace…</p>
+          <p className="text-sm text-kumo-subtle">正在加载工作区…</p>
         </div>
         {observerConfigModal}
       </div>
@@ -1886,7 +1889,7 @@ export default function GadgetEditor() {
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <Link
             to="/"
-            aria-label="Home"
+            aria-label="首页"
             className="flex-shrink-0 hover:opacity-80 transition-opacity"
           >
             <SiteLogo size={22}>
@@ -1914,14 +1917,14 @@ export default function GadgetEditor() {
                 onClick={handleSaveTitle}
                 disabled={!titleInput.trim()}
                 className="!h-9 !w-9 hover:text-kumo-brand disabled:opacity-30 md:!h-7 md:!w-7"
-                aria-label="Save workspace title"
+                aria-label="保存工作区标题"
               >
                 <Check size={14} />
               </WorkshopIconButton>
               <WorkshopIconButton
                 onClick={handleCancelEdit}
                 className="!h-9 !w-9 md:!h-7 md:!w-7"
-                aria-label="Cancel title edit"
+                aria-label="取消编辑标题"
               >
                 <X size={14} />
               </WorkshopIconButton>
@@ -1935,8 +1938,8 @@ export default function GadgetEditor() {
                 <WorkshopIconButton
                   onClick={() => setIsEditingTitle(true)}
                   className="!h-7 !w-7 flex-shrink-0"
-                  title="Rename workspace"
-                  aria-label="Rename workspace"
+                  title="重命名工作区"
+                  aria-label="重命名工作区"
                 >
                   <Pencil size={16} />
                 </WorkshopIconButton>
@@ -1946,7 +1949,7 @@ export default function GadgetEditor() {
 
           {metadata.owner && (
             <span className="hidden text-xs text-kumo-inactive sm:inline">
-              by {metadata.owner.name}
+              作者： {metadata.owner.name}
             </span>
           )}
         </div>
@@ -1959,7 +1962,7 @@ export default function GadgetEditor() {
             currentUserId={userInfo?.id ?? null}
           />
 
-          {metadata.totalCost != null && (
+          {showsModelCost && metadata.totalCost != null && (
             <span className="ml-3 mr-2 text-[12px] leading-4 font-normal tracking-[-0.2px] text-kumo-subtle">
               {formatHeaderCost(metadata.totalCost)}
             </span>
@@ -1975,8 +1978,8 @@ export default function GadgetEditor() {
 
           <WorkshopIconButton
             onClick={() => openShareModal(null)}
-            title="Invite to workspace"
-            aria-label="Invite to workspace"
+            title="邀请加入工作区"
+            aria-label="邀请加入工作区"
           >
             <UserPlus size={15} />
           </WorkshopIconButton>
@@ -1986,8 +1989,8 @@ export default function GadgetEditor() {
               render={
                 <WorkshopIconButton
                   disabled={!selectedGadgetStub}
-                  title={blueprintUpdateAvailable ? 'Blueprints (update available)' : 'Blueprints'}
-                  aria-label={blueprintUpdateAvailable ? 'Blueprints (update available)' : 'Blueprints'}
+                  title={blueprintUpdateAvailable ? '蓝图（有可用更新）' : '蓝图'}
+                  aria-label={blueprintUpdateAvailable ? '蓝图（有可用更新）' : '蓝图'}
                   className="relative"
                 >
                   <Blueprint size={16} />
@@ -2002,7 +2005,7 @@ export default function GadgetEditor() {
             />
             <DropdownMenu.Content className={MENU_CONTENT} style={MENU_POSITIONER_STYLE}>
               <DropdownMenu.Item onClick={() => setBlueprintModalOpen(true)} className={MENU_ITEM}>
-                Publish as blueprint…
+                发布为蓝图…
               </DropdownMenu.Item>
               {!builtFromScratch && (
                 <DropdownMenu.Item
@@ -2020,8 +2023,8 @@ export default function GadgetEditor() {
             <WorkshopIconButton
               danger
               onClick={() => setDeleteDialogOpen(true)}
-              title="Delete workspace"
-              aria-label="Delete workspace"
+              title="删除工作区"
+              aria-label="删除工作区"
             >
               <Trash size={16} />
             </WorkshopIconButton>
@@ -2034,7 +2037,7 @@ export default function GadgetEditor() {
           <span className="md:hidden">
             <GadgetExportMenu
               gadget={selectedGadgetStub}
-              gadgetTitle={selectedGadgetSummary?.title ?? 'Gadget'}
+              gadgetTitle={selectedGadgetSummary?.title ?? '应用'}
               chatId={previewChatId}
               saveScope={gadgetSaveScope}
             />
@@ -2052,7 +2055,7 @@ export default function GadgetEditor() {
             !showFullEditor ? 'bg-kumo-tint text-kumo-default' : 'text-kumo-subtle'
           }`}
         >
-          Chat
+          对话
         </button>
         <button
           type="button"
@@ -2063,7 +2066,7 @@ export default function GadgetEditor() {
             mobilePrimaryActive ? 'bg-kumo-tint text-kumo-default' : 'text-kumo-subtle'
           }`}
         >
-          {mobilePrimaryTab === 'app' ? 'Preview' : 'Code'}
+          {mobilePrimaryTab === 'app' ? '预览' : '代码'}
         </button>
         <button
           type="button"
@@ -2073,7 +2076,7 @@ export default function GadgetEditor() {
             paneShowsActivity ? 'bg-kumo-tint text-kumo-default' : 'text-kumo-subtle'
           }`}
         >
-          Activity
+          活动
           {pendingActionCount > 0 && (
             <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-kumo-brand" />
           )}
@@ -2084,7 +2087,7 @@ export default function GadgetEditor() {
               <button
                 type="button"
                 ref={mobileMenuButtonRef}
-                aria-label="More workspace views and actions"
+                aria-label="更多工作区视图和操作"
                 className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${
                   mobileMoreActive ? 'bg-kumo-tint text-kumo-default' : 'text-kumo-subtle'
                 }`}
@@ -2106,7 +2109,7 @@ export default function GadgetEditor() {
                 onClick={() => openMobilePane('code')}
                 className={MENU_ITEM}
               >
-                Code
+                代码
               </DropdownMenu.Item>
             )}
             {selectedWorkpieceSummary?.type !== 'worktree' && (
@@ -2115,7 +2118,7 @@ export default function GadgetEditor() {
                 onClick={() => openMobilePane('connections')}
                 className={MENU_ITEM}
               >
-                Connections
+                连接
               </DropdownMenu.Item>
             )}
             {visibleWorkpieces.length > 1 && <DropdownMenu.Separator />}
@@ -2134,10 +2137,10 @@ export default function GadgetEditor() {
             ))}
             <DropdownMenu.Separator />
             <DropdownMenu.Item onClick={() => setIsEditingTitle(true)} className={MENU_ITEM}>
-              Rename workspace
+              重命名工作区
             </DropdownMenu.Item>
             <DropdownMenu.Item onClick={() => openShareModal(null)} className={MENU_ITEM}>
-              Invite to workspace
+              邀请加入工作区
             </DropdownMenu.Item>
             {workspaceMute && workspaceMute.workspaceId === id && (
               <WorkspaceNotificationsMenu
@@ -2156,14 +2159,14 @@ export default function GadgetEditor() {
                   onClick={() => { if (selectedGadgetSummary) openShareModal(selectedGadgetSummary.id) }}
                   className={MENU_ITEM}
                 >
-                  Share gadget
+                  分享应用
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
                   disabled={!selectedGadgetStub}
                   onClick={() => setBlueprintModalOpen(true)}
                   className={MENU_ITEM}
                 >
-                  Publish as blueprint…
+                  发布为蓝图…
                 </DropdownMenu.Item>
                 {!builtFromScratch && (
                   <DropdownMenu.Item
@@ -2179,7 +2182,7 @@ export default function GadgetEditor() {
                   onClick={enterGadgetFullscreen}
                   className={MENU_ITEM}
                 >
-                  Full-screen preview
+                  全屏预览
                 </DropdownMenu.Item>
               </>
             )}
@@ -2191,7 +2194,7 @@ export default function GadgetEditor() {
                   onClick={() => setDeleteDialogOpen(true)}
                   className={MENU_ITEM_DANGER}
                 >
-                  Delete workspace
+                  删除工作区
                 </DropdownMenu.Item>
               </>
             )}
@@ -2205,7 +2208,7 @@ export default function GadgetEditor() {
         {isViewActive && (
           <div
             role="progressbar"
-            aria-label="Agent working"
+            aria-label="智能体工作中"
             className="absolute left-0 z-10 h-0 max-md:!right-0 max-md:!top-0"
             style={{ top: simpleMode ? 0 : TABBAR_H, right: outputRailWidth }}
           >
@@ -2273,7 +2276,7 @@ export default function GadgetEditor() {
                 <div className="absolute inset-0 flex items-center justify-center bg-kumo-base">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-6 h-6 border-2 border-kumo-brand border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm text-kumo-subtle">Loading conversation…</p>
+                    <p className="text-sm text-kumo-subtle">正在加载对话…</p>
                   </div>
                 </div>
               )}
@@ -2313,7 +2316,7 @@ export default function GadgetEditor() {
           >
             <div className="flex min-w-0 flex-1 items-center overflow-hidden">
               {paneShowsActivity ? (
-                <PaneLabel icon={Pulse} title="Activity" />
+                <PaneLabel icon={Pulse} title="活动" />
               ) : visibleWorkpieces.length > 1 ? (
                 <PaneWorkpieceTabs
                   gadgets={visibleWorkpieces}
@@ -2329,7 +2332,7 @@ export default function GadgetEditor() {
                       tabIndex={0}
                       workpiece={selectedGadgetSummary}
                       title={selectedGadgetSummary.title}
-                      badge={selectedGadgetSummary.chatId !== undefined ? 'Draft' : undefined}
+                      badge={selectedGadgetSummary.chatId !== undefined ? '草稿' : undefined}
                     />
                   )}
                   onDelete={() => requestGadgetDeletion(selectedGadgetSummary)}
@@ -2365,7 +2368,7 @@ export default function GadgetEditor() {
               {!paneShowsActivity && (
                 <GadgetExportMenu
                   gadget={selectedGadgetStub}
-                  gadgetTitle={selectedGadgetSummary?.title ?? 'Gadget'}
+                  gadgetTitle={selectedGadgetSummary?.title ?? '应用'}
                   chatId={previewChatId}
                   saveScope={gadgetSaveScope}
                 />
@@ -2374,8 +2377,8 @@ export default function GadgetEditor() {
               {/* A draft belongs to its chat until accepted, and only accepted gadgets can be shared. */}
               {!paneShowsActivity && selectedGadgetSummary && (
                 <WorkshopIconButton
-                  aria-label="Share gadget"
-                  title={selectedGadgetSummary.chatId === undefined ? 'Share gadget' : 'Accept this draft to share it'}
+                  aria-label="分享应用"
+                  title={selectedGadgetSummary.chatId === undefined ? '分享应用' : '接受此草稿后才能分享'}
                   onClick={() => openShareModal(selectedGadgetSummary.id)}
                   disabled={selectedGadgetSummary.chatId !== undefined}
                 >
@@ -2385,10 +2388,10 @@ export default function GadgetEditor() {
 
               {!paneShowsActivity && selectedWorkpieceSummary?.type !== 'worktree' && (
                 <WorkshopIconButton
-                  aria-label="Enter full screen"
+                  aria-label="进入全屏"
                   title={activeTab === 'app'
-                    ? 'Full screen'
-                    : `Full screen is available in ${formatOf(selectedGadgetSummary?.output).noun} view`}
+                    ? '全屏'
+                    : `可在${formatOf(selectedGadgetSummary?.output).noun}视图中全屏`}
                   onClick={enterGadgetFullscreen}
                   disabled={activeTab !== 'app'}
                 >
@@ -2398,9 +2401,9 @@ export default function GadgetEditor() {
 
               <WorkshopIconButton
                 aria-label={paneShowsActivity
-                  ? 'Close activity'
-                  : selectedWorkpieceSummary?.type === 'worktree' ? 'Close worktree pane' : 'Close gadget pane'}
-                title="Close"
+                  ? '关闭活动'
+                  : selectedWorkpieceSummary?.type === 'worktree' ? '关闭工作树面板' : '关闭应用面板'}
+                title="关闭"
                 onClick={closeWorkspacePane}
               >
                 <X size={16} />
@@ -2439,7 +2442,7 @@ export default function GadgetEditor() {
               tabIndex={isGadgetFullscreen ? -1 : undefined}
               role={isGadgetFullscreen ? 'dialog' : undefined}
               aria-modal={isGadgetFullscreen ? true : undefined}
-              aria-label={isGadgetFullscreen ? 'Gadget full screen' : undefined}
+              aria-label={isGadgetFullscreen ? '应用全屏' : undefined}
               className={
                 activeTab !== 'app'
                   ? 'hidden'
@@ -2588,8 +2591,8 @@ export default function GadgetEditor() {
 
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
-        title="Delete workspace?"
-        description={<>This removes <span className="font-medium text-kumo-default">{metadata.title}</span>. You can&apos;t undo this.</>}
+        title="删除工作区？"
+        description={<>这将删除 <span className="font-medium text-kumo-default">{metadata.title}</span>。此操作无法撤销。</>}
         isDeleting={isDeleting}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDeleteConfirm}

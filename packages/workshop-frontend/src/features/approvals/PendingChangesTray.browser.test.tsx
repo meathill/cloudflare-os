@@ -118,7 +118,7 @@ it('keeps a decision reachable however tall the request is', async () => {
   await input(() => userEvent.click(host!.querySelector('button[aria-expanded="false"]')!))
 
   const tray = host!.firstElementChild!.getBoundingClientRect()
-  const approve = [...host!.querySelectorAll('button')].filter(b => b.textContent === 'Approve')
+  const approve = [...host!.querySelectorAll('button')].filter(b => b.textContent === '批准')
   expect(approve.length).toBe(2)
 
   // The first request's controls sit inside the tray's own box, not below it: the card puts them
@@ -136,7 +136,7 @@ it('keeps a decision reachable however tall the request is', async () => {
   // the inner cap is set below the outer one precisely so this row survives a full-height body.
   // The tray header carries the same label, so the group's is the last one.
   const applyAll = [...host!.querySelectorAll('button')]
-    .filter(b => b.textContent === 'Apply all 2')
+    .filter(b => b.textContent === '全部应用 2')
   expect(applyAll).toHaveLength(2)
   const footer = applyAll[1].getBoundingClientRect()
   expect(footer.height).toBeGreaterThan(0)
@@ -244,7 +244,7 @@ it('keeps the connection name readable when its badges fill the row', async () =
     .find(span => span.textContent === 'Road trip 2026')!
   expect(title.getBoundingClientRect().width).toBeGreaterThanOrEqual(56)
   // The badges are there, just giving way: they are what shrinks, not the name.
-  expect(host!.textContent).toContain('Asked elsewhere')
+  expect(host!.textContent).toContain('来自其他对话')
 })
 
 it('opens one group at a time, and keeps focus on the row that was pressed', async () => {
@@ -254,7 +254,7 @@ it('opens one group at a time, and keeps focus on the row that was pressed', asy
   ] })
 
   const rows = () => [...host!.querySelectorAll('button[aria-expanded]')]
-    .filter(b => (b.textContent ?? '').includes('request'))
+    .filter(b => (b.textContent ?? '').includes('请求'))
   const [slides, calendar] = rows()
 
   await input(() => userEvent.click(slides))
@@ -274,7 +274,7 @@ it('reaches every group and its decisions by keyboard alone', async () => {
     group([request(2, 'Create an event')], 2, 'Team calendar'),
   ] })
 
-  const bulk = [...host!.querySelectorAll('button')].find(b => b.textContent?.startsWith('Apply all'))!
+  const bulk = [...host!.querySelectorAll('button')].find(b => b.textContent?.startsWith('全部应用'))!
   bulk.focus()
   await input(() => userEvent.keyboard('{Tab}'))
 
@@ -288,9 +288,9 @@ it('reaches every group and its decisions by keyboard alone', async () => {
   await input(() => userEvent.keyboard('{Tab}'))
   expect((document.activeElement as HTMLElement).textContent).toBe('Append a slide')
   await input(() => userEvent.keyboard('{Tab}'))
-  expect((document.activeElement as HTMLElement).textContent).toBe('Deny')
+  expect((document.activeElement as HTMLElement).textContent).toBe('拒绝')
   await input(() => userEvent.keyboard('{Tab}'))
-  expect((document.activeElement as HTMLElement).textContent).toBe('Approve')
+  expect((document.activeElement as HTMLElement).textContent).toBe('批准')
 })
 
 it('shows a restricted request in full, with no way to resolve the group at once', async () => {
@@ -302,7 +302,7 @@ it('shows a restricted request in full, with no way to resolve the group at once
     restricted: true,
   })
 
-  expect([...host!.querySelectorAll('button')].some(b => b.textContent?.startsWith('Apply all')))
+  expect([...host!.querySelectorAll('button')].some(b => b.textContent?.startsWith('全部应用')))
     .toBe(false)
 
   await input(() => userEvent.click(host!.querySelector('button[aria-expanded="false"]')!))

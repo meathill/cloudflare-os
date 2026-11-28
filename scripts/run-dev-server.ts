@@ -592,7 +592,7 @@ for (const gk of gatekeepers) {
 
   config.services = config.services || [];
 
-  // For local testing, create an account named "admin" to test admin features.
+  // For local testing, default to "admin" or read from ADMINS / ADMIN_USERS env vars.
   config.vars = config.vars || {};
   config.vars.ADMINS = ["admin"];
   // A local instance, where `cf-os api` may act as anyone. Never set by a deployment.
@@ -620,6 +620,9 @@ for (const gk of gatekeepers) {
     // `ADMIN_WORKSPACE_ACCESS_MAX=off pnpm dev-server` turns the dev admin's inspection off, and
     // `ADMIN_WORKSPACE_WRITES=on pnpm dev-server` lets the dev admin write to workspaces.
     "ADMIN_WORKSPACE_ACCESS_MAX", "ADMIN_AUDIT_RETENTION_MIN_DAYS", "ADMIN_WORKSPACE_WRITES",
+    "GEMINI_API_KEY", "GOOGLE_API_KEY",
+    // 有缘心之助：Vertex 请求 URL 的 project/location（Google 凭据在 AI Gateway 的 BYOK 里）。
+    "GCP_VERTEX_PROJECT", "GCP_VERTEX_LOCATION",
   ];
   // OAuth app credentials (GOOGLE_/GITHUB_/CLOUDFLARE_OAUTH_*) are NOT passed to the backend anymore;
   // they are injected into the gatekeeper Workers (see SHARED_GATEKEEPER_CREDS below).

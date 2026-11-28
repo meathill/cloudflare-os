@@ -116,8 +116,8 @@ export default function GadgetUseView({
           )}
           <GadgetExportMenu
             gadget={gadgetOpenFailure === null ? gadget : null}
-            gadgetTitle={gadgets.find(g => g.id === selectedGadgetId)?.title ?? 'Gadget'}
-            label={snapshot ? 'Export snapshot' : undefined}
+            gadgetTitle={gadgets.find(g => g.id === selectedGadgetId)?.title ?? '应用'}
+            label={snapshot ? '导出快照' : undefined}
           />
           <span className="hidden md:inline-flex">
             <GadgetPresence
@@ -183,7 +183,7 @@ export default function GadgetUseView({
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center">
             <p className="text-sm text-kumo-subtle">
-              {selectedGadgetId === null ? 'This workspace has no gadgets yet.' : 'Loading gadget…'}
+              {selectedGadgetId === null ? '此工作区还没有应用。' : '正在加载应用…'}
             </p>
           </div>
         )}

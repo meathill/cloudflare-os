@@ -125,10 +125,10 @@ function AccountFixes({ account, label, resourceCount, missing, refused, grantin
       >
         {granting ? <ArrowClockwise size={12} className="animate-spin" /> : <Warning size={12} />}
         {granting
-          ? 'Requesting access…'
+          ? '正在请求访问权限…'
           : (resourceCount === 1
-            ? 'Grant the access needed to verify this resource'
-            : 'Grant the access needed to verify these resources') + suffix}
+            ? '授予验证此资源所需的访问权限'
+            : '授予验证这些资源所需的访问权限') + suffix}
       </button>
     )
   }
@@ -148,10 +148,10 @@ function AccountFixes({ account, label, resourceCount, missing, refused, grantin
           ? <ArrowClockwise size={12} className="animate-spin" />
           : account.credentialsValid ? <ArrowClockwise size={12} /> : <Warning size={12} />}
         {reconnecting
-          ? 'Re-authenticating…'
+          ? '正在重新验证…'
           : (account.credentialsValid
-            ? 'Re-authenticate this account'
-            : 'This account has expired — click to re-authenticate') + suffix}
+            ? '重新验证此账号'
+            : '此账号已过期——点击重新验证') + suffix}
       </button>
     )
   }
@@ -232,7 +232,7 @@ export default function ObserverConfigModal({
       // Loud on purpose: the modal has no retry path, so a quieted transient failure would
       // strand the user on a permanent loader.
       console.error('Failed to subscribe to connected accounts:', err)
-      toasts.add({ title: 'Failed to load your connected accounts', variant: 'error' })
+      toasts.add({ title: '加载已连接账号失败', variant: 'error' })
     })
 
     return () => {
@@ -321,7 +321,7 @@ export default function ObserverConfigModal({
     } catch (err) {
       if (err instanceof AuthPopupCancelledError) return
       console.error('Failed to initiate connection:', err)
-      toasts.add({ title: err instanceof Error ? err.message : 'Could not complete connection flow', variant: 'error' })
+      toasts.add({ title: err instanceof Error ? err.message : '无法完成连接流程', variant: 'error' })
     } finally {
       setConnecting(null)
     }
@@ -335,7 +335,7 @@ export default function ObserverConfigModal({
     } catch (err) {
       if (err instanceof AuthPopupCancelledError) return
       console.error('Failed to initiate reconnection:', err)
-      toasts.add({ title: err instanceof Error ? err.message : 'Could not complete re-authentication flow', variant: 'error' })
+      toasts.add({ title: err instanceof Error ? err.message : '无法完成重新验证流程', variant: 'error' })
     } finally {
       setReconnecting(null)
     }
@@ -373,7 +373,7 @@ export default function ObserverConfigModal({
     } catch (err) {
       if (err instanceof AuthPopupCancelledError) return
       console.error('Failed to request additional access:', err)
-      toasts.add({ title: err instanceof Error ? err.message : 'Failed to request additional access', variant: 'error' })
+      toasts.add({ title: err instanceof Error ? err.message : '请求额外权限失败', variant: 'error' })
     } finally {
       setGranting(null)
     }
@@ -410,29 +410,25 @@ export default function ObserverConfigModal({
   // verification on this open: expired credentials, or an account without access to the data.
   const failedNeeds = needs.flatMap(n => n.failure ? [n.failure] : [])
   const isRetry = failedNeeds.length > 0
-  const failedNeedCount = failedNeeds.length
   // Several refused connections may share one account, so word the fix by distinct accounts.
   const failedAccountCount = new Set(failedNeeds.map(failure => failure.accountId)).size
+  const subjectName = subject === 'workspace' ? '工作区' : '应用'
 
   return (
     <Dialog.Root open disablePointerDismissal onOpenChange={open => { if (!open) onCancel() }}>
       <Dialog className="responsive-dialog !top-[clamp(24px,10vh,80px)] !flex !max-h-[calc(100vh-clamp(24px,10vh,80px)-24px)] !-translate-y-0 flex-col overflow-hidden p-0" size="lg">
         <div className="shrink-0 px-6 pt-6">
           <Dialog.Title className="mb-2 text-lg font-semibold">
-            {isRetry ? 'Verify your access again' : 'Verify your access'}
+            {isRetry ? '重新验证访问权限' : '验证访问权限'}
           </Dialog.Title>
           <Text variant="secondary" size="sm" as="p">
             {isRetry
-              ? `We couldn’t confirm your access to the resources this ${subject} has read ` +
-                `from. Depending on the ${failedNeedCount === 1 ? 'reason' : 'reasons'} below, ` +
+              ? `无法确认你对这个${subjectName}读取过的内容的访问权限。请根据下方原因，` +
                 (failedAccountCount === 1
-                  ? 're-authenticate this account, connect a different account, '
-                  : 're-authenticate these accounts, connect different accounts, ') +
-                `or ask the ${subject} owner to share the ` +
-                `${failedNeedCount === 1 ? 'resource' : 'resources'} that your ` +
-                `${failedAccountCount === 1 ? 'account' : 'accounts'} can’t access.`
-              : `Before using this ${subject}, confirm that your accounts can access the protected resources ` +
-                'it has read from.'}
+                  ? '重新验证此账号、连接其他账号，'
+                  : '重新验证这些账号、连接其他账号，') +
+                `或请${subjectName}所有者分享你的账号无法访问的内容。`
+              : `使用此${subjectName}前，请确认你的账号可以访问它读取过的受保护内容。`}
           </Text>
         </div>
 
@@ -478,7 +474,7 @@ export default function ObserverConfigModal({
                       <div className="min-w-0 flex-1">
                         <div className="text-[14px] font-medium text-kumo-default truncate">{vendorName}</div>
                         <div className="text-xs text-kumo-subtle truncate">
-                          {group.length === 1 ? '1 resource' : `${group.length} resources`}
+                          {`${group.length} 个资源`}
                         </div>
                       </div>
                       {matching.length === 0 && vendor && (
@@ -487,7 +483,7 @@ export default function ObserverConfigModal({
                           onClick={() => handleConnect(vendorId, group)}
                           disabled={connecting === vendorId}
                         >
-                          {connecting === vendorId ? 'Connecting…' : 'Connect'}
+                          {connecting === vendorId ? '正在连接…' : '连接'}
                         </WorkshopButton>
                       )}
                     </div>
@@ -510,7 +506,7 @@ export default function ObserverConfigModal({
                         {matching.length === 1 ? (
                           <div className="flex min-h-10 items-center gap-3 rounded-lg border border-kumo-line bg-kumo-elevated/50 px-3 py-2">
                             <div className="min-w-0 flex-1">
-                              <div className="text-[11px] leading-4 text-kumo-subtle">Using your account</div>
+                              <div className="text-[11px] leading-4 text-kumo-subtle">使用你的账号</div>
                               <div className="truncate text-sm font-medium text-kumo-default">
                                 {accountLabel(matching[0], matching[0].id)}
                               </div>
@@ -519,11 +515,11 @@ export default function ObserverConfigModal({
                         ) : (
                           <Select
                             className="w-full min-w-0 text-sm"
-                            aria-label={`${vendorName} account for all resources`}
+                            aria-label={`${vendorName} 全部资源的账号`}
                             /* null, not undefined: Base UI treats a Select mounted without a value as
                                uncontrolled and ignores the default chosen once accounts arrive. */
                             value={uniform !== undefined ? String(uniform) : null}
-                            placeholder={mixed ? 'Multiple accounts' : `Choose a ${vendorName} account…`}
+                            placeholder={mixed ? '多个账号' : `选择 ${vendorName} 账号…`}
                             onValueChange={v => {
                               const accountId = optionAccountId(matching, v)
                               if (accountId !== undefined) chooseForVendor(group, accountId)
@@ -533,7 +529,7 @@ export default function ObserverConfigModal({
                             {matching.map(acct => (
                               <Select.Option key={acct.id} value={String(acct.id)}>
                                 {accountLabel(acct, acct.id)}
-                                {!acct.credentialsValid ? ' (expired)' : ''}
+                                {!acct.credentialsValid ? '（已过期）' : ''}
                               </Select.Option>
                             ))}
                           </Select>
@@ -565,7 +561,7 @@ export default function ObserverConfigModal({
                             className={`${LINK_ROW} ${LINK_SUBTLE}`}
                           >
                             <Plus size={12} />
-                            {connecting === vendorId ? 'Connecting…' : 'Connect a different account'}
+                            {connecting === vendorId ? '正在连接…' : '连接其他账号'}
                           </button>
                         )}
                       </div>
@@ -574,10 +570,10 @@ export default function ObserverConfigModal({
                     <Collapsible.Root open={open} onOpenChange={next => setExpanded(prev => ({ ...prev, [vendorId]: next }))}>
                       <Collapsible.Trigger className={`mt-2 ${LINK_ROW} ${LINK_SUBTLE}`}>
                         <CaretRight size={12} className={open ? 'rotate-90' : undefined} />
-                        {matching.length > 1 ? 'Pick a different account for each resource' : 'Show resources'}
+                        {matching.length > 1 ? '为每个资源选择不同的账号' : '显示资源'}
                       </Collapsible.Trigger>
                       <Collapsible.Panel>
-                        <ul role="list" aria-label={`${vendorName} resources`} className="mt-2 flex flex-col divide-y divide-kumo-line rounded-lg border border-kumo-line">
+                        <ul role="list" aria-label={`${vendorName} 资源`} className="mt-2 flex flex-col divide-y divide-kumo-line rounded-lg border border-kumo-line">
                           {group.map(need => (
                             <li key={need.gatekeeperId} className="flex flex-col gap-2 px-3 py-2">
                               {/* Wrapped, not truncated: what tells two resources apart is often at the end. */}
@@ -592,9 +588,9 @@ export default function ObserverConfigModal({
                               {matching.length > 1 && (
                                 <Select
                                   className="w-full min-w-0 text-sm"
-                                  aria-label={`Account for ${need.resourceTitle}`}
+                                  aria-label={`${need.resourceTitle} 的账号`}
                                   value={choices[need.gatekeeperId] !== undefined ? String(choices[need.gatekeeperId]) : null}
-                                  placeholder="Choose an account…"
+                                  placeholder="选择账号…"
                                   onValueChange={v => {
                                     const accountId = optionAccountId(matching, v)
                                     if (accountId !== undefined) setChoices(prev => ({ ...prev, [need.gatekeeperId]: accountId }))
@@ -604,7 +600,7 @@ export default function ObserverConfigModal({
                                   {matching.map(acct => (
                                     <Select.Option key={acct.id} value={String(acct.id)}>
                                       {accountLabel(acct, acct.id)}
-                                      {!acct.credentialsValid ? ' (expired)' : ''}
+                                      {!acct.credentialsValid ? '（已过期）' : ''}
                                     </Select.Option>
                                   ))}
                                 </Select>
@@ -628,14 +624,14 @@ export default function ObserverConfigModal({
 
         <div className="flex shrink-0 justify-end gap-2 border-t border-kumo-line px-6 py-4">
           <WorkshopButton tone="secondary" onClick={onCancel}>
-            Cancel
+            取消
           </WorkshopButton>
           <WorkshopButton
             tone="primary"
             onClick={handleConfirm}
             disabled={!ready || !vendorsReady || !allSatisfied}
           >
-            {isRetry ? 'Verify again' : 'Verify and open'}
+            {isRetry ? '重新验证' : '验证并打开'}
           </WorkshopButton>
         </div>
       </Dialog>

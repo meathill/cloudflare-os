@@ -148,7 +148,7 @@ export default function OAuthButtons({ rpcStub, vendors, onSuccess }: OAuthButto
       else window.location.reload()
     } catch (err) {
       if (err === CANCELLED || !mountedRef.current) return
-      setError(err instanceof Error ? err.message : 'Could not sign in')
+      setError(err instanceof Error ? err.message : '无法登录')
       setPending(null)
     }
   }
@@ -178,11 +178,11 @@ export default function OAuthButtons({ rpcStub, vendors, onSuccess }: OAuthButto
               style={{ height: 18, width: 'auto' }}
             />
           )}
-          Continue with {vendor.displayName}
+          使用以下账号继续： {vendor.displayName}
         </Button>
       ))}
       {pending !== null && cancellable && nativeApp()?.authentication && (
-        <Button variant="ghost" className="w-full" onClick={cancel}>Cancel sign-in</Button>
+        <Button variant="ghost" className="w-full" onClick={cancel}>取消登录</Button>
       )}
     </div>
   )

@@ -39,10 +39,12 @@ import { ConnectHandoff, GatekeeperConnectCallback, GatekeeperUser } from "@gadg
 import { createWorkshopLogger } from "../observability";
 import { CLOUDFLARE_VENDOR_ID, type UserDurableObject } from "../user.js";
 import { readAdminConfig } from "../admin-config.js";
+import { isSignupAllowed } from "./config.js";
 import {
   CONNECT_FLOW_LIFETIME_MS, handoffTargetOrigin, hashPresentedSecret, newSecretToken,
   PENDING_HANDOFF_LIFETIME_MS,
 } from "../connect-handoff.js";
+import { getDoOptions } from "../do-location.js";
 
 const logger = createWorkshopLogger("workshop.auth");
 
@@ -181,7 +183,7 @@ export class LoginConnectCallbackImpl
     implements GatekeeperConnectCallback {
   #pending() {
     const id = this.ctx.exports.PendingLogin.idFromString(this.ctx.props.pendingId);
-    return this.ctx.exports.PendingLogin.get(id);
+    return this.ctx.exports.PendingLogin.get(id, getDoOptions(this.env));
   }
 
   /**
@@ -215,11 +217,13 @@ export class LoginConnectCallbackImpl
         return;
       }
       const userStub = this.ctx.exports.UserDurableObject.get(
-          this.ctx.exports.UserDurableObject.idFromName(email));
+          this.ctx.exports.UserDurableObject.idFromName(email), getDoOptions(this.env));
       // Closed signups block first-time account creation here too (not just password signup); an
-      // existing user signing in is unaffected.
+      // existing user signing in is unaffected. A configured allowlist narrows creation to its
+      // listed emails.
       const signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
-      const secret = await userStub.loginOrCreateViaGatekeeper(email, signupsEnabled);
+      const secret = await userStub.loginOrCreateViaGatekeeper(
+          email, signupsEnabled && isSignupAllowed(this.env, email));
       if (secret === null) {
         loginLogger.info("gatekeeper login finished", {
           event: "gatekeeper.login.finished", outcome: "signups_disabled",

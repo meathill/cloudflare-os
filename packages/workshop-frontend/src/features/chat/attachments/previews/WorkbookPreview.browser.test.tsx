@@ -188,7 +188,7 @@ it("opens only web and mail links, and says what it does not draw", async () => 
   expect(host!.querySelectorAll("a")).toHaveLength(1);
   // Every linked cell looks like a link, whether or not it can be followed.
   expect([decoration("script"), decoration("place")]).toEqual(["underline", "underline"]);
-  await expect.element(page.getByText("Charts and conditional formatting aren’t shown.")).toBeVisible();
+  await expect.element(page.getByText("未显示图表和条件格式。")).toBeVisible();
 });
 
 it("fills the viewer with empty cells around a small sheet, with nothing to scroll", async () => {

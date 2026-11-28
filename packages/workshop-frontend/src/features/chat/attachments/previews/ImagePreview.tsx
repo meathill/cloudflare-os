@@ -6,7 +6,7 @@ import { useObjectUrl } from "../useObjectUrl";
 export const ImagePreview = ({ bytes, name, mimeType }: AttachmentPreviewProps) => {
   const url = useObjectUrl(bytes, mimeType);
   const [failed, setFailed] = useState(false);
-  if (failed) throw new AttachmentPreviewError("This image couldn’t be shown. It may be damaged.");
+  if (failed) throw new AttachmentPreviewError("无法显示此图片，文件可能已损坏。");
   return (
     <div className="grid h-full place-items-center p-4">
       {url && (

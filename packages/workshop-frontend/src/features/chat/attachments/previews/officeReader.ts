@@ -52,7 +52,7 @@ class ReadingLane {
     // A worker that fails to start or dies takes its file with it; the next file gets a new one.
     worker.addEventListener("error", (event) => {
       event.preventDefault();
-      this.#stop(new Error("The file couldn’t be read."));
+      this.#stop(new Error("无法读取此文件。"));
     });
     return worker;
   }

@@ -3,7 +3,7 @@ import { UnreadThreads } from "../features/notifications/UnreadThreads";
 import { useDocumentTitle } from "../useDocumentTitle";
 
 const UnreadThreadsPage = () => {
-  useDocumentTitle("Unread threads");
+  useDocumentTitle("未读对话");
   return <UnreadThreads />;
 };
 

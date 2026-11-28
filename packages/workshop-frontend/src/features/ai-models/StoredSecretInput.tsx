@@ -57,7 +57,7 @@ export const StoredSecretInput = ({ value, stored, onValueChange, label, 'aria-l
           <InputGroup.Button
             shape="square"
             icon={ArrowCounterClockwise}
-            aria-label="Keep stored value"
+            aria-label="保留已存储的值"
             tooltip="Keep stored value"
             onClick={() => onValueChange(null)}
           />

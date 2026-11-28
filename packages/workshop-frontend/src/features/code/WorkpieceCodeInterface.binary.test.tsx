@@ -140,7 +140,7 @@ describe('WorkpieceCodeInterface binary files', () => {
     expect(blob.type).toBe('image/png')
     expect(await bytesOf(blob)).toStrictEqual(PNG)
 
-    const download = container.querySelector<HTMLButtonElement>('[aria-label="Download logo.PNG"]')
+    const download = container.querySelector<HTMLButtonElement>('[aria-label="下载 logo.PNG"]')
     expect(download?.disabled).toBe(false)
     await act(async () => { download?.click() })
     await vi.waitFor(() => { expect(saveBlobToFile).toHaveBeenCalledTimes(1) })
@@ -170,7 +170,7 @@ describe('WorkpieceCodeInterface binary files', () => {
       // Download is enabled once the file has resolved as a blob.
       await vi.waitFor(() => {
         const download =
-          container.querySelector<HTMLButtonElement>(`[aria-label="Download ${filename}"]`)
+          container.querySelector<HTMLButtonElement>(`[aria-label="下载 ${filename}"]`)
         expect(download?.disabled).toBe(false)
       })
       expect(container.querySelector('img')).toBeNull()
@@ -194,7 +194,7 @@ describe('WorkpieceCodeInterface binary files', () => {
     await render()
     await select('logo.PNG')
     const retry = await vi.waitFor(() => {
-      const button = [...container.querySelectorAll('button')].find(b => b.textContent === 'Try again')
+      const button = [...container.querySelectorAll('button')].find(b => b.textContent === '重试')
       if (button === undefined) throw new Error('No retry is offered')
       return button
     })

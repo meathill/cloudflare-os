@@ -15,7 +15,7 @@ export const GadgetUseTitle = ({ workspaceTitle, ownerName, withLogo }: Props) =
   <div className="flex items-center gap-2 min-w-0">
     {withLogo && (
       <>
-        <Link to="/" aria-label="Home" className="flex-shrink-0 hover:opacity-80 transition-opacity">
+        <Link to="/" aria-label="首页" className="flex-shrink-0 hover:opacity-80 transition-opacity">
           <SiteLogo size={22}>
             <Hexagon size={22} className="text-kumo-brand" weight="bold" />
           </SiteLogo>
@@ -33,7 +33,7 @@ export const GadgetUseTitle = ({ workspaceTitle, ownerName, withLogo }: Props) =
 
       {ownerName && (
         <span className="text-xs text-kumo-inactive flex-shrink-0">
-          by {ownerName}
+          作者：{ownerName}
         </span>
       )}
     </span>

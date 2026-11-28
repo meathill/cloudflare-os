@@ -4,7 +4,8 @@ import type { ObserverKv } from "@gadgets/gatekeeper-kit/observers";
 import type { GatekeeperUserVerifier } from "@gadgets/workshop-shared/gatekeeper";
 import type { ContextCollectionDurableObject } from "../src/context-collection.js";
 import {
-  CONTEXT_OBSERVER_DENIED, contextObserverAccessVerifier, contextObserverStrategy,
+  AUTO_SHARE_DISPLAY_NAME, CONTEXT_OBSERVER_DENIED, contextObserverAccessVerifier,
+  contextObserverStrategy, type ObserverAutoShare,
 } from "../src/context-observers.js";
 import { domainName } from "../src/domain.js";
 import { ContextVerifier } from "../src/library-gatekeeper.js";
@@ -98,6 +99,10 @@ describe("contextObserverAccessVerifier", () => {
     (await contextObserverAccessVerifier(domain)(
       accountIds.map(accountId => observer(accountId)), collectionIds)).allowedObserverIds;
 
+  const autoShare = (grantorAccountId: string): ObserverAutoShare => ({
+    grantorAccountId, collection,
+  });
+
   it("allows exactly the observers whose account can read every collection now", async () => {
     await createCollection("shared", "private");
     await collection("shared").share("alice", [{ accountId: "bob", displayName: "bob" }], "viewer");
@@ -127,5 +132,57 @@ describe("contextObserverAccessVerifier", () => {
     await collection("shared").removeMember("alice", "bob");
 
     expect(await allowed(["bob"], ["shared"])).toEqual([]);
+  });
+
+  describe("auto-share", () => {
+    it("auto-shares the owner's private collection a collaborator cannot read", async () => {
+      await createCollection("unshared", "private");
+      let verify = contextObserverAccessVerifier(domain, autoShare("alice"));
+
+      expect((await verify([observer("carol")], ["unshared"])).allowedObserverIds)
+        .toEqual(["carol"]);
+      expect((await collection("unshared").getAccess("carol")).role).toBe("viewer");
+      let sharing = await collection("unshared").getSharing("alice");
+      expect(sharing.members.find(member => member.memberId === "carol"))
+        .toMatchObject({ role: "viewer", displayName: AUTO_SHARE_DISPLAY_NAME });
+    });
+
+    it("keeps denying when the grantor may not share the collection", async () => {
+      await createCollection("viewer-only", "private");
+      await collection("viewer-only").share(
+        "alice", [{ accountId: "bob", displayName: "bob" }], "viewer");
+      let verify = contextObserverAccessVerifier(domain, autoShare("bob"));
+
+      expect((await verify([observer("carol")], ["viewer-only"])).allowedObserverIds).toEqual([]);
+      expect((await collection("viewer-only").getAccess("carol")).role).toBeNull();
+    });
+
+    it("admits collections that were deleted or never created", async () => {
+      await createCollection("deleted", "private");
+      await collection("deleted").removeAccount("alice");
+      let verify = contextObserverAccessVerifier(domain, autoShare("alice"));
+
+      expect((await verify([observer("carol")], ["deleted", "never-created"])).allowedObserverIds)
+        .toEqual(["carol"]);
+    });
+
+    it("does not share with a verifier from another sharing domain", async () => {
+      await createCollection("unshared", "private");
+      let verify = contextObserverAccessVerifier(domain, autoShare("alice"));
+
+      expect((await verify(
+        [observer("carol", "elsewhere.example")], ["unshared"])).allowedObserverIds).toEqual([]);
+      expect((await collection("unshared").getAccess("carol")).role).toBeNull();
+    });
+
+    it("auto-shares through the legacy observed-collection tracker too", async () => {
+      await createCollection("unshared", "private");
+      let kv = makeKv();
+      kv.put("observedCollection:unshared", "observed");
+      let strategy = contextObserverStrategy(kv, domain, autoShare("alice"));
+
+      await strategy.addObserver("carol", observer("carol").verifier);
+      expect((await collection("unshared").getAccess("carol")).role).toBe("viewer");
+    });
   });
 });

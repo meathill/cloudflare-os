@@ -39,7 +39,7 @@ describe('ActionFields', () => {
     expect(labels!.querySelector('code')!.textContent).toBe(hostile)
   })
 
-  it('names the syntax of JSON and notes CRLF line breaks', async () => {
+  it('names the syntax of JSON and notes CRLF 换行符', async () => {
     const list = await render([
       { label: 'Arguments', kind: 'json', value: '{\n  "a": 1\n}' },
       { label: 'Plain text', kind: 'text', value: 'one\r\ntwo' },
@@ -49,7 +49,7 @@ describe('ActionFields', () => {
     const [args, crlf, lf] = [...list.querySelectorAll('dd')]
     expect(args!.textContent).toContain('JSON')
     expect(crlf!.querySelector('pre')!.textContent).toBe('one\r\ntwo')
-    expect(crlf!.textContent).toContain('CRLF line breaks')
+    expect(crlf!.textContent).toContain('CRLF 换行符')
     expect(lf!.textContent).not.toContain('CRLF')
   })
 
@@ -64,11 +64,11 @@ describe('ActionFields', () => {
     for (const card of [provider!, agent!]) {
       expect(card.textContent).toContain('report.pdf')
       expect(card.textContent).toContain('application/pdf')
-      expect(card.textContent).toContain('2048 bytes')
+      expect(card.textContent).toContain('2048 字节')
       expect(card.textContent).toContain(`SHA-256 ${'ab'.repeat(32)}`)
     }
-    expect(provider!.textContent).not.toContain('Contents not shown')
-    expect(agent!.textContent).toContain('Contents not shown')
+    expect(provider!.textContent).not.toContain('内容未显示')
+    expect(agent!.textContent).toContain('内容未显示')
   })
 
   it('says how much of a truncated field is shown, and names an omitted one', async () => {
@@ -78,8 +78,8 @@ describe('ActionFields', () => {
     ])
 
     const [body, comment] = [...list.querySelectorAll('dd')]
-    expect(body!.textContent).toContain('Showing 3 of 9000 bytes')
-    expect(comment!.textContent).toBe('Omitted: description limit reached')
+    expect(body!.textContent).toContain('显示 3 / 9000 字节')
+    expect(comment!.textContent).toBe('已省略：达到描述长度上限')
     expect([...list.querySelectorAll('dt')].map(dt => dt.textContent)).toEqual(['Body', 'Comment'])
   })
 
@@ -109,7 +109,7 @@ describe('ActionFields', () => {
     expect(card.textContent).not.toMatch(/[\u202E\u200B]/)
     expect(card.textContent).toContain('"invoice\\u202efdp.exe"')
     expect(card.textContent).toContain('"text/plain\\u200b"')
-    expect(card.textContent).toContain('Shown escaped: contains invisible characters')
+    expect(card.textContent).toContain('已转义显示：包含不可见字符')
     expect(JSON.parse('"invoice\\u202efdp.exe"')).toBe('invoice\u202Efdp.exe')
   })
 
@@ -129,6 +129,6 @@ describe('ActionFields', () => {
       { label: 'Labels', kind: 'list', items: [] },
     ])
 
-    expect([...list.querySelectorAll('dd')].map(dd => dd.textContent)).toEqual(['(empty)', '(none)'])
+    expect([...list.querySelectorAll('dd')].map(dd => dd.textContent)).toEqual(['（空）', '（无）'])
   })
 })

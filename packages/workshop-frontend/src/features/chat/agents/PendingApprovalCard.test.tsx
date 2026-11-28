@@ -65,7 +65,7 @@ it("warns above the description when the gatekeeper did not finish describing th
   // The approver meets the warning before the prose it qualifies.
   expect(notice!.compareDocumentPosition(prose!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   // Both buttons point at it, so the warning is announced with the decision either way.
-  for (const label of ["Approve", "Deny"]) {
+  for (const label of ["批准", "拒绝"]) {
     expect(button(label)!.getAttribute("aria-describedby")).toContain(notice!.id);
   }
 });
@@ -84,7 +84,7 @@ it("tells a restricted workspace's approver that the check is theirs", async () 
   const notice = [...document.body.querySelectorAll('[role="note"]')]
     .find(n => n.textContent?.includes(RESTRICTED_APPROVAL_COPY));
   expect(notice).toBeDefined();
-  for (const label of ["Approve", "Deny"]) {
+  for (const label of ["批准", "拒绝"]) {
     expect(button(label)!.getAttribute("aria-describedby")).toContain(notice!.id);
   }
 });
@@ -92,10 +92,10 @@ it("tells a restricted workspace's approver that the check is theirs", async () 
 it("reports each decision to the surface holding the card", async () => {
   const {onResolve} = await render(pending());
 
-  await act(async () => { button("Approve")!.click(); });
+  await act(async () => { button("批准")!.click(); });
   expect(onResolve).toHaveBeenCalledWith("approve");
 
-  await act(async () => { button("Deny")!.click(); });
+  await act(async () => { button("拒绝")!.click(); });
   expect(onResolve).toHaveBeenLastCalledWith("deny");
 });
 
@@ -105,6 +105,6 @@ it("refuses a second decision while one is in flight", async () => {
     <PendingApprovalCard record={pending()} restricted={false} busy onResolve={onResolve} />,
   );
 
-  expect(button("Approve")!.disabled).toBe(true);
-  expect(button("Deny")!.disabled).toBe(true);
+  expect(button("批准")!.disabled).toBe(true);
+  expect(button("拒绝")!.disabled).toBe(true);
 });

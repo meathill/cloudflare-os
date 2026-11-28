@@ -44,5 +44,12 @@ Its `GatekeeperVendor` entrypoint (bound as `GATEKEEPER_CONTEXT`) declares `auto
 mints a `ContextAccount` via `createAccount()` (no user identity is passed in; the account keys its
 private data by its own generated `accountId`). The account exposes the agent read session
 (`getSession()`), collection discovery metadata (`getAgentCatalog()`), and a management UI
-(`startAppUi({ isAdmin })`). The UI is a single-file React SPA in `app/` (Vite + Tailwind + Kumo)
+(`startAppUi({ isAdmin })`).
+
+The agent session (`LibrarySession`, `library-write.ts`) adds `createSkill` / `updateSkill` to the
+reads: SKILL.md writes submitted as approval-queue actions (`skill-actions.ts`, await-decision, no
+simulation), only into private web collections the account owns or edits. A save into an unshared
+collection is auto-approvable; one into a shared collection, and every update, is not. A save with
+no `collectionId` goes to the account's default collection (`UserLibraryDurableObject`
+`defaultSkillCollectionId`), created on first apply. The UI is a single-file React SPA in `app/` (Vite + Tailwind + Kumo)
 bundled by `build-app.ts` into `src/generated/app.txt`.

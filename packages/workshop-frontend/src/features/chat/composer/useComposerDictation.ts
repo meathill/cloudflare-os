@@ -245,7 +245,7 @@ export const useComposerDictation = ({
         }
         if (availability === "unavailable") {
           detach();
-          onError("Voice typing isn’t available for your language in this browser.");
+          onError("此浏览器不支持你的语言对应的语音输入。");
           return;
         }
         if (availability !== "available") {

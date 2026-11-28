@@ -159,7 +159,7 @@ describe('pendingChangeGroups', () => {
   it('falls back to a placeholder when no request names the resource', () => {
     const groups = pendingChangeGroups([entry({ id: 1, resourceTitle: '' })], NO_CHAT, true)
 
-    expect(groups[0].title).toBe('Unavailable connection')
+    expect(groups[0].title).toBe('不可用的连接')
   })
 
   it('reports no creation for a group of ordinary requests', () => {
@@ -201,7 +201,7 @@ describe('describeGroupSize', () => {
     const [one] = pendingChangeGroups([entry({ id: 1 })], NO_CHAT, true)
     const [two] = pendingChangeGroups([entry({ id: 1 }), entry({ id: 2 })], NO_CHAT, true)
 
-    expect(describeGroupSize(one)).toBe('1 request')
-    expect(describeGroupSize(two)).toBe('2 requests')
+    expect(describeGroupSize(one)).toBe('1 个请求')
+    expect(describeGroupSize(two)).toBe('2 个请求')
   })
 })

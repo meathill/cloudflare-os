@@ -27,7 +27,32 @@ import { RpcCompatible, RpcStub, RpcTarget } from "capnweb";
 import { AccountDescription, ActionKind, ActionDescription, AgentCatalog, AvatarImage, GatekeeperUiFrame, GatekeeperUserSelection, ObservationDescription, ResourceDescription, ResourceConfiguratorFrame, SupportedResource, VendorDescription, HookDescription } from "./gatekeeper.js";
 import type { BytesRef, CodeChange } from "./code-change.js";
 import type { GitOid } from "./gatekeeper.js";
+import type { GatekeeperExportFile } from "./gatekeeper.js";
 import type { UiFeatureFlags } from "./feature-flags.js";
+import type { GatekeeperAppSurface } from "./gatekeeper.js";
+import type {
+  BillingAccountInfo, BillingLedgerEntry, BillingLedgerQuery, BillingPlan, BillingSummary,
+  BillingUsageEvent, BillingUsageEventQuery, BillingUsageRange, BillingUsageReport,
+  BillingUsageReportQuery, BillingUserUsageRow,
+} from "./billing.js";
+
+/**
+ * One user's view of their own billing, scoped to that user when minted. The browser holds it over
+ * Cap'n Web (`AuthenticatedApi.getBilling()`), so it is a Cap'n Web target.
+ */
+export interface BillingUserApi extends RpcTarget {
+  /** The user's balance, plan and top-up options. */
+  getSummary(): Promise<BillingSummary>;
+  /** The user's top-ups, grants and refunds, newest first. */
+  listLedger(limit?: number): Promise<BillingLedgerEntry[]>;
+  /**
+   * The user's metered usage over a Beijing-day range: billed tokens and what each day-model
+   * cost them, per the sources users pay for. Never the raw cost or the markup.
+   */
+  getUsage(range: BillingUsageRange): Promise<BillingUserUsageRow[]>;
+  /** Start a Stripe Checkout for one of the offered tiers; returns the page to send the user to. */
+  createCheckout(tierUsd: number): Promise<{ url: string }>;
+}
 
 export const SERVICE_SALT = new Uint8Array([
   0xd9, 0x4e, 0x54, 0x1d, 0x29, 0xc1, 0x03, 0x74, 0x73, 0x7e, 0xb3, 0xe3, 0x34, 0x6d, 0x8f, 0x21
@@ -138,6 +163,21 @@ export interface PublicApi extends RpcTarget {
    * This API may be disabled when the server uses SSO for authentication.
    */
   login(username: string, passwordHash: Uint8Array): Promise<string | null>;
+
+  /**
+   * Send a one-time code to `email` for passwordless sign-in or, with a configured allowlist,
+   * first-time registration. Requires the deployment to enable email OTP (EMAIL_OTP_ENABLED) and
+   * to have a working email sender; throws when either is missing, when the address may not
+   * register, when a code was just sent, or when the email cannot be delivered.
+   */
+  requestEmailOtp(email: string): Promise<void>;
+
+  /**
+   * Verify a one-time code from requestEmailOtp(). Returns a session token to store and pass to
+   * authenticate(), or null when the code is wrong, expired, or out of attempts. Creates the
+   * account when the email may register and has none yet.
+   */
+  verifyEmailOtp(email: string, code: string): Promise<string | null>;
 
   /**
    * Create a new account. Returns a token to store in local storage and pass to `authenticate()`
@@ -461,6 +501,14 @@ export function validateBindingName(name: string): void {
   }
 }
 
+/** The emails an account holds, as AuthenticatedApi.getOwnEmails() reports them (lowercase). */
+export type OwnEmails = {
+  /** The address the account signs in by and is named after; null for a password account. */
+  loginEmail: string | null;
+  /** Every held address: the login email, then each address bound by a verification code. */
+  emails: string[];
+};
+
 /**
  * Throws unless `email` is acceptable as `AiChatAuthorInfo.commitEmail`: `local@domain`, at most
  * 254 characters, with no whitespace, control characters, or angle brackets. This is not full
@@ -768,8 +816,33 @@ export interface AuthenticatedApi extends RpcTarget {
   setOwnDisplayName(name: string): Promise<void>;
 
   /**
+   * The emails this account holds. An address is held by one account deployment-wide, and the
+   * deployment admin list (ADMINS) and the commit email accept only held addresses.
+   */
+  getOwnEmails(): Promise<OwnEmails>;
+
+  /**
+   * Start binding `email` to this account: sends it a verification code. Throws when another
+   * account holds the address, when the address is already this account's, when a code was just
+   * sent, or when the deployment cannot send email. Finish with confirmEmailVerification().
+   */
+  requestEmailVerification(email: string): Promise<void>;
+
+  /**
+   * Bind `email` to this account, given the code sent by requestEmailVerification(). Throws when
+   * the code is wrong or expired, or when another account has taken the address meanwhile.
+   */
+  confirmEmailVerification(email: string, code: string): Promise<void>;
+
+  /**
+   * Release a bound `email`, clearing the commit email too if it was that address. Throws for the
+   * login email, which is the account's name.
+   */
+  removeOwnEmail(email: string): Promise<void>;
+
+  /**
    * Set the email address used on git commits the user authors, or clear it with null to fall
-   * back to one derived from their user ID. Rejects an address `validateCommitEmail` refuses.
+   * back to one derived from their user ID. The address must be one of getOwnEmails().emails.
    */
   setOwnCommitEmail(email: string | null): Promise<void>;
 
@@ -889,6 +962,14 @@ export interface AuthenticatedApi extends RpcTarget {
    * especially if the gadget is owned by someone else.
    */
   listModels(kind?: ModelKind): Promise<AiChatAuthorInfo[]>;
+
+  /**
+   * The official reference unit prices (USD per million tokens) of the language models the
+   * deployment provides to the current user: the same list as `listModels("language")` in the
+   * same order, but without the Auto Router model, decision models and the user's own models,
+   * and without any model whose price is not published. Empty outside AI Gateway mode.
+   */
+  getModelPricing(): Promise<ModelPricing[]>;
 
   /**
    * Adds a new model to the user's configured set. The ID must not name a model the user already
@@ -1020,7 +1101,7 @@ export interface AuthenticatedApi extends RpcTarget {
       configureObservers?: RpcStub<ObserverConfigCallback>): Promise<RpcStub<Overseer>>;
 
   /**
-   * Create a new workspace. It will start out titled "Untitled Workspace".
+   * Create a new workspace. It will start out titled "未命名工作区".
    *
    * Note: A workspace is considered "provisional" until it has some sort of activity, such as a
    *   chat message or code edit. Provisional workspaces do not appear on the home page
@@ -1322,9 +1403,9 @@ export interface AuthenticatedApi extends RpcTarget {
    * @appApi ui id
    * @nullWhen the user has no gatekeeper of that id with an app, as listGatekeeperApps() lists
    *   them; for an ambient one the deployment only offers, provisionAmbientAccount() with that id
-   *   adds it
+   *   adds it; or (有缘心之助) `surface` is "admin" and the caller is not a deployment admin
    */
-  getGatekeeperApp(id: string): Promise<GatekeeperUiFrame | null>;
+  getGatekeeperApp(id: string, surface?: GatekeeperAppSurface): Promise<GatekeeperUiFrame | null>;
 
   /**
    * Mint a single-use ticket for a user selected on behalf of a gatekeeper app,
@@ -1356,6 +1437,13 @@ export interface AuthenticatedApi extends RpcTarget {
    * @nullWhen the caller is not a deployment admin; amIAdmin() says whether it is
    */
   getAdminApi(): Promise<RpcStub<AdminApi> | null>;
+
+  /**
+   * 有缘心之助：this user's own prepaid billing (balance, top-ups, usage), scoped to them.
+   *
+   * @nullWhen the deployment does not bill its users (it has no BILLING binding)
+   */
+  getBilling(): Promise<RpcStub<BillingUserApi> | null>;
 
   // TODO:
   // - Edit permissions on a connected account.
@@ -1485,7 +1573,7 @@ export const MAX_SITE_NAME_LENGTH = 40;
  * What this deployment calls itself when the admin has not set a custom `siteName`. Also the
  * product's own name, so it appears in prose the server and UI address to the user.
  */
-export const DEFAULT_SITE_NAME = "Cloudflare OS";
+export const DEFAULT_SITE_NAME = "有缘心之助";
 
 /**
  * The name to display for this deployment. Accepts an unset or not-yet-loaded `siteName` so both
@@ -1915,9 +2003,11 @@ export type AdminWorkspaceMethod = typeof ADMIN_WORKSPACE_METHODS[number];
 /** The calls into a user's account that the audit log records: the open (AdminApi.inspectUser())
  * and each AdminUserView method. */
 export const ADMIN_USER_METHODS = [
-  "inspectUser", "describe", "listWorkspaces", "listConnectedAccounts", "listModels",
-  "listSessions", "listBlueprints", "getDiagnostics",
-] as const satisfies readonly ("inspectUser" | keyof AdminUserView)[];
+  "inspectUser", "exportUserGatekeeperContent", "deleteUserGatekeeperContent", "describe",
+  "listWorkspaces", "listConnectedAccounts", "listModels", "listSessions", "listBlueprints",
+  "getDiagnostics",
+] as const satisfies readonly (
+  "inspectUser" | "exportUserGatekeeperContent" | "deleteUserGatekeeperContent" | keyof AdminUserView)[];
 
 /** One of ADMIN_USER_METHODS. */
 export type AdminUserMethod = typeof ADMIN_USER_METHODS[number];
@@ -2030,12 +2120,28 @@ export type AdminUserAccessRecord = Pick<AdminAccessRecord,
    * MAX_ADMIN_AUDIT_ARG_LENGTH characters, else its start, "…#" and a digest of the whole id. For
    * an open refused before it reached the account, the id the admin gave, kept the same way. */
   userId: string;
-  /** "inspectUser" for the open, else the view method called. */
+  /** "inspectUser" for the open, else the view method called, or
+   * "exportUserGatekeeperContent"/"deleteUserGatekeeperContent" for an admin export/deletion
+   * (AdminApi.exportUserGatekeeperContent / AdminApi.deleteUserGatekeeperContent). */
   method: AdminUserMethod;
-  /** The call's arguments by name. Only the open records one, `expiresAt` (ISO 8601): no
+  /** The call's arguments by name. The open records `expiresAt` (ISO 8601); an export records
+   * `vendorId`, and a deletion `vendorId` and the ids it was asked to delete joined as `ids`: no
    * AdminUserView method takes an argument, so every other record's is empty. */
   args: Record<string, string | number>;
 };
+
+/**
+ * 有缘心之助：one connected account's exported content, as AdminApi.exportUserGatekeeperContent()
+ * returns it — one entry per account of the user's that matches the vendor.
+ */
+export type AdminGatekeeperExport = { accountId: number; files: GatekeeperExportFile[] };
+
+/**
+ * 有缘心之助：one connected account's deleted top-level items, as
+ * AdminApi.deleteUserGatekeeperContent() returns it — one entry per account of the user's that
+ * matches the vendor; `deleted` is the ids actually deleted (see GatekeeperUser.deleteForAdmin).
+ */
+export type AdminGatekeeperDeletion = { accountId: number; deleted: string[] };
 
 /**
  * One setting an AdminSettingRecord changed, with its value before and after. `setting` names a
@@ -2629,6 +2735,49 @@ export interface AdminApi {
       : Promise<RpcStub<AdminUserView>>;
 
   /**
+   * 有缘心之助：export everything one of the user's connected accounts of vendor `vendorId` holds
+   * (see GatekeeperUser.exportForAdmin), for a deployment admin's operational needs — a user's
+   * Context collections, say. `reason` is required, as for inspectUser().
+   *
+   * Unlike inspectUser(), this deliberately bypasses the gatekeeper's own sharing authorization:
+   * every private collection the account holds a role on is exported, whether or not its owner
+   * shared it with the admin. It is not refused by the deployment's access level
+   * (AdminSettingsView.adminWorkspaceAccess), which bounds inspectUser()'s views, not an
+   * operational export. The compensating control is the audit log: the call is recorded as an
+   * AdminUserAccessRecord ("exportUserGatekeeperContent", with `vendorId` in `args`) *before* the
+   * account is reached, so a call whose record cannot be written is refused. `userId` is the
+   * user's canonical id, exactly as listUsers() lists it.
+   *
+   * Refused with a code from ADMIN_ACCESS_ERROR_CODES: `notAdmin` once the caller is no longer a
+   * deployment admin, `userNotFound` for an empty id or an id that names no account. An account
+   * whose gatekeeper does not implement exportForAdmin() fails the whole call.
+   */
+  exportUserGatekeeperContent(userId: string, vendorId: string, reason: string)
+      : Promise<AdminGatekeeperExport[]>;
+
+  /**
+   * 有缘心之助：delete the named top-level items of the user's connected accounts of vendor
+   * `vendorId` (see GatekeeperUser.deleteForAdmin) — a deployment admin's operational deletion,
+   * a user's own private Context collection, say. `ids` names what to delete: a non-empty array
+   * of non-empty ids, at most 100. `reason` is required, as for inspectUser().
+   *
+   * The account deletes each item with its own authority (for Context, the collection owner),
+   * skipping — not forcing — an id it may not delete; `deleted` in the result is what it actually
+   * deleted. Like exportUserGatekeeperContent(), this is not refused by the deployment's access
+   * level (AdminSettingsView.adminWorkspaceAccess), which bounds inspectUser()'s views, not an
+   * operational deletion. The compensating control is the audit log: the call is recorded as an
+   * AdminUserAccessRecord ("deleteUserGatekeeperContent", with `vendorId` and the comma-joined
+   * `ids` in `args`) *before* the account is reached, so a call whose record cannot be written
+   * deletes nothing. `userId` is the user's canonical id, exactly as listUsers() lists it.
+   *
+   * Refused with a code from ADMIN_ACCESS_ERROR_CODES: `notAdmin` once the caller is no longer a
+   * deployment admin, `userNotFound` for an empty id or an id that names no account. An account
+   * whose gatekeeper does not implement deleteForAdmin() fails the whole call.
+   */
+  deleteUserGatekeeperContent(userId: string, vendorId: string, ids: string[], reason: string)
+      : Promise<AdminGatekeeperDeletion[]>;
+
+  /**
    * One page of the deployment-wide admin audit log, newest first, filtered as `options` says. It
    * holds access to workspaces and to users' accounts, changes to settings and writes to
    * workspaces. Rejects a `limit` that is not a whole number from 1 to ADMIN_LIST_MAX_LIMIT, a
@@ -2683,7 +2832,76 @@ export interface AdminApi {
    */
   writeWorkspace(workspaceId: string, action: AdminWriteAction, args: AdminWriteArgs,
                  reason: string): Promise<void>;
+
+  /** 获取平台所有用户的行为与 Token 消耗用量统计 */
+  getUsageStats(): Promise<UsageStatsResponse>;
+
+  /**
+   * 有缘心之助：prepaid billing administration, acting as the calling admin (every plan change and
+   * grant is recorded under their id in the billing ledger).
+   *
+   * @nullWhen the deployment does not bill its users (it has no BILLING binding)
+   */
+  getBillingAdmin(): Promise<RpcStub<BillingAdminClient> | null>;
 }
+
+/**
+ * 有缘心之助：the admin's billing capability as the browser holds it. Like BillingAdminApi, but the
+ * acting admin is the capability's own, never one the caller names.
+ */
+export interface BillingAdminClient extends RpcTarget {
+  /** The accounts of these users (see BillingAdminApi.getAccounts); a user with none is left out. */
+  getAccounts(userKeys: string[]): Promise<BillingAccountInfo[]>;
+  /** Move a user to `plan`, creating their account if they have none yet. */
+  setPlan(userKey: string, plan: BillingPlan): Promise<BillingAccountInfo>;
+  /** Add `amountUsd` (negative to take some back) to a user's balance, with a reason. */
+  grant(userKey: string, amountUsd: number, note: string): Promise<BillingAccountInfo>;
+  /** A user's ledger, newest first. */
+  listLedger(userKey: string, limit?: number): Promise<BillingLedgerEntry[]>;
+  /** Set a user's own markup (0–10), or null to follow the deployment default. */
+  setMarkup(userKey: string, markup: number | null): Promise<BillingAccountInfo>;
+  /** The usage report for a range, optionally of one user alone. */
+  getUsageReport(query: BillingUsageReportQuery): Promise<BillingUsageReport>;
+  /** Ledger entries in a range, newest first. */
+  listLedgerEntries(query: BillingLedgerQuery): Promise<BillingLedgerEntry[]>;
+  /** One user's metered requests on one day, newest first, paged by `before`. */
+  listUsageEvents(query: BillingUsageEventQuery): Promise<BillingUsageEvent[]>;
+}
+
+/** 单个用户的 Token 消耗与行为用量记录 */
+export type UserUsageRecord = {
+  /** 用户唯一标识（通常为 username 或 email） */
+  username: string;
+  /** 用户对外昵称 */
+  displayName: string;
+  /** 首次注册/进入系统时间 (ISO string) */
+  createdAt: string;
+  /** 最近一次交互或登录活跃时间 (ISO string) */
+  lastActive: string;
+  /** 累计消耗的 Token 总量 */
+  totalTokens: number;
+  /** 累计预估模型调用成本 (USD) */
+  estimatedCost: number;
+  /** 累计执行的 AI 会话交互轮次 */
+  callCount: number;
+  /** 累计创建的剧本/工作区总数 */
+  workspaceCount: number;
+};
+
+/** 平台全局汇总用量概览 */
+export type UsageOverviewStats = {
+  totalUsers: number;
+  totalWorkspaces: number;
+  totalTokens: number;
+  totalCost: number;
+  totalCalls: number;
+};
+
+/** 用量统计总响应体 */
+export type UsageStatsResponse = {
+  overview: UsageOverviewStats;
+  users: UserUsageRecord[];
+};
 
 /** A workspace as AdminWorkspaceView.describe() presents it. */
 export type AdminWorkspaceDescription = Pick<WorkspaceMetadata,
@@ -3328,6 +3546,18 @@ export type ServerConfig = {
   signupsEnabled: boolean;
 
   /**
+   * Whether the deployment restricts account creation to an email allowlist (SIGNUP_ALLOWLIST).
+   * The signup page then explains that registration is invite-only.
+   */
+  signupAllowlistEnabled: boolean;
+
+  /**
+   * Whether email OTP registration/login is available: EMAIL_OTP_ENABLED and a configured email
+   * sender. The login page offers the email-code form only then.
+   */
+  emailOtpEnabled: boolean;
+
+  /**
    * Whether users may search the user directory to find collaborators. When not explicitly
    * configured, this defaults to the opposite of `signupsEnabled`. When false the share UI offers
    * only an exact username/email field.
@@ -3417,7 +3647,13 @@ export type CloudflareAccountOption = {
  * model behind each request (see AUTO_ROUTER_MODEL_ID); it exists only inside a gateway.
  */
 export type AiModelProvider =
-    "openai" | "anthropic" | "google" | "cloudflare" | "ollama" | "cloudflare-auto-router";
+    "openai" | "anthropic" | "google" | "cloudflare" | "ollama" | "cloudflare-auto-router" |
+    // 有缘心之助：OpenCode Go（https://opencode.ai/docs/console/go/），直连其 OpenAI 兼容端点，
+    // 不经 AI Gateway；部署配了 OPENCODE_API_KEY 才提供。计价按各模型厂商的官方价。
+    "opencode-go" |
+    // 有缘心之助：Google Vertex AI，经 AI Gateway 的 google-vertex-ai 路由（Google 凭据存
+    // Cloudflare BYOK），走部署的 GCP billing。计价与 google 同一套时段价目表。
+    "google-vertex";
 
 /** The model ID of AI Gateway's Auto Router, the one model of "cloudflare-auto-router". */
 export const AUTO_ROUTER_MODEL_ID = "cloudflare/auto";
@@ -3821,6 +4057,8 @@ type SuggestedModel = {
   kind?: ModelKind;
 };
 
+// 有缘心之助：下架型号（Kimi K2.7 Code、GLM 5.2、DeepSeek V4 Pro 0813、GPT-6 Astra、
+// GPT-6.1 Sol、Gemini 3.6 Flash）保留条目但标记 hidden：选择器不再提供，历史对话与定时任务仍能解析。
 // The literal is kept apart from the export so SuggestedModelId can derive the model ids from it.
 const SUGGESTED_MODEL_CATALOG = {
   // First so that, when its provider is on, Auto leads the model pickers and is the model a new
@@ -3877,8 +4115,20 @@ const SUGGESTED_MODEL_CATALOG = {
   "openai": {
     // pi's GPT-6 catalog reports a 272K window, but these models support 1.05M. Use 272K as the
     // preferred compaction budget, not as the hard context limit.
+    "gpt-6.2-sol": {
+      name: "GPT-6.2 Sol", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+    },
+    "gpt-6.2-astra": {
+      name: "GPT-6.2 Astra", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000,
+    },
     "gpt-6.1-sol": {
       name: "GPT-6.1 Sol", contextWindow: 1050000, outputLimit: 128000,
+      compactionInputBudget: 272000, hidden: true,
+    },
+    "gpt-6.1-terra": {
+      name: "GPT-6.1 Terra", contextWindow: 1050000, outputLimit: 128000,
       compactionInputBudget: 272000,
     },
     "gpt-6-sol": {
@@ -3893,6 +4143,7 @@ const SUGGESTED_MODEL_CATALOG = {
     "gpt-6-astra": {
       name: "GPT-6 Astra", contextWindow: 1050000, outputLimit: 128000,
       compactionInputBudget: 272000,
+      hidden: true,
     },
     "gpt-5.6-sol": {
       name: "GPT 5.6 Sol", contextWindow: 1050000, outputLimit: 128000,
@@ -3912,9 +4163,34 @@ const SUGGESTED_MODEL_CATALOG = {
   },
   "google": {
     "gemini-4-neon": {name: "Gemini 4 Neon", contextWindow: 1048576},
+    "gemini-3.8-flash": {name: "Gemini 3.8 Flash", contextWindow: 1048576},
+    "gemini-4-hydrogen": {name: "Gemini 4 Hydrogen", contextWindow: 1048576},
+    "gemini-4-argon": {name: "Gemini 4 Argon", contextWindow: 1048576},
+    "gemini-4-carbon": {name: "Gemini 4 Carbon", contextWindow: 1048576},
     "gemini-3.6-flash": {name: "Gemini 3.6 Flash", contextWindow: 1048576, hidden: true},
   },
+  // 有缘心之助：Vertex AI 上实测可用的模型（2026-11-28，meathill 项目 global 区域）。
+  // gemini-4-carbon/neon 需要更高结算等级（403），解锁后再加。
+  "google-vertex": {
+    "gemini-4-hydrogen": {name: "Gemini 4 Hydrogen (Vertex)", contextWindow: 1048576},
+    "gemini-3.8-flash": {name: "Gemini 3.8 Flash (Vertex)", contextWindow: 1048576},
+    "gemini-3.5-flash": {name: "Gemini 3.5 Flash (Vertex)", contextWindow: 1048576},
+    "gemini-3.1-pro-preview": {
+      name: "Gemini 3.1 Pro Preview (Vertex)", contextWindow: 1048576, outputLimit: 65536,
+    },
+  },
   "ollama": {
+  },
+  // 有缘心之助：便宜的开放模型，经 OpenCode Go 提供。首个是该服务商的默认模型。
+  "opencode-go": {
+    "deepseek-v4.1-flash": {name: "DeepSeek V4.1 Flash", contextWindow: 1000000, outputLimit: 384000},
+    "glm-5.3-flash": {name: "GLM 5.3 Flash", contextWindow: 1000000, outputLimit: 131072},
+    "qwen3.8-flash": {name: "Qwen3.8 Flash", contextWindow: 1000000, outputLimit: 131072},
+    "mimo-v2.6-flash": {name: "MiMo V2.6 Flash", contextWindow: 1048576, outputLimit: 131072},
+    "minimax-m3.1-flash": {name: "MiniMax M3.1 Flash", contextWindow: 1000000, outputLimit: 512000},
+    "kimi-k2.7-code": {name: "Kimi K2.7 Code", contextWindow: 262144, outputLimit: 262144},
+    "glm-5.3": {name: "GLM 5.3", contextWindow: 1000000, outputLimit: 131072},
+    "glm-5.2": {name: "GLM 5.2", contextWindow: 1000000, outputLimit: 131072},
   },
 } satisfies Record<AiModelProvider, Record<string, SuggestedModel>>;
 
@@ -3933,6 +4209,64 @@ export type SuggestedModelId<P extends AiModelProvider = AiModelProvider> =
 export function modelKind(provider: string, model: string): ModelKind {
   return SUGGESTED_MODELS[provider as AiModelProvider]?.[model]?.kind ?? "language";
 }
+
+/**
+ * A model's official unit prices, in USD per million tokens. The same numbers the provider's
+ * pricing page publishes; what a deployment actually charges is its own business (see
+ * `AuthenticatedApi.getModelPricing()`).
+ */
+export type ModelPrice = {
+  /** Per million input tokens. */
+  input: number;
+
+  /** Per million output tokens. */
+  output: number;
+
+  /** Per million input tokens read from the provider's prompt cache. */
+  cacheRead: number;
+
+  /** Per million input tokens written to the provider's prompt cache; 0 where writes are free. */
+  cacheWrite: number;
+
+  /**
+   * The rates a request pays instead once its input exceeds `inputTokensAbove` tokens, for the
+   * models whose provider prices long prompts higher. Absent when one rate covers the whole
+   * context window.
+   */
+  longContext?: {
+    /** The number of input tokens above which this tier applies. */
+    inputTokensAbove: number;
+    /** Per million input tokens at this tier. */
+    input: number;
+    /** Per million output tokens at this tier. */
+    output: number;
+    /** Per million input tokens read from the prompt cache at this tier. */
+    cacheRead: number;
+    /** Per million input tokens written to the prompt cache at this tier. */
+    cacheWrite: number;
+  };
+};
+
+/** A deployment-provided model and its official unit price, as `getModelPricing()` lists it. */
+export type ModelPricing = {
+  /** Which AI provider hosts the model. */
+  provider: AiModelProvider;
+
+  /** The model's ID on the provider's API, matching `listModels()`. */
+  id: string;
+
+  /** Display name. */
+  name: string;
+
+  /** The model's current official unit prices. */
+  price: ModelPrice;
+
+  /**
+   * The next announced price change, when the provider has published one: `from` is the UTC
+   * date (`YYYY-MM-DD`) on which `price` takes effect.
+   */
+  nextPrice?: { from: string; price: ModelPrice };
+};
 
 /**
  * Metadata about a workspace (one Overseer DO and everything in it). Includes everything needed
@@ -5321,9 +5655,13 @@ export interface Overseer extends RpcTarget {
    * gadget, after the live gadget) changes nothing but the note, so sharing never narrows
    * anyone; one that covers the caller's earlier grants to them replaces those. Returns the
    * collaborator's info, or null if the username doesn't correspond to an existing account.
+   *
+   * `emailSent` reports whether the invitation email for a first-time collaborator went out; it is
+   * false when email is not configured, the account has no email address, or the provider refused
+   * it. The invitation itself stands either way.
    */
   addCollaborator(username: string, grant: CollaboratorGrant,
-                  note?: string): Promise<CollaboratorInfo | null>;
+                  note?: string): Promise<(CollaboratorInfo & {emailSent?: boolean}) | null>;
 
   /**
    * Stop sharing this workspace with a user (unshare it): remove a collaborator, identified by
@@ -6646,6 +6984,18 @@ export type AiToolCall = {
    */
   output?: string;
 } | {
+  /**
+   * Search Google for information, drama synopses, reviews, or public background facts.
+   * Grounded by Gemini Search Grounding.
+   */
+  toolName: "webSearch";
+  input: {
+    query: string;
+  };
+
+  /** Formatted search results and source citations. */
+  output?: string;
+} | {
   /** This actually shouldn't ever appear in logs unless the agent misunderstands the tool. */
   toolName: "observeUserChanges";
   input: {};
@@ -6844,7 +7194,7 @@ export type SlashCommandId = {
   builtin?: never;
 } | {
   builtin: true;
-  commandId: "compact";
+  commandId: string;
 };
 
 /** A slash command invocation parsed by the client. */
@@ -8092,3 +8442,5 @@ export type ShareLinkInfo = {
   /** Whether this is its creator's default link for what it grants (see `createShareLink`). */
   default?: true;
 };
+
+export * from "./script-skills";

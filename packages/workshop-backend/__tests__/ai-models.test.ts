@@ -490,6 +490,21 @@ describe("getModel AI Gateway binding transport", () => {
     expect((JSON.parse(entry.body) as { model: string }).model).toBe("claude-sonnet-4-5");
   }, 15000);
 
+  it.each(["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"])(
+      "sends the selected %s to the native OpenAI Responses route", async model => {
+    const handle = getModel(bindingEnv(), { provider: "openai", model, apiToken: "" }, INITIATOR);
+    expect(handle.model.cost.input).toBeGreaterThan(0);
+
+    const request = await captureEntry(handle);
+    expect(request.url).toBe(
+        "https://workers-binding.ai/ai-gateway/gateways/platform-gateway/openai/responses");
+    expect(request.headers["cf-aig-authorization"]).toBe("Bearer cloudflare-gateway-binding");
+    expect(request.headers.authorization).toBeUndefined();
+    expect(JSON.parse(request.body)).toMatchObject({
+      model, reasoning: { effort: "medium" }, store: false, stream: true,
+    });
+  }, 15000);
+
   it("drives Workers AI through the binding via its gateway route", async () => {
     const handle = getModel(bindingEnv(), WORKERS_AI_CONFIG, INITIATOR);
 
@@ -840,6 +855,43 @@ describe("getModel direct routing (no gateway)", () => {
       expect(handle.model.baseUrl).toBe("http://my-ollama:11434/v1");
     }
   });
+
+  it("defaults Google Gemini to LOW thinking level to avoid Cloudflare 524 timeouts", async () => {
+    const handle = getModel(env({ CF_AI_GATEWAY: undefined }), {
+      provider: "google",
+      model: "gemini-3.8-flash",
+      apiToken: "test-google-key",
+    }, INITIATOR);
+
+    expect(handle.model.api).toBe("google-generative-ai");
+
+    let capturedConfig: any = null;
+    // onPayload 在发出请求前触发；fetch 快速失败让流尽快结束（pi 1.6 会重试，真打网络会超时）。
+    vi.stubGlobal("fetch", async () => new Response("Bad Request", { status: 400 }));
+    try {
+      const stream = handle.stream(handle.model, {
+        messages: [{ role: "user", content: "hello", timestamp: 0 }],
+      }, {
+        apiKey: "test-google-key",
+        onPayload: (payload: any) => {
+          capturedConfig = payload.config;
+          return payload;
+        },
+      });
+
+      for await (const _ of stream) {
+        // drain
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(capturedConfig).toBeDefined();
+    expect(capturedConfig.thinkingConfig).toEqual({
+      includeThoughts: true,
+      thinkingLevel: "LOW",
+    });
+  });
 });
 
 // The parts of a request body that ask for reasoning, and what they are for each answer of
@@ -1139,6 +1191,7 @@ describe("gateway model reasoning levels", () => {
     ["anthropic", "claude-sonnet-5", ["off", "minimal", ...LOW_TO_MAX]],
     ["anthropic", "claude-haiku-4-5", OFF_TO_HIGH],
     ["openai", "gpt-6.1-sol", LOW_TO_MAX],
+    ["openai", "gpt-6.1-terra", ["off", ...LOW_TO_MAX]],
     ["openai", "gpt-6-astra", LOW_TO_MAX],
     ["openai", "gpt-6-sol", ["off", ...LOW_TO_MAX]],
     ["openai", "gpt-6-luna", ["off", ...LOW_TO_MAX]],
@@ -1175,7 +1228,10 @@ describe("gateway model reasoning levels", () => {
     ["anthropic", "claude-opus-5", "adaptive"],
     ["anthropic", "claude-sonnet-5", "adaptive"],
     ["anthropic", "claude-haiku-4-5", null],
+    ["openai", "gpt-6.2-sol", "medium"],
+    ["openai", "gpt-6.2-astra", "medium"],
     ["openai", "gpt-6.1-sol", "medium"],
+    ["openai", "gpt-6.1-terra", "medium"],
     ["openai", "gpt-6-sol", "medium"],
     ["openai", "gpt-6-luna", "medium"],
     ["openai", "gpt-6-astra", "medium"],
@@ -1184,15 +1240,33 @@ describe("gateway model reasoning levels", () => {
     ["openai", "gpt-5.6-terra", "medium"],
     ["google", "gemini-4-neon", null],
     ["google", "gemini-3.6-flash", null],
+    ["google", "gemini-3.8-flash", "low"],
+    ["google", "gemini-4-hydrogen", null],
+    ["google", "gemini-4-argon", null],
+    ["google", "gemini-4-carbon", null],
+    // 有缘心之助：Vertex 上的同名模型走同一协议，built-in reasoning 与 google 组一致。
+    ["google-vertex", "gemini-3.8-flash", "low"],
+    ["google-vertex", "gemini-4-hydrogen", null],
+    ["google-vertex", "gemini-3.5-flash", null],
+    ["google-vertex", "gemini-3.1-pro-preview", null],
     ["cloudflare", "@cf/moonshotai/kimi-k2.7-code", null],
     ["cloudflare", "@cf/zai-org/glm-5.2", null],
     ["cloudflare", "@cf/zai-org/glm-5.3-flash", null],
-    ["cloudflare", "@cf/deepseek-ai/deepseek-v4-pro-0813", null],
     ["cloudflare", "@cf/deepseek-ai/deepseek-v4.1-flash-1017", null],
+    ["cloudflare", "@cf/deepseek-ai/deepseek-v4-pro-0813", null],
     ["cloudflare", "@cf/zai-org/glm-5.3", null],
     ["cloudflare", "@cf/cloudflare/clef", null],
     ["cloudflare", "@cf/cloudflare/clef-flash", null],
     ["cloudflare-auto-router", "cloudflare/auto", null],
+    // 有缘心之助：OpenCode Go 的模型不带 thinkingLevelMap，不设等级时不发 effort。
+    ["opencode-go", "deepseek-v4.1-flash", null],
+    ["opencode-go", "glm-5.3-flash", null],
+    ["opencode-go", "qwen3.8-flash", null],
+    ["opencode-go", "mimo-v2.6-flash", null],
+    ["opencode-go", "minimax-m3.1-flash", null],
+    ["opencode-go", "kimi-k2.7-code", null],
+    ["opencode-go", "glm-5.3", null],
+    ["opencode-go", "glm-5.2", null],
   ];
   it.each(BUILT_IN)("says what %s model %s is asked for while no level is set",
       (provider, model, builtIn) => {
@@ -1282,6 +1356,14 @@ describe("gateway model reasoning levels", () => {
   });
 
   // Google's requests go over HTTPS alone.
+  it("Gemini 3.8 Flash 默认使用 LOW，并允许显式覆盖思考等级", async () => {
+    expect(gatewayBuiltInReasoning("google", "gemini-3.8-flash")).toBe("low");
+    expect(await googleThinking("gemini-3.8-flash"))
+      .toEqual({ includeThoughts: true, thinkingLevel: "LOW" });
+    expect(await googleThinking("gemini-3.8-flash", "high"))
+      .toEqual({ includeThoughts: true, thinkingLevel: "HIGH" });
+  });
+
   it.each(["gemini-3.6-flash", "gemini-2.5-flash", "gemini-next"])(
       "sends Gemini model %s nothing, as its built-in reasoning says", async (model) => {
     expect(gatewayBuiltInReasoning("google", model)).toBeNull();
@@ -1969,12 +2051,14 @@ describe("System prompt cache blocks", () => {
     expect(JSON.parse(split).system).toEqual([
       ...unsplitSystem.slice(0, -1).map((block: object) => ({ ...block, cache_control: forAnHour })),
       { type: "text", text: STATIC_TEXT, cache_control: forAnHour },
-      { type: "text", text: RENDERED_TEXT.slice(STATIC_TEXT.length) },
+      { type: "text", text: RENDERED_TEXT.slice(STATIC_TEXT.length), cache_control: forAnHour },
     ]);
+    // Both system halves carry an hour; the tools give up their breakpoint to stay within
+    // Anthropic's 4 breakpoints beside the identity block and the last message's 5 minutes.
+    expect(JSON.parse(split).tools[0]).not.toHaveProperty("cache_control");
     expect(breakpointCount(split)).toBe(breakpointCount(unsplit));
-    // The head is kept for an hour and the chat's messages for 5 minutes. Anthropic rejects a
-    // 1-hour breakpoint after a 5-minute one.
-    expect(breakpointTtls(split)).toEqual(["1h", ...unsplitSystem.map(() => "1h"), "5m"]);
+    expect(breakpointTtls(split))
+        .toEqual([...unsplitSystem.slice(0, -1).map(() => "1h"), "1h", "1h", "5m"]);
   }, 15000);
 
   function openAiHandle(model: string): ModelHandle {
@@ -1990,16 +2074,19 @@ describe("System prompt cache blocks", () => {
   const instructions = (body: string) => (JSON.parse(body).input as { type?: string }[])
       .find(item => item.type !== "additional_tools");
 
-  it("puts an OpenAI GPT-5.6+ breakpoint after the static text", async () => {
+  it("puts an OpenAI GPT-5.6+ breakpoint after each half of the prompt", async () => {
     const handle = openAiHandle("gpt-6-luna");
     const split = await captureBody(handle, true);
-    // The breakpoint caches the tools ahead of the instructions too.
+    // The first breakpoint caches the tools ahead of the instructions too; the second lets a
+    // resumed chat and a new chat of the same workspace read the workspace-specific text at the
+    // cache rate.
     expect(JSON.parse(split).input[0]).toMatchObject({ type: "additional_tools" });
     expect(instructions(split)).toEqual({
       role: "developer",
       content: [
         { type: "input_text", text: STATIC_TEXT, prompt_cache_breakpoint: { mode: "explicit" } },
-        { type: "input_text", text: RENDERED_TEXT.slice(STATIC_TEXT.length) },
+        { type: "input_text", text: RENDERED_TEXT.slice(STATIC_TEXT.length),
+          prompt_cache_breakpoint: { mode: "explicit" } },
       ],
     });
   }, 15000);
@@ -2321,5 +2408,125 @@ describe("getDecisionModel routing", () => {
         errorMessage: expect.stringContaining("Capacity temporarily exceeded"),
       });
     });
+  });
+});
+
+// 有缘心之助：pi 目录尚未收录的 GPT-6.2 与 Gemini 4 由本地目录（LOCAL_MODELS）兜底，
+// 描述以相邻型号为模板，价格按官方价目表。
+describe("models the pi catalog has not listed yet", () => {
+  it.each([
+    ["gpt-6.2-sol", "GPT-6.2 Sol", 2, 4],
+    ["gpt-6.2-astra", "GPT-6.2 Astra", 8, 16],
+  ] as const)("describes %s from the local catalog", (model, name, input, tierInput) => {
+    expect(SUGGESTED_MODELS["openai"][model])
+        .toMatchObject({ name, contextWindow: 1050000, outputLimit: 128000 });
+    expect(isRuntimeModel("openai", model)).toBe(true);
+
+    const handle = getModel(env({ CF_AI_GATEWAY: undefined }), {
+      provider: "openai", model, apiToken: "direct-api-token",
+    }, INITIATOR);
+    expect(handle.model).toMatchObject({
+      api: "openai-responses", id: model, name,
+      contextWindow: 1_050_000, maxTokens: 128_000,
+      compat: { supportsExplicitPromptCacheMode: true },
+    });
+    // GPT-6.2 的 API 拒绝 none：off 档没有接线值。
+    expect(handle.model.thinkingLevelMap?.off).toBeNull();
+    expect(handle.model.cost.input).toBe(input);
+    expect(handle.model.cost.input).toBeGreaterThan(0);
+    expect(handle.model.cost.tiers).toHaveLength(1);
+    expect(handle.model.cost.tiers![0])
+        .toMatchObject({ inputTokensAbove: 272_000, input: tierInput });
+  });
+
+  it.each([
+    // pi 1.6 的 Gemini 适配器对 Hydrogen 放开 xhigh 与 64K 输出；argon/carbon 仍按旧映射封到 high。
+    ["gemini-4-hydrogen", "Gemini 4 Hydrogen", 65_536, "xhigh" as const],
+    ["gemini-4-argon", "Gemini 4 Argon", 32_768, null],
+    ["gemini-4-carbon", "Gemini 4 Carbon", 32_768, null],
+  ] as const)("describes %s with the Google level map and an official price",
+      (model, name, maxTokens, xhigh) => {
+    expect(SUGGESTED_MODELS["google"][model])
+        .toMatchObject({ name, contextWindow: 1048576 });
+    expect(isRuntimeModel("google", model)).toBe(true);
+
+    const handle = getModel(env(), {
+      provider: "google", model, apiToken: "ignored-in-gateway-mode",
+    }, INITIATOR);
+    // max 档在两个适配器映射里都留 null。
+    expect(handle.model).toMatchObject({
+      api: "google-generative-ai", id: model, name,
+      contextWindow: 1_048_576, maxTokens,
+      thinkingLevelMap: {
+        low: "low", medium: "medium", high: "high", xhigh, max: null,
+      },
+    });
+    expect(handle.model.cost.input).toBeGreaterThan(0);
+  });
+
+  it("keeps the retired GPT-6.1 Sol resolvable, only hidden", () => {
+    expect(SUGGESTED_MODELS["openai"]["gpt-6.1-sol"]?.hidden).toBe(true);
+    expect(isRuntimeModel("openai", "gpt-6.1-sol")).toBe(true);
+    const handle = getModel(env({ CF_AI_GATEWAY: undefined }), {
+      provider: "openai", model: "gpt-6.1-sol", apiToken: "direct-api-token",
+    }, INITIATOR);
+    expect(handle.model.cost.input).toBeGreaterThan(0);
+  });
+});
+
+// 有缘心之助：getModel 包出的计费。fake 的 /responses 回包里带用量，断言发往 BILLING 的
+// charge 带模型名、实际 Token 与 chat/gadget 上下文。
+describe("withBilling", () => {
+  it("charges the initiator with the model, its usage and the request context", async () => {
+    const charge = vi.fn(async () => ({ plan: "standard" as const, balanceUsd: 1, chargedUsd: 0.1 }));
+    let charged: Promise<unknown> | undefined;
+    const handle = getModel(
+        env({ BILLING: { charge } } as unknown as Cloudflare.Env),
+        { provider: "openai", model: "gpt-6-luna", apiToken: "" }, INITIATOR, {
+          metadata: { source: "chat", gadgetId: "gadget-123", chatId: 7 },
+          onCharge: promise => { charged = promise; },
+        });
+    const stream = await handle.stream(handle.model, {
+      messages: [{ role: "user", content: "hello", timestamp: 0 }],
+    }, {
+      fetch: (async () => new Response(
+        `event: response.completed\ndata: ${JSON.stringify({
+          type: "response.completed",
+          response: {
+            id: "response", status: "completed", output: [],
+            usage: {
+              input_tokens: 1_000, output_tokens: 10, total_tokens: 1_010,
+              input_tokens_details: { cached_tokens: 500 },
+            },
+          },
+        })}\n\n`,
+        { headers: { "content-type": "text/event-stream" } })) as typeof fetch,
+      maxRetries: 0,
+    });
+    expect((await stream.result()).stopReason).toBe("stop");
+    await charged;
+
+    expect(charge).toHaveBeenCalledWith("user-123", {
+      rawCostUsd: expect.any(Number), source: "chat", model: "openai/gpt-6-luna",
+      // usage.input 不含缓存读：1000 input 里 500 走了缓存。
+      inputTokens: 500, outputTokens: 10, cacheReadTokens: 500, cacheWriteTokens: 0,
+      workspaceId: "gadget-123", chatId: 7,
+    });
+    expect((charge.mock.calls[0][1] as { rawCostUsd: number }).rawCostUsd).toBeGreaterThan(0);
+  });
+
+  it("does not charge through a user gateway (BYOK)", async () => {
+    const charge = vi.fn(async () => ({ plan: "standard" as const, balanceUsd: 1, chargedUsd: 0 }));
+    const handle = getModel(
+        env({ BILLING: { charge } } as unknown as Cloudflare.Env),
+        { provider: "openai", model: "gpt-6-luna", apiToken: "" }, INITIATOR, {
+          metadata: { source: "chat", chatId: 7 },
+          userGateway: { accountId: "a", apiKey: "k" },
+        });
+    const stream = await handle.stream(handle.model, {
+      messages: [{ role: "user", content: "hello", timestamp: 0 }],
+    }, { fetch: fetchStub, maxRetries: 0 });
+    await stream.result();
+    expect(charge).not.toHaveBeenCalled();
   });
 });

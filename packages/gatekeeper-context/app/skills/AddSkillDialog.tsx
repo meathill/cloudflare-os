@@ -71,7 +71,7 @@ export const AddSkillDialog = ({
       dialog.closeAfterSuccess();
     } catch (error) {
       toasts.add({
-        title: error instanceof Error ? error.message : "Failed to add skill",
+        title: error instanceof Error ? error.message : "添加技能失败",
         variant: "error",
       });
     } finally {
@@ -88,12 +88,12 @@ export const AddSkillDialog = ({
       <Dialog className="w-[min(440px,calc(100vw-32px))]! bg-kumo-base p-0 top-[16%]! translate-y-0!" size="sm">
         <div className="flex items-center justify-between gap-4 border-b border-kumo-line px-4 py-4 sm:px-6">
           <Dialog.Title className="text-[17px] leading-6 font-medium tracking-[-0.35px] text-kumo-default">
-            Add skill
+            添加技能
           </Dialog.Title>
           <Dialog.Close
             disabled={adding}
             render={(props) => (
-              <Button {...props} variant="ghost" shape="square" aria-label="Close">
+              <Button {...props} variant="ghost" shape="square" aria-label="关闭">
                 <X size={18} />
               </Button>
             )}
@@ -101,31 +101,31 @@ export const AddSkillDialog = ({
         </div>
         <div className="flex flex-col gap-4 px-4 py-5 sm:px-6">
           <Input
-            label="Name"
-            description="Up to 64 letters, numbers, spaces, or hyphens."
+            label="名称"
+            description="最多 64 个字母、数字、空格或连字符。"
             value={name}
             onChange={(event) => setName(sanitizeSkillTitle(event.target.value))}
-            placeholder="New skill"
+            placeholder="新技能"
             maxLength={64}
             autoFocus
           />
           <InputArea
-            label="Description"
+            label="描述"
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="What this skill does"
+            placeholder="这个技能的用途"
             rows={3}
           />
           {target.collectionEditable && writableCollections.length > 1 && (
             <Select
-              label="Collection"
+              label="知识集合"
               className="w-full"
-              placeholder="Select a collection"
+              placeholder="选择知识集合"
               value={collectionId}
               onValueChange={(value) => setCollectionId(value as string)}
               renderValue={(id) => {
                 const collection = collections.find((candidate) => candidate.id === id);
-                if (!collection) return "Select a collection";
+                if (!collection) return "选择知识集合";
                 return (
                   <span className="flex items-center gap-2">
                     {collection.icon ? <span>{collection.icon}</span> : null}
@@ -146,8 +146,8 @@ export const AddSkillDialog = ({
           )}
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-kumo-line px-4 py-3 sm:px-6">
-          <Button variant="secondary" onClick={dialog.requestClose} disabled={adding}>Cancel</Button>
-          <Button onClick={add} loading={adding} disabled={!valid}>Add skill</Button>
+          <Button variant="secondary" onClick={dialog.requestClose} disabled={adding}>取消</Button>
+          <Button onClick={add} loading={adding} disabled={!valid}>添加技能</Button>
         </div>
       </Dialog>
     </Dialog.Root>

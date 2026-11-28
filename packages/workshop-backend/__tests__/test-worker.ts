@@ -5,6 +5,7 @@ import { DurableObject, RpcStub, RpcTarget, WorkerEntrypoint, restore } from "cl
 import type {
   AccountDescription,
   AppUiContext,
+  GatekeeperExportFile,
   GatekeeperUiFrame,
   GatekeeperUserSelection,
   GatekeeperUserVerifier,
@@ -97,6 +98,8 @@ const stashedTickets = new Map<string, string>();
  */
 export class FakeGatekeeperAccount extends WorkerEntrypoint<Cloudflare.Env, {
   name: string; failRevoke?: boolean; failDescribe?: boolean; providesUi?: boolean;
+  exportFiles?: GatekeeperExportFile[]; exportUnsupported?: boolean; exportError?: string;
+  deletedIds?: string[]; deleteUnsupported?: boolean; deleteError?: string;
 }> {
   #record(call: string) {
     const calls = accountCalls.get(this.ctx.props.name) ?? [];
@@ -164,6 +167,38 @@ export class FakeGatekeeperAccount extends WorkerEntrypoint<Cloudflare.Env, {
     }
     this.#record(`startAppUi(${context.isAdmin}, ${outcome})`);
     return { iframeHtml: "<!doctype html>", ui: new RpcStub(new RpcTarget()) };
+  }
+
+  async observeUserMessage(message: { text: string; sentAt: number }): Promise<void> {
+    this.#record(`observe(${message.text}:${message.sentAt})`);
+  }
+
+  /**
+   * 有缘心之助：props.exportFiles as the account's exported files; `exportUnsupported` simulates a
+   * gatekeeper without the method by throwing its "not implemented" refusal, and `exportError`
+   * throws it verbatim as a real failure.
+   */
+  async exportForAdmin(): Promise<GatekeeperExportFile[]> {
+    this.#record("exportForAdmin");
+    if (this.ctx.props.exportUnsupported) {
+      throw new TypeError('The RPC receiver does not implement the method "exportForAdmin"');
+    }
+    if (this.ctx.props.exportError) throw new Error(this.ctx.props.exportError);
+    return this.ctx.props.exportFiles ?? [];
+  }
+
+  /**
+   * 有缘心之助：props.deletedIds as the ids the account deleted; `deleteUnsupported` simulates a
+   * gatekeeper without the method by throwing its "not implemented" refusal, and `deleteError`
+   * throws it verbatim as a real failure.
+   */
+  async deleteForAdmin(ids: string[]): Promise<string[]> {
+    this.#record(`deleteForAdmin(${ids.join(",")})`);
+    if (this.ctx.props.deleteUnsupported) {
+      throw new TypeError('The RPC receiver does not implement the method "deleteForAdmin"');
+    }
+    if (this.ctx.props.deleteError) throw new Error(this.ctx.props.deleteError);
+    return this.ctx.props.deletedIds ?? ids;
   }
 
   async calls(): Promise<string[]> {

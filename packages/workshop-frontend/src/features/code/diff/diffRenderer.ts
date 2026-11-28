@@ -416,7 +416,7 @@ class OmittedDeletionWidget extends WidgetType {
     const button = document.createElement('button')
     button.type = 'button'
     button.className = 'gadgets-deleted-code-row gadgets-deleted-omitted-row'
-    button.textContent = `Show ${this.hidden} hidden deleted line${this.hidden === 1 ? '' : 's'}`
+    button.textContent = `显示隐藏的 ${this.hidden} 行已删除内容`
     button.addEventListener('click', () => this.onExpand(this.runKey))
     return button
   }

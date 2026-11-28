@@ -308,6 +308,13 @@ export function makeUserStorage(storage: DurableObjectStorage) {
         name: "User",
         id: "user@example.com",
       },
+      // Addresses bound to this account by a verification code (lowercase), beside the login email
+      // an email account is named after. Each is also this account's claim in the deployment-wide
+      // registry (see EmailOtp), so no other account holds it.
+      verifiedEmails: <string[]>[],
+      // Whether the login email of an email account is recorded in that registry. Accounts that
+      // signed in before the registry existed claim it on their next sign-in.
+      loginEmailClaimed: false,
       quickModel: <string | null>null,
       preferredModel: <string | null>null,
       onboardingCompleted: false,

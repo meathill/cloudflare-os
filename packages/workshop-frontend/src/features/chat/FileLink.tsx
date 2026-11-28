@@ -37,7 +37,7 @@ export const FileLink = ({ source, files, children, title }: {
   }
 
   if (!files || !Object.hasOwn(files.oids, source) || !files.oids[source]) {
-    return <span title="File unavailable">{children} (unavailable)</span>
+    return <span title="文件不可用">{children}（不可用）</span>
   }
   return <>
     <button type="button" role="link" title={title} aria-disabled={busy} aria-busy={busy}

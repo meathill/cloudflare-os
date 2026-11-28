@@ -72,12 +72,12 @@ describe('global native billing account selection', () => {
     } else {
       await render(api)
     }
-    expect(Array.from(document.body.querySelectorAll('button')).find(button => button.textContent === 'Save')!.disabled).toBe(true)
+    expect(Array.from(document.body.querySelectorAll('button')).find(button => button.textContent === '保存')!.disabled).toBe(true)
     await act(async () => finishList([
       { accountId: 'first', accountName: 'First account' },
       { accountId: 'second', accountName: 'Second account' },
     ]))
-    const save = Array.from(document.body.querySelectorAll('button')).find(button => button.textContent === 'Save')!
+    const save = Array.from(document.body.querySelectorAll('button')).find(button => button.textContent === '保存')!
     await act(async () => save.click())
     expect(api.selectCloudflareAccount).toHaveBeenCalledExactlyOnceWith(refresh === 'focus' ? 'second' : 'first')
   })
@@ -93,7 +93,7 @@ describe('global native billing account selection', () => {
     await act(async () => document.body.querySelector<HTMLInputElement>('input[value="second"]')!.click())
     api.listCloudflareAccounts.mockResolvedValue([{ accountId: 'first', accountName: 'First account' }])
     await act(async () => window.dispatchEvent(new Event('focus')))
-    const save = Array.from(document.body.querySelectorAll('button')).find(button => button.textContent === 'Save')!
+    const save = Array.from(document.body.querySelectorAll('button')).find(button => button.textContent === '保存')!
     await act(async () => save.click())
     expect(api.selectCloudflareAccount).toHaveBeenCalledExactlyOnceWith('first')
   })
@@ -101,7 +101,7 @@ describe('global native billing account selection', () => {
   it.each([false, true])('opens after redemption despite a late pre-redemption focus response (reconnected: %s)', async reconnected => {
     const first = makeApi(), next = reconnected ? makeApi() : first
     await render(first)
-    expect(document.body.textContent).not.toContain('Choose a Cloudflare account')
+    expect(document.body.textContent).not.toContain('选择 Cloudflare 账号')
     let finishFocus!: (value: CloudflareUsageInfo) => void
     first.getCloudflareUsage.mockImplementationOnce(() => new Promise(resolve => { finishFocus = resolve }))
     await act(async () => window.dispatchEvent(new Event('focus')))
@@ -131,10 +131,10 @@ describe('global native billing account selection', () => {
     await complete()
     expect(document.body.textContent).toContain('Replacement account')
     expect(document.body.textContent).not.toContain('Newly connected account')
-    const save = Array.from(document.body.querySelectorAll('button')).find(button => button.textContent === 'Save')!
+    const save = Array.from(document.body.querySelectorAll('button')).find(button => button.textContent === '保存')!
     await act(async () => save.click())
     expect(api.selectCloudflareAccount).toHaveBeenCalledWith('replacement')
-    expect(document.body.textContent).not.toContain('Choose a Cloudflare account')
+    expect(document.body.textContent).not.toContain('选择 Cloudflare 账号')
   })
 
   it('lets the user retry a failed account-list read', async () => {
@@ -142,8 +142,8 @@ describe('global native billing account selection', () => {
     api.getCloudflareUsage.mockResolvedValue(usage(true))
     api.listCloudflareAccounts.mockRejectedValueOnce(new Error('Temporary failure'))
     await render(api)
-    expect(document.body.textContent).toContain('No accounts available')
-    const retry = Array.from(document.body.querySelectorAll('button')).find(button => button.textContent === 'Try again')!
+    expect(document.body.textContent).toContain('没有可用账号')
+    const retry = Array.from(document.body.querySelectorAll('button')).find(button => button.textContent === '重试')!
     await act(async () => retry.click())
     expect(document.body.textContent).toContain('Newly connected account')
   })

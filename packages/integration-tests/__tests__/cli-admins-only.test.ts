@@ -1,6 +1,8 @@
 // `cf-os api`, the real CLI (packages/api-cli), against the Workshop: on a local instance it may act
 // as anyone; redeployed as a deployment (no WORKSHOP_ENVIRONMENT), only as a deployment admin,
-// while a browser's session is unaffected.
+// while a browser's session is unaffected. An admin is an email, so the harness's bare ADMINS
+// username names no one there (signing in as a verified admin is covered by the backend's unit
+// tests, which can mail and read a code).
 
 import { execFile } from "node:child_process";
 import { dirname, resolve } from "node:path";
@@ -60,11 +62,11 @@ describe("on a deployment", () => {
     });
   });
 
-  it("lets the CLI sign in as a deployment admin", async () => {
+  it("refuses the CLI a username the ADMINS list names, which anyone could have registered", async () => {
     const asAdmin = await cfOsApi(["--username", ADMIN_USERNAME, "am-i-admin"],
         { CFOS_API_PASSWORD: PASSWORD });
-    expect(asAdmin, asAdmin.stderr).toMatchObject({ code: 0 });
-    expect(JSON.parse(asAdmin.stdout)).toBe(true);
+    expect(asAdmin).toMatchObject({ code: 1, stdout: "" });
+    expect(asAdmin.stderr).toContain(REFUSED);
   });
 
   it("refuses the CLI anyone else, by password or token, and every call that signs no one in", async () => {

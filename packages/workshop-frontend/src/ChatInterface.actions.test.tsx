@@ -215,11 +215,11 @@ async function openDisclosure(text: string): Promise<void> {
 }
 
 /** Opens the tray group holding the chat's single pending request. */
-const openTray = () => openDisclosure('1 request')
+const openTray = () => openDisclosure('1 个请求')
 
 // The text a screen reader announces as the Approve button's description.
 function approveDescribedBy(): string | null {
-  const approve = [...document.querySelectorAll('button')].find(b => b.textContent === 'Approve')
+  const approve = [...document.querySelectorAll('button')].find(b => b.textContent === '批准')
   if (!approve) throw new Error('No Approve button rendered')
   const ids = approve.getAttribute('aria-describedby')
   if (ids === null) return null
@@ -233,7 +233,7 @@ function approveDescribedBy(): string | null {
 describe('pending queue failure', () => {
   it('keeps the decision in the transcript when the tray never loaded its queue', async () => {
     // The store holds an empty pending set for the life of the connection after a failed load,
-    // so the tray has nothing to show. Leaving the request as "Waiting for review" would leave
+    // so the tray has nothing to show. Leaving the request as "等待审批" would leave
     // no way to answer it at all.
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const server = makeOverseer()
@@ -246,14 +246,14 @@ describe('pending queue failure', () => {
     chat.emitMessage({ ...actionMessage, actionLog: pendingLog() } as AiChatMessage)
 
     const labels = [...document.querySelectorAll('button')].map(b => b.textContent)
-    expect(labels).toContain('Approve')
-    expect(labels).toContain('Deny')
-    expect(document.body.textContent).not.toContain('Waiting for review')
+    expect(labels).toContain('批准')
+    expect(labels).toContain('拒绝')
+    expect(document.body.textContent).not.toContain('等待审批')
   })
 
   it('keeps the decision in the transcript while the queue is still loading', async () => {
     // The queue pages in, so until it settles the tray may not have this request yet. A card
-    // that said "Waiting for review" meanwhile would be pointing at a surface that cannot
+    // that said "等待审批" meanwhile would be pointing at a surface that cannot
     // show it.
     const server = makeOverseer()
     const chat = withChatApi(server, undefined, [
@@ -263,19 +263,19 @@ describe('pending queue failure', () => {
     await server.resolveSubscription()
     chat.emitMessage({ ...actionMessage, actionLog: pendingLog() } as AiChatMessage)
 
-    expect([...document.querySelectorAll('button')].map(b => b.textContent)).toContain('Approve')
+    expect([...document.querySelectorAll('button')].map(b => b.textContent)).toContain('批准')
 
     // And hands it over once the queue has settled and the tray can show it.
     await server.resolvePendingQuery({ entries: [pendingLog()] })
     expect([...document.querySelectorAll('button')].map(b => b.textContent))
-      .not.toContain('Approve')
+      .not.toContain('批准')
   })
 
   it('keeps the decision in the transcript when the loaded queue omits this request', async () => {
     // A settled queue is not the same as a queue holding this request: `pendingChangeGroups`
     // drops anything with no gatekeeperId, and the subscription can land after the message that
     // announced the request. Deferring on "the queue loaded" alone left the card saying
-    // "Waiting for review" while the tray showed nothing for it -- no surface offering it.
+    // "等待审批" while the tray showed nothing for it -- no surface offering it.
     const server = makeOverseer()
     const chat = withChatApi(server, undefined, [
       { id: 1, title: 'Chat', started: new Date(), lastActive: new Date() },
@@ -286,8 +286,8 @@ describe('pending queue failure', () => {
     chat.emitMessage({ ...actionMessage, actionLog: pendingLog() } as AiChatMessage)
 
     const labels = [...document.querySelectorAll('button')].map(b => b.textContent)
-    expect(labels).toContain('Approve')
-    expect(document.body.textContent).not.toContain('Waiting for review')
+    expect(labels).toContain('批准')
+    expect(document.body.textContent).not.toContain('等待审批')
     // And it is answerable without first expanding it: a card carrying Approve in its header
     // while showing none of what it would approve is the one shape this must not take.
     // Markdown reflows the paragraphs, so this checks the last of them is on screen.
@@ -318,11 +318,11 @@ describe('pending queue failure', () => {
     chat.emitMessage({ ...actionMessage, actionLog: blocking } as AiChatMessage)
 
     const approve = () =>
-      [...document.querySelectorAll('button')].find(b => b.textContent === 'Approve')!
+      [...document.querySelectorAll('button')].find(b => b.textContent === '批准')!
     expect(approve().disabled).toBe(false)
 
     const applyAll = [...document.querySelectorAll('button')]
-      .find(b => (b.textContent ?? '').startsWith('Apply all'))!
+      .find(b => (b.textContent ?? '').startsWith('全部应用'))!
     await act(async () => { applyAll.click() })
 
     // The run has sent its first decision and is awaiting the provider. The callout must not
@@ -344,11 +344,11 @@ describe('pending queue failure', () => {
     await server.resolveSubscription()
     await server.resolvePendingQuery({ entries: [pendingLog()] })
 
-    expect(document.body.textContent).toContain('1 request')
+    expect(document.body.textContent).toContain('1 个请求')
 
     // Back to the conversation list, with the request still pending.
     await renderChat(server.overseer, {})
-    expect(document.body.textContent).toContain('1 request')
+    expect(document.body.textContent).toContain('1 个请求')
   })
 
   it('keeps bulk apply when the vendor catalog fails, since a run reads only the rules', async () => {
@@ -374,7 +374,7 @@ describe('pending queue failure', () => {
     await act(async () => {})
 
     const labels = [...document.querySelectorAll('button')].map(b => b.textContent ?? '')
-    expect(labels.some(label => label.startsWith('Apply all'))).toBe(true)
+    expect(labels.some(label => label.startsWith('全部应用'))).toBe(true)
   })
 
   it("keeps a stopped run's message on screen after the queue empties", async () => {
@@ -398,12 +398,12 @@ describe('pending queue failure', () => {
     await server.resolvePendingQuery({ entries: [first, second] })
 
     const applyAll = [...document.querySelectorAll('button')]
-      .find(b => (b.textContent ?? '').startsWith('Apply all'))!
+      .find(b => (b.textContent ?? '').startsWith('全部应用'))!
     await act(async () => { applyAll.click() })
     await server.failDecision(new Error('The provider failed.'))
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 400)) })
     expect(document.querySelector('[role="alert"]')?.textContent)
-      .toContain('"Send email" failed: The provider failed.')
+      .toContain('“Send email”失败：The provider failed.')
 
     // Both are then resolved elsewhere, which empties the queue.
     await server.emit({ ...first, state: 'approved' } as typeof first)
@@ -411,15 +411,15 @@ describe('pending queue failure', () => {
     flushFrames()
     expect(document.body.textContent).not.toContain('requests waiting')
     expect(document.querySelector('[role="alert"]')?.textContent)
-      .toContain('"Send email" failed: The provider failed.')
+      .toContain('“Send email”失败：The provider failed.')
   })
 
   it('leaves the decision to the tray once the queue has loaded', async () => {
     await renderPendingCard(pendingLog())
 
     const labels = [...document.querySelectorAll('button')].map(b => b.textContent)
-    expect(labels).not.toContain('Approve')
-    expect(document.body.textContent).toContain('Waiting for review')
+    expect(labels).not.toContain('批准')
+    expect(document.body.textContent).toContain('等待审批')
   })
 })
 
@@ -578,7 +578,7 @@ describe('send and retry failures', () => {
     const textarea = await sendFromComposer('Summarize the report')
 
     expect(addToast).toHaveBeenCalledExactlyOnceWith(
-        { title: 'Failed to send message', description: disabledModel, variant: 'error' })
+        { title: '发送消息失败', description: disabledModel, variant: 'error' })
     expect(textarea.value).toBe('Summarize the report')
   })
 
@@ -593,7 +593,7 @@ describe('send and retry failures', () => {
     const textarea = await sendFromComposer('Summarize the report')
 
     expect(addToast).toHaveBeenCalledExactlyOnceWith(
-        { title: 'Failed to start conversation', description: disabledModel, variant: 'error' })
+        { title: '开始对话失败', description: disabledModel, variant: 'error' })
     expect(textarea.value).toBe('Summarize the report')
   })
 
@@ -627,7 +627,7 @@ describe('send and retry failures', () => {
       type: 'error',
       message: 'The model request failed.',
     })
-    const retry = [...document.querySelectorAll('button')].find(b => b.textContent === 'Retry')
+    const retry = [...document.querySelectorAll('button')].find(b => b.textContent === '重试')
     if (!retry) throw new Error('No Retry button rendered')
     await act(async () => retry.click())
   }
@@ -636,14 +636,14 @@ describe('send and retry failures', () => {
     await retryAfterError(async () => { throw new Error(disabledModel) })
 
     expect(addToast).toHaveBeenCalledExactlyOnceWith(
-        { title: 'Failed to retry agent', description: disabledModel, variant: 'error' })
+        { title: '重试智能体失败', description: disabledModel, variant: 'error' })
   })
 
   it('reports a retry the connection dropped without the transport message', async () => {
     await retryAfterError(async () => { throw new Error('Peer closed WebSocket: 1006 ') })
 
     expect(addToast).toHaveBeenCalledExactlyOnceWith(
-        { title: 'Failed to retry agent', description: undefined, variant: 'error' })
+        { title: '重试智能体失败', description: undefined, variant: 'error' })
   })
 
   it('shows a turn the user stopped as stopped, not as an error, and offers Continue', async () => {
@@ -661,12 +661,12 @@ describe('send and retry failures', () => {
     })
 
     const text = document.body.textContent ?? ''
-    expect(text).toContain('Stopped')
-    expect(text).not.toContain('Error:')
+    expect(text).toContain('已停止')
+    expect(text).not.toContain('错误：')
     expect(text).not.toContain('The user stopped the agent.')
     const buttons = [...document.querySelectorAll('button')].map(b => b.textContent)
-    expect(buttons).toContain('Continue')
-    expect(buttons).not.toContain('Retry')
+    expect(buttons).toContain('继续')
+    expect(buttons).not.toContain('重试')
   })
 })
 
@@ -735,7 +735,7 @@ describe('hook toggles', () => {
       await clickHookSwitch(TITLE)
 
       expect(addToast).toHaveBeenCalledExactlyOnceWith({
-        title: `Failed to ${done === 'enabled' ? 'enable' : 'disable'} hook`, description, variant: 'error',
+        title: `${done === 'enabled' ? '启用' : '禁用'}钩子失败`, description, variant: 'error',
       })
       expect(isOn()).toBe(enabled)
     })
@@ -786,7 +786,7 @@ describe('queued steers', () => {
     expect(text.indexOf('And bigger.')).toBeGreaterThan(text.indexOf('Make it dark.'))
     expect(text).toContain('Collaborator')
 
-    const stop = document.querySelector<HTMLButtonElement>('[aria-label="Stop agent"]')
+    const stop = document.querySelector<HTMLButtonElement>('[aria-label="停止智能体"]')
     if (!stop) throw new Error('No Stop button rendered')
     await act(async () => stop.click())
 

@@ -140,7 +140,7 @@ describe('UiBlockCard', () => {
 
   it('refuses every read in a message with no pinned files, and still draws the view', async () => {
     const host = await handshake(await renderCard({ ...BLOCK, html: `<p>Totals</p><script>embeds.json("worktree://OUTPUTS/t.json")</script>` }))
-    await expect(Promise.resolve(host.readFile('worktree://OUTPUTS/t.json'))).rejects.toThrow(/unavailable/)
+    await expect(Promise.resolve(host.readFile('worktree://OUTPUTS/t.json'))).rejects.toThrow(/不可用/)
     expect(container.querySelector('iframe')).not.toBeNull()
   })
 
@@ -164,38 +164,38 @@ describe('UiBlockCard', () => {
     expect(container.textContent).not.toContain('Show me week 3.')
     expect(sent).toEqual([])
 
-    await act(async () => buttonNamed('Send')!.click())
+    await act(async () => buttonNamed('发送')!.click())
     await vi.waitFor(() => expect(sent).toEqual(['Show me week 4.']))
-    await vi.waitFor(() => expect(buttonNamed('Send')).toBeUndefined())
+    await vi.waitFor(() => expect(buttonNamed('发送')).toBeUndefined())
   })
 
   it('drops a message the viewer dismisses', async () => {
     const host = await handshake(await renderCard())
     await host.requestMessage('Pick Aero.')
-    await vi.waitFor(() => expect(buttonNamed('Dismiss')).toBeDefined())
+    await vi.waitFor(() => expect(buttonNamed('忽略')).toBeDefined())
 
-    await act(async () => buttonNamed('Dismiss')!.click())
-    expect(buttonNamed('Send')).toBeUndefined()
+    await act(async () => buttonNamed('忽略')!.click())
+    expect(buttonNamed('发送')).toBeUndefined()
     expect(sent).toEqual([])
   })
 
   it('holds Send while the chat waits on the viewer', async () => {
     const host = await handshake(await renderCard(BLOCK, 'Approve the pending action above.'))
     await host.requestMessage('Pick Aero.')
-    await vi.waitFor(() => expect(buttonNamed('Send')).toBeDefined())
+    await vi.waitFor(() => expect(buttonNamed('发送')).toBeDefined())
 
     expect(container.textContent).toContain('Approve the pending action above.')
-    expect(buttonNamed('Send')!.disabled).toBe(true)
+    expect(buttonNamed('发送')!.disabled).toBe(true)
   })
 
   it('keeps the message for another try when a Send fails', async () => {
     const host = await handshake(await renderCard())
     await host.requestMessage('Pick Aero.')
-    await vi.waitFor(() => expect(buttonNamed('Send')).toBeDefined())
+    await vi.waitFor(() => expect(buttonNamed('发送')).toBeDefined())
     reply = () => Promise.reject(new Error('offline'))
 
-    await act(async () => buttonNamed('Send')!.click())
-    await vi.waitFor(() => expect(buttonNamed('Send')!.disabled).toBe(false))
+    await act(async () => buttonNamed('发送')!.click())
+    await vi.waitFor(() => expect(buttonNamed('发送')!.disabled).toBe(false))
     expect(sent).toEqual(['Pick Aero.'])
     expect(container.textContent).toContain('Pick Aero.')
   })
@@ -203,10 +203,10 @@ describe('UiBlockCard', () => {
   it('keeps a newer message when an earlier Send finishes', async () => {
     const host = await handshake(await renderCard())
     await host.requestMessage('Pick Aero.')
-    await vi.waitFor(() => expect(buttonNamed('Send')).toBeDefined())
+    await vi.waitFor(() => expect(buttonNamed('发送')).toBeDefined())
     const held = Promise.withResolvers<void>()
     reply = () => held.promise
-    await act(async () => buttonNamed('Send')!.click())
+    await act(async () => buttonNamed('发送')!.click())
     await vi.waitFor(() => expect(sent).toHaveLength(1))
 
     await host.requestMessage('Pick Bolt.')
@@ -217,7 +217,7 @@ describe('UiBlockCard', () => {
       await held.promise
     })
     expect(container.textContent).toContain('Pick Bolt.')
-    expect(buttonNamed('Send')).toBeDefined()
+    expect(buttonNamed('发送')).toBeDefined()
   })
 
   it('gives a view whose document loaded again the whole block in a new session', async () => {
@@ -250,22 +250,22 @@ describe('UiBlockCard', () => {
     const iframe = await renderCard(open('<p>Fo'))
     const frame = new FakeFrame()
     await handshake(iframe, frame)
-    expect(container.textContent).toContain('Drawing…')
+    expect(container.textContent).toContain('正在绘制…')
 
     await act(async () => root.render(card(open('<p>Food'))))
     await act(async () => root.render(card({ kind: 'block', html: '<p>Food</p>' })))
     await vi.waitFor(() => expect(frame.received)
       .toEqual([createUiBlockDocumentStart(readUiBlockTheme()), '<p>Fo', 'od', '</p>', 'close']))
     expect(container.querySelector('iframe')).toBe(iframe)
-    expect(container.textContent).toContain('Live view')
+    expect(container.textContent).toContain('实时视图')
   })
 
   it('gives a new frame load the start of the document, then all of the block so far', async () => {
     await handshake(await renderCard(open('<p>Fo')))
-    await act(async () => buttonNamed('Stop')!.click())
+    await act(async () => buttonNamed('停止')!.click())
     expect(container.querySelector('iframe')).toBeNull()
     await act(async () => root.render(card(open('<p>Food'))))
-    await act(async () => buttonNamed('Run')!.click())
+    await act(async () => buttonNamed('运行')!.click())
     await vi.waitFor(() => expect(container.querySelector('iframe')).not.toBeNull())
 
     const frame = new FakeFrame()

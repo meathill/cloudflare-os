@@ -4,10 +4,10 @@ import type { DictationStatus } from "./useComposerDictation";
 
 const announcements: Record<DictationStatus, string> = {
   idle: "",
-  starting: "Starting voice typing…",
-  downloading: "Downloading the voice typing language pack…",
-  listening: "Listening… Stop adds what you said to your message, and Escape discards it.",
-  finishing: "Finishing voice typing…",
+  starting: "正在启动语音输入…",
+  downloading: "正在下载语音输入语言包…",
+  listening: "正在聆听… 停止会将你说的内容加入消息，Escape 则丢弃。",
+  finishing: "正在结束语音输入…",
 };
 
 export const ComposerDictationButton = ({ status, disabled, onToggle, onCancel }: {
@@ -19,8 +19,8 @@ export const ComposerDictationButton = ({ status, disabled, onToggle, onCancel }
   const listening = status === "listening";
   const preparing = status === "starting" || status === "downloading" || status === "finishing";
   const label = status === "idle"
-    ? "Start voice typing"
-    : status === "finishing" ? "Add what you said now" : "Stop voice typing";
+    ? "开始语音输入"
+    : status === "finishing" ? "立即加入所说的内容" : "停止语音输入";
 
   return (
     <>

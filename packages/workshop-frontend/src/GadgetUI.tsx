@@ -14,6 +14,7 @@ import {
 } from '@gadgets/workshop-shared/api'
 import { prepareUiPage, uiModuleKey, type UiPage } from '@gadgets/workshop-shared/ui-page'
 import { CAPNWEB_MODULE_URL, SANDBOX_HEAD } from './sandboxDocument'
+import { markConnectionActivity, whenConnectionActive } from './features/idle-disconnect/connectionIdle'
 
 // Unfortunately, we will have to embed the code as a data: URL, because our iframe is totally
 // sandboxed. Even more unfortunately, since it's a module which we need to import from, we can't
@@ -84,6 +85,18 @@ try {
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') notify(root.escape());
 }, true);
+
+// Forward user input to the parent frame, throttled. Input inside the sandbox never reaches the
+// parent's own listeners, and the parent drops the connection of a tab nobody uses.
+let lastActivityPost = 0;
+for (let type of ['pointerdown', 'keydown', 'input', 'wheel', 'touchstart']) {
+  window.addEventListener(type, () => {
+    let now = Date.now();
+    if (now - lastActivityPost < 5000) return;
+    lastActivityPost = now;
+    window.parent.postMessage({ type: 'activity' }, '*');
+  }, { capture: true, passive: true });
+}
 
 window.addEventListener('click', (event) => {
   if (!(event.target instanceof Element)) {
@@ -551,8 +564,11 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
     const reconnect = async () => {
       let timeout: ReturnType<typeof setTimeout> | undefined
       try {
+        // A tab that dropped its connection while unattended reconnects only once someone is back,
+        // so the timeout starts then: reloading the iframe meanwhile would discard its state.
+        await whenConnectionActive()
+        if (!isCurrent()) return
         // A pipelined client resolves only once the connection is back and the workspace reopened.
-        // The budget is for the gadget's own answer, not for the outage before it.
         await gadget
         const replacementStub = await Promise.race([
           replacementPromise,
@@ -619,7 +635,7 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
       if (!isCurrent()) return
       loadGenerationRef.current++      // so a late reply can no longer write state
       setLoading(false)
-      setError({ message: 'Timed out loading this view.' })
+      setError({ message: '加载此视图超时。' })
     }, UI_BUNDLE_LOAD_TIMEOUT_MS)
 
     const loadUiBundle = async () => {
@@ -741,10 +757,12 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
           port.close()
           if (!isCurrent()) return
           console.error('Failed to establish RPC connection:', caught)
-          setError({ message: 'Failed to connect gadget to server', stub: client })
+          setError({ message: '应用连接服务器失败', stub: client })
         } finally {
           if (handshakePendingRef.current === generation) handshakePendingRef.current = null
         }
+      } else if (event.data?.type === 'activity') {
+        markConnectionActivity()
       }
     }
 
@@ -772,7 +790,7 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
         style={{ height }}
       >
         <Text variant="secondary">
-          Switch to this tab to load the Gadget UI
+          切换到此标签页以加载应用界面
         </Text>
       </div>
     )
@@ -802,7 +820,7 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
       }}>
         <Banner
           variant="error"
-          title="Error"
+          title="错误"
           description={errorMessage}
           action={
             <Banner.Action
@@ -813,7 +831,7 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
                 setRetryNonce(n => n + 1)
               }}
             >
-              Try again
+              重试
             </Banner.Action>
           }
         />
@@ -845,10 +863,10 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
           </div>
           <div className="space-y-1">
             <h2 className="text-[20px] leading-7 font-normal tracking-[-0.45px] text-kumo-default">
-              No gadget UI yet
+              暂无应用界面
             </h2>
             <p className="text-[15px] leading-5 font-normal tracking-[-0.3px] text-kumo-subtle">
-              When the gadget builds one, it will appear here.
+              应用创建界面后会显示在这里。
             </p>
           </div>
         </div>
@@ -869,7 +887,7 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
           border: 'none'
         }}
         sandbox="allow-scripts allow-pointer-lock allow-popups allow-popups-to-escape-sandbox"
-        title="Gadget UI"
+        title="应用界面"
       />
     </div>
   )
